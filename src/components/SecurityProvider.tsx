@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface SecurityContextType {
   unlockedTools: string[];
-  unlock: (pin: string, toolId?: string) => Promise<boolean>;
+  unlock: (pin: string, toolId?: string, type?: "dashboard" | "tool") => Promise<boolean>;
   lock: (toolId?: string) => void;
   isToolUnlocked: (toolId?: string) => boolean;
 }
@@ -33,13 +33,13 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     return unlockedTools.includes(id);
   };
 
-  const unlock = async (pin: string, toolId?: string) => {
+  const unlock = async (pin: string, toolId?: string, type: "dashboard" | "tool" = "tool") => {
     const id = toolId || "dashboard";
     try {
       const res = await fetch("/api/auth/secondary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin, toolId }),
+        body: JSON.stringify({ pin, toolId, type }),
       });
 
       if (res.ok) {

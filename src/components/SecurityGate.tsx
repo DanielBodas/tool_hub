@@ -2,21 +2,26 @@
 
 import React, { useState } from "react";
 import { useSecurity } from "./SecurityProvider";
-import { ShieldAlert, Lock, Unlock } from "lucide-react";
+import { Lock } from "lucide-react";
+import { useSession } from "next-auth/react";
 
 interface SecurityGateProps {
   children: React.ReactNode;
   toolId?: string;
-  toolName?: string;
 }
 
-export function SecurityGate({ children, toolId, toolName }: SecurityGateProps) {
+/**
+ * SecurityGate is the single entry point for the Dashboard.
+ * It only requires ONE pin to enter.
+ */
+export function SecurityGate({ children, toolId }: SecurityGateProps) {
+  const { data: session } = useSession();
   const { isToolUnlocked, unlock } = useSecurity();
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isToolUnlocked(toolId)) {
+  if (session || isToolUnlocked(toolId)) {
     return <>{children}</>;
   }
 
@@ -25,7 +30,8 @@ export function SecurityGate({ children, toolId, toolName }: SecurityGateProps) 
     setLoading(true);
     setError(false);
 
-    if (await unlock(pin, toolId)) {
+    // Always use "dashboard" type for this gate
+    if (await unlock(pin, toolId, "dashboard")) {
       setLoading(false);
     } else {
       setError(true);
@@ -35,25 +41,25 @@ export function SecurityGate({ children, toolId, toolName }: SecurityGateProps) 
   };
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center p-4 bg-gray-50/50">
-      <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] shadow-2xl border border-gray-100 text-center">
-        <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-8">
-          <Lock size={40} />
+    <div className="min-h-[85vh] flex items-center justify-center p-4 bg-gray-50/50">
+      <div className="max-w-md w-full bg-white p-12 rounded-[3rem] shadow-2xl border border-gray-100 text-center">
+        <div className="w-24 h-24 bg-blue-600 text-white rounded-[2rem] flex items-center justify-center mx-auto mb-10 shadow-xl shadow-blue-200">
+          <Lock size={48} />
         </div>
-        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Acceso al Panel</h2>
-        <p className="text-gray-500 mb-10">
-          Introduce tu código de acceso para desbloquear el Dashboard.
+        <h2 className="text-4xl font-black text-gray-900 mb-3 tracking-tight">Entrar al Hub</h2>
+        <p className="text-gray-500 mb-12 text-lg">
+          Introduce tu código de acceso único.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="flex justify-center gap-4">
+        <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="flex justify-center">
             <input
               type="password"
               required
               value={pin}
               onChange={(e) => setPin(e.target.value)}
-              className={`block w-full px-6 py-5 bg-gray-50 border-2 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-center text-4xl tracking-[1em] font-mono ${
-                error ? "border-red-400 bg-red-50 text-red-600" : "border-gray-100"
+              className={`block w-full px-4 py-6 bg-gray-100 border-none rounded-3xl focus:ring-4 focus:ring-blue-100 outline-none transition-all text-center text-5xl tracking-[0.8em] font-mono ${
+                error ? "bg-red-50 text-red-600 ring-2 ring-red-200" : "text-gray-900"
               }`}
               placeholder="••••"
               maxLength={4}
@@ -61,13 +67,13 @@ export function SecurityGate({ children, toolId, toolName }: SecurityGateProps) 
               disabled={loading}
             />
           </div>
-          {error && <p className="text-red-500 text-sm font-bold animate-shake">Código incorrecto. Reinténtalo.</p>}
+          {error && <p className="text-red-500 font-bold">Acceso Denegado</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:active:scale-100"
+            className="w-full py-6 bg-blue-600 text-white rounded-[2rem] font-black text-xl hover:bg-blue-700 active:scale-95 transition-all shadow-xl shadow-blue-100 disabled:opacity-50"
           >
-            {loading ? "Verificando..." : "Desbloquear Panel"}
+            {loading ? "Verificando..." : "Acceder ahora"}
           </button>
         </form>
       </div>
