@@ -2,23 +2,22 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
-  const { pin, toolId } = await request.json();
+  const { pin, toolId, type } = await request.json();
 
-  // Logic to determine which PIN to check
   let securePin = "";
-  if (!toolId) {
-    // Global Dashboard access
+  let cookieName = "";
+
+  if (type === "dashboard") {
     securePin = process.env.ADMIN_PIN || "1234";
-  } else {
-    // Tool specific access
-    // Example: FINANCE_TRACKER_PIN, TOOL_ONE_PIN, etc.
+    cookieName = "auth_dashboard";
+  } else if (type === "tool" && toolId) {
     const envVarName = `${toolId.replace(/-/g, "_").toUpperCase()}_PIN`;
     securePin = process.env[envVarName] || "1234";
+    cookieName = `auth_tool_${toolId}`;
   }
 
-  if (pin === securePin) {
+  if (pin && pin === securePin) {
     const response = NextResponse.json({ success: true });
-    const cookieName = toolId ? `auth_tool_${toolId}` : "auth_dashboard";
 
     (await cookies()).set(cookieName, "true", {
       httpOnly: true,

@@ -35,43 +35,39 @@ export function SecurityGate({ children, toolId, toolName }: SecurityGateProps) 
   };
 
   return (
-    <div className="min-h-[60vh] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg border border-gray-100 text-center">
-        <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
-          <ShieldAlert size={32} />
+    <div className="min-h-[80vh] flex items-center justify-center p-4 bg-gray-50/50">
+      <div className="max-w-md w-full bg-white p-10 rounded-[2.5rem] shadow-2xl border border-gray-100 text-center">
+        <div className="w-20 h-20 bg-amber-50 text-amber-500 rounded-3xl flex items-center justify-center mx-auto mb-8">
+          <Lock size={40} />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Validación Requerida</h2>
-        <p className="text-gray-500 mb-8">
-          Introduce el PIN de acceso para {toolName || "el Panel"}.
+        <h2 className="text-3xl font-extrabold text-gray-900 mb-2">Acceso al Panel</h2>
+        <p className="text-gray-500 mb-10">
+          Introduce tu código de acceso para desbloquear el Dashboard.
         </p>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
-                <Lock size={18} />
-              </div>
-              <input
-                type="password"
-                required
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                className={`block w-full pl-10 pr-3 py-3 border rounded-lg focus:ring-blue-500 focus:border-blue-500 outline-none transition text-center text-2xl tracking-widest ${
-                  error ? "border-red-500 bg-red-50" : "border-gray-300"
-                }`}
-                placeholder="****"
-                maxLength={4}
-                disabled={loading}
-              />
-            </div>
-            {error && <p className="text-red-500 text-sm mt-2 font-medium">PIN incorrecto. Inténtalo de nuevo.</p>}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="flex justify-center gap-4">
+            <input
+              type="password"
+              required
+              value={pin}
+              onChange={(e) => setPin(e.target.value)}
+              className={`block w-full px-6 py-5 bg-gray-50 border-2 rounded-2xl focus:ring-4 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all text-center text-4xl tracking-[1em] font-mono ${
+                error ? "border-red-400 bg-red-50 text-red-600" : "border-gray-100"
+              }`}
+              placeholder="••••"
+              maxLength={4}
+              autoFocus
+              disabled={loading}
+            />
           </div>
+          {error && <p className="text-red-500 text-sm font-bold animate-shake">Código incorrecto. Reinténtalo.</p>}
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black text-lg hover:bg-blue-700 active:scale-95 transition-all shadow-lg shadow-blue-200 disabled:opacity-50 disabled:active:scale-100"
           >
-            <Unlock size={20} /> {loading ? "Verificando..." : "Desbloquear Acceso"}
+            {loading ? "Verificando..." : "Desbloquear Panel"}
           </button>
         </form>
       </div>

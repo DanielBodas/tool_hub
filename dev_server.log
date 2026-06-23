@@ -1,0 +1,21 @@
+
+> tool-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 545ms
+
+ GET /login 200 in 709ms (next.js: 285ms, application-code: 424ms)
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+[next-auth][warn][NO_SECRET]
+https://next-auth.js.org/warnings#no_secret
+ GET /api/auth/session 200 in 1006ms (next.js: 954ms, application-code: 52ms)
+ GET /api/auth/providers 200 in 822ms (next.js: 760ms, application-code: 62ms)
+ GET /api/auth/csrf 200 in 34ms (next.js: 22ms, application-code: 12ms)
+ POST /api/auth/callback/credentials 200 in 22ms (next.js: 4ms, application-code: 18ms)
+ GET /api/auth/session 200 in 16ms (next.js: 3ms, application-code: 13ms)
+ GET /dashboard 200 in 202ms (next.js: 42ms, proxy.ts: 109ms, application-code: 51ms)
+ POST /api/auth/secondary 401 in 70ms (next.js: 60ms, application-code: 10ms)
