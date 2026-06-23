@@ -8,14 +8,21 @@ import {
   addDays,
   formatDate,
   calculateEndDate,
-  countEffectiveLeaveDays
+  countEffectiveLeaveDays,
+  getDaysInMonth,
+  getLeaveStatus,
+  isHoliday
 } from "./leaveUtils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function BabyLeavePlannerModule() {
   const [birthDate, setBirthDate] = useState<string>("");
   const [holidays, setHolidays] = useState<string[]>([]);
   const [newHoliday, setNewHoliday] = useState<string>("");
   const [flexibleBlocks, setFlexibleBlocks] = useState<LeaveBlock[]>([]);
+
+  const now = new Date();
+  const [viewDate, setViewDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
 
   const birthDateObj = useMemo(() => birthDate ? new Date(birthDate) : null, [birthDate]);
   const birthWeekday = birthDateObj ? birthDateObj.getDay() : null;
@@ -107,6 +114,16 @@ export function BabyLeavePlannerModule() {
     });
   };
 
+  const changeMonth = (offset: number) => {
+    setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1));
+  };
+
+  const daysInMonth = getDaysInMonth(viewDate.getFullYear(), viewDate.getMonth());
+  const firstDayWeekday = daysInMonth[0].getDay();
+  // Adjust to make Monday the first day of the week (0=Mon, 6=Sun)
+  const adjustedFirstDay = (firstDayWeekday + 6) % 7;
+  const paddingDays = Array.from({ length: adjustedFirstDay });
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -119,9 +136,9 @@ export function BabyLeavePlannerModule() {
         </div>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-8">
+      <div className="grid lg:grid-cols-3 gap-8">
         {/* Configuration Section */}
-        <div className="space-y-6">
+        <div className="space-y-6 lg:col-span-1">
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Settings size={20} className="text-gray-500" />
@@ -189,8 +206,81 @@ export function BabyLeavePlannerModule() {
           </div>
         </div>
 
-        {/* Planning Section */}
-        <div className="space-y-6">
+        {/* Planning & Calendar Section */}
+        <div className="space-y-6 lg:col-span-2">
+          {/* Calendar View */}
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <CalendarIcon size={20} className="text-blue-600" />
+                Calendario de Permisos
+              </h2>
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={() => changeMonth(-1)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+                <span className="font-bold text-gray-900 min-w-[120px] text-center capitalize">
+                  {viewDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}
+                </span>
+                <button
+                  onClick={() => changeMonth(1)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition"
+                >
+                  <ChevronRight size={20} />
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 mb-2">
+              {['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'].map(d => (
+                <div key={d} className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-wider py-2">
+                  {d}
+                </div>
+              ))}
+              {paddingDays.map((_, i) => <div key={`pad-${i}`} />)}
+              {daysInMonth.map(day => {
+                const status = getLeaveStatus(day, mandatoryMother, mandatoryFather, flexibleBlocks);
+                const holiday = isHoliday(day, holidays);
+
+                let bgColor = "bg-gray-50 text-gray-400";
+                if (status.mother && status.father) bgColor = "bg-gradient-to-br from-pink-400 to-blue-400 text-white font-bold ring-2 ring-white";
+                else if (status.mother) bgColor = "bg-pink-500 text-white font-bold ring-2 ring-white";
+                else if (status.father) bgColor = "bg-blue-500 text-white font-bold ring-2 ring-white";
+                else if (holiday) bgColor = "bg-amber-100 text-amber-700 font-bold border border-amber-200";
+                else if (day.getDay() === 0 || day.getDay() === 6) bgColor = "bg-gray-100 text-gray-400";
+                else bgColor = "bg-white text-gray-700 border border-gray-50";
+
+                return (
+                  <div
+                    key={day.toISOString()}
+                    className={`aspect-square flex items-center justify-center text-xs rounded-lg transition-all ${bgColor}`}
+                    title={day.toLocaleDateString()}
+                  >
+                    {day.getDate()}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-4 mt-6 pt-6 border-t border-gray-100">
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                <div className="w-3 h-3 bg-pink-500 rounded-sm"></div> Madre
+              </div>
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                <div className="w-3 h-3 bg-blue-500 rounded-sm"></div> Padre
+              </div>
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                <div className="w-3 h-3 bg-gradient-to-br from-pink-400 to-blue-400 rounded-sm"></div> Ambos
+              </div>
+              <div className="flex items-center gap-2 text-xs font-medium text-gray-600">
+                <div className="w-3 h-3 bg-amber-100 border border-amber-200 rounded-sm"></div> Festivo
+              </div>
+            </div>
+          </div>
+
           {/* Mother */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
             <div className="p-4 border-b bg-pink-50 flex justify-between items-center">

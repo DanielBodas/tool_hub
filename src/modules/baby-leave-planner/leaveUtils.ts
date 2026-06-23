@@ -50,22 +50,39 @@ export const countEffectiveLeaveDays = (startDate: Date, endDate: Date, holidays
   return count;
 };
 
-// Calculate end date for a number of effective leave days (excluding holidays)
-export const calculateEndDateWithHolidays = (startDate: Date, targetDays: number, holidays: string[]): Date => {
-  const current = new Date(startDate);
-  let effectiveDays = 0;
-
-  while (effectiveDays < targetDays) {
-    if (!isHoliday(current, holidays)) {
-      effectiveDays++;
-    }
-    if (effectiveDays < targetDays) {
-      current.setDate(current.getDate() + 1);
-    }
-  }
-  return current;
-};
-
 export const calculateEndDate = (startDate: Date, weeks: number): Date => {
   return addDays(startDate, weeks * 7 - 1);
+};
+
+export const getDaysInMonth = (year: number, month: number): Date[] => {
+  const date = new Date(year, month, 1);
+  const days = [];
+  while (date.getMonth() === month) {
+    days.push(new Date(date));
+    date.setDate(date.getDate() + 1);
+  }
+  return days;
+};
+
+export const getLeaveStatus = (date: Date, mandatoryMother: LeaveBlock | null, mandatoryFather: LeaveBlock | null, flexibleBlocks: LeaveBlock[]) => {
+  const status = {
+    mother: false,
+    father: false,
+  };
+
+  if (mandatoryMother && date >= mandatoryMother.startDate && date <= mandatoryMother.endDate) {
+    status.mother = true;
+  }
+  if (mandatoryFather && date >= mandatoryFather.startDate && date <= mandatoryFather.endDate) {
+    status.father = true;
+  }
+
+  flexibleBlocks.forEach(block => {
+    if (date >= block.startDate && date <= block.endDate) {
+      if (block.parent === 'mother') status.mother = true;
+      if (block.parent === 'father') status.father = true;
+    }
+  });
+
+  return status;
 };
