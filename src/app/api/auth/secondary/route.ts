@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
   const { pin } = await request.json();
-  const securePin = process.env.SECONDARY_PIN || "1234";
+  const securePin = process.env.ADMIN_PIN || "1234";
 
   if (pin === securePin) {
     const response = NextResponse.json({ success: true });
