@@ -2,14 +2,25 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 
 export async function POST(request: Request) {
-  const { pin } = await request.json();
-  const securePin = process.env.ADMIN_PIN || "1234";
+  const { pin, toolId } = await request.json();
+
+  // Logic to determine which PIN to check
+  let securePin = "";
+  if (!toolId) {
+    // Global Dashboard access
+    securePin = process.env.ADMIN_PIN || "1234";
+  } else {
+    // Tool specific access
+    // Example: FINANCE_TRACKER_PIN, TOOL_ONE_PIN, etc.
+    const envVarName = `${toolId.replace(/-/g, "_").toUpperCase()}_PIN`;
+    securePin = process.env[envVarName] || "1234";
+  }
 
   if (pin === securePin) {
     const response = NextResponse.json({ success: true });
+    const cookieName = toolId ? `auth_tool_${toolId}` : "auth_dashboard";
 
-    // Set a secure, httpOnly cookie to mark the session as secondary-validated
-    (await cookies()).set("secondary_auth", "true", {
+    (await cookies()).set(cookieName, "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",

@@ -4,7 +4,7 @@ import { SecurityGate } from "@/components/SecurityGate";
 
 export default function FinanceTrackerPage() {
   return (
-    <SecurityGate>
+    <SecurityGate toolId="finance-tracker" toolName="Gestor Financiero">
       <div className="container mx-auto px-4 py-12">
         <Link href="/dashboard" className="inline-flex items-center text-blue-600 hover:underline mb-8 gap-2">
           <ArrowLeft size={16} /> Volver al Panel

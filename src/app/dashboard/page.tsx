@@ -5,7 +5,7 @@ import { SecurityGate } from "@/components/SecurityGate";
 
 export default function DashboardPage() {
   return (
-    <SecurityGate>
+    <SecurityGate toolName="el Panel Principal">
       <div className="container mx-auto px-4 py-12">
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Panel de Herramientas</h1>

@@ -3,39 +3,52 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 
 interface SecurityContextType {
-  isUnlocked: boolean;
-  unlock: (pin: string) => Promise<boolean>;
-  lock: () => void;
+  unlockedTools: string[];
+  unlock: (pin: string, toolId?: string) => Promise<boolean>;
+  lock: (toolId?: string) => void;
+  isToolUnlocked: (toolId?: string) => boolean;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(undefined);
 
 export function SecurityProvider({ children }: { children: React.ReactNode }) {
-  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [unlockedTools, setUnlockedTools] = useState<string[]>([]);
 
   useEffect(() => {
-    // We could check if the cookie exists here, but usually,
-    // the server will handle the redirection if the cookie is missing.
-    // For UI purposes, we'll use a session storage flag as well.
-    const status = sessionStorage.getItem("security_unlocked");
-    if (status === "true") {
-      window.requestAnimationFrame(() => {
-        setIsUnlocked(true);
-      });
+    const status = sessionStorage.getItem("unlocked_tools");
+    if (status) {
+      try {
+        const tools = JSON.parse(status);
+        window.requestAnimationFrame(() => {
+          setUnlockedTools(tools);
+        });
+      } catch (e) {
+        console.error("Failed to parse unlocked tools", e);
+      }
     }
   }, []);
 
-  const unlock = async (pin: string) => {
+  const isToolUnlocked = (toolId?: string) => {
+    const id = toolId || "dashboard";
+    return unlockedTools.includes(id);
+  };
+
+  const unlock = async (pin: string, toolId?: string) => {
+    const id = toolId || "dashboard";
     try {
       const res = await fetch("/api/auth/secondary", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, toolId }),
       });
 
       if (res.ok) {
-        setIsUnlocked(true);
-        sessionStorage.setItem("security_unlocked", "true");
+        setUnlockedTools(prev => {
+          if (prev.includes(id)) return prev;
+          const newTools = [...prev, id];
+          sessionStorage.setItem("unlocked_tools", JSON.stringify(newTools));
+          return newTools;
+        });
         return true;
       }
     } catch (error) {
@@ -44,14 +57,17 @@ export function SecurityProvider({ children }: { children: React.ReactNode }) {
     return false;
   };
 
-  const lock = () => {
-    setIsUnlocked(false);
-    sessionStorage.removeItem("security_unlocked");
-    // In a full implementation, we'd also call an API to clear the cookie
+  const lock = (toolId?: string) => {
+    const id = toolId || "dashboard";
+    setUnlockedTools(prev => {
+      const newTools = prev.filter(t => t !== id);
+      sessionStorage.setItem("unlocked_tools", JSON.stringify(newTools));
+      return newTools;
+    });
   };
 
   return (
-    <SecurityContext.Provider value={{ isUnlocked, unlock, lock }}>
+    <SecurityContext.Provider value={{ unlockedTools, unlock, lock, isToolUnlocked }}>
       {children}
     </SecurityContext.Provider>
   );

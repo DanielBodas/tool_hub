@@ -4,13 +4,19 @@ import React, { useState } from "react";
 import { useSecurity } from "./SecurityProvider";
 import { ShieldAlert, Lock, Unlock } from "lucide-react";
 
-export function SecurityGate({ children }: { children: React.ReactNode }) {
-  const { isUnlocked, unlock } = useSecurity();
+interface SecurityGateProps {
+  children: React.ReactNode;
+  toolId?: string;
+  toolName?: string;
+}
+
+export function SecurityGate({ children, toolId, toolName }: SecurityGateProps) {
+  const { isToolUnlocked, unlock } = useSecurity();
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  if (isUnlocked) {
+  if (isToolUnlocked(toolId)) {
     return <>{children}</>;
   }
 
@@ -19,7 +25,7 @@ export function SecurityGate({ children }: { children: React.ReactNode }) {
     setLoading(true);
     setError(false);
 
-    if (await unlock(pin)) {
+    if (await unlock(pin, toolId)) {
       setLoading(false);
     } else {
       setError(true);
@@ -36,7 +42,7 @@ export function SecurityGate({ children }: { children: React.ReactNode }) {
         </div>
         <h2 className="text-2xl font-bold text-gray-900 mb-2">Validación Requerida</h2>
         <p className="text-gray-500 mb-8">
-          Introduce tu PIN de seguridad secundario para acceder a este contenido.
+          Introduce el PIN de acceso para {toolName || "el Panel"}.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
