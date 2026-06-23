@@ -1,8 +1,18 @@
+export type ConsumptionMode = 'all' | 'days' | 'weeks';
+
+export type Allowance = {
+  id: string;
+  name: string;
+  totalDays: number;
+  parent: 'mother' | 'father';
+  consumptionMode: ConsumptionMode;
+};
+
 export type LeaveBlock = {
   id: string;
   startDate: Date;
   endDate: Date;
-  type: 'mandatory' | 'flexible';
+  allowanceId: string;
   parent: 'mother' | 'father';
 };
 
@@ -19,22 +29,20 @@ export const isSameDay = (d1: Date, d2: Date): boolean => {
 };
 
 export const formatDate = (date: Date): string => {
-  return date.toISOString().split('T')[0];
-};
-
-export const calculateMandatoryLeave = (birthDate: Date, parent: 'mother' | 'father'): LeaveBlock => {
-  return {
-    id: `mandatory-${parent}`,
-    startDate: birthDate,
-    endDate: addDays(birthDate, 6 * 7 - 1), // 6 weeks minus 1 day
-    type: 'mandatory',
-    parent,
-  };
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
 };
 
 export const isHoliday = (date: Date, holidays: string[]): boolean => {
   const dateStr = formatDate(date);
   return holidays.includes(dateStr);
+};
+
+export const isWeekend = (date: Date): boolean => {
+  const day = date.getDay();
+  return day === 0 || day === 6; // 0 is Sunday, 6 is Saturday
 };
 
 // Calculate effective leave days in a block, excluding holidays
@@ -50,13 +58,14 @@ export const countEffectiveLeaveDays = (startDate: Date, endDate: Date, holidays
   return count;
 };
 
-export const calculateEndDate = (startDate: Date, weeks: number): Date => {
-  return addDays(startDate, weeks * 7 - 1);
+export const calculateEndDate = (startDate: Date, days: number): Date => {
+  return addDays(startDate, days - 1);
 };
 
 export const getDaysInMonth = (year: number, month: number): Date[] => {
-  const date = new Date(year, month, 1);
+  // Use UTC to avoid timezone shifts when generating days
   const days = [];
+  const date = new Date(year, month, 1);
   while (date.getMonth() === month) {
     days.push(new Date(date));
     date.setDate(date.getDate() + 1);
@@ -64,18 +73,11 @@ export const getDaysInMonth = (year: number, month: number): Date[] => {
   return days;
 };
 
-export const getLeaveStatus = (date: Date, mandatoryMother: LeaveBlock | null, mandatoryFather: LeaveBlock | null, flexibleBlocks: LeaveBlock[]) => {
+export const getLeaveStatus = (date: Date, flexibleBlocks: LeaveBlock[]) => {
   const status = {
     mother: false,
     father: false,
   };
-
-  if (mandatoryMother && date >= mandatoryMother.startDate && date <= mandatoryMother.endDate) {
-    status.mother = true;
-  }
-  if (mandatoryFather && date >= mandatoryFather.startDate && date <= mandatoryFather.endDate) {
-    status.father = true;
-  }
 
   flexibleBlocks.forEach(block => {
     if (date >= block.startDate && date <= block.endDate) {
