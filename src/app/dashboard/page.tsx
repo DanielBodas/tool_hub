@@ -2,11 +2,21 @@ import { tools } from "@/config/tools";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { SecurityGate } from "@/components/SecurityGate";
+import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const session = await getServerSession(authOptions);
+  const cookieStore = await cookies();
+  const isUnlocked = cookieStore.get("auth_dashboard")?.value === "true";
+
+  if (!session && !isUnlocked) {
+    return <SecurityGate />;
+  }
+
   return (
-    <SecurityGate>
-      <div className="container mx-auto px-4 py-12">
+    <div className="container mx-auto px-4 py-12">
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-2">Panel de Herramientas</h1>
           <p className="text-lg text-gray-600">Selecciona una de tus herramientas disponibles para comenzar.</p>
@@ -41,7 +51,6 @@ export default function DashboardPage() {
             <button className="mt-4 text-blue-600 font-bold hover:underline">Contactar Soporte</button>
           </div>
         </div>
-      </div>
-    </SecurityGate>
+    </div>
   );
 }

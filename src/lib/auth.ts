@@ -20,6 +20,7 @@ declare module "next-auth/jwt" {
 }
 
 export const authOptions: NextAuthOptions = {
+  secret: process.env.NEXTAUTH_SECRET,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "placeholder",
@@ -31,7 +32,7 @@ export const authOptions: NextAuthOptions = {
         code: { label: "Admin Code", type: "password" },
       },
       async authorize(credentials) {
-        const adminCode = process.env.ADMIN_CODE || "admin123";
+        const adminCode = process.env.ADMIN_CODE || "1234";
 
         if (credentials?.code === adminCode) {
           return {

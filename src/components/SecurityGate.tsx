@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { useSecurity } from "./SecurityProvider";
 import { Lock } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 interface SecurityGateProps {
   children: React.ReactNode;
@@ -14,15 +15,16 @@ interface SecurityGateProps {
  * SecurityGate is the single entry point for the Dashboard.
  * It only requires ONE pin to enter.
  */
-export function SecurityGate({ children, toolId }: SecurityGateProps) {
+export function SecurityGate({ toolId }: { toolId?: string }) {
   const { data: session } = useSession();
   const { isToolUnlocked, unlock } = useSecurity();
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   if (session || isToolUnlocked(toolId)) {
-    return <>{children}</>;
+    return null;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -33,6 +35,7 @@ export function SecurityGate({ children, toolId }: SecurityGateProps) {
     // Always use "dashboard" type for this gate
     if (await unlock(pin, toolId, "dashboard")) {
       setLoading(false);
+      router.refresh();
     } else {
       setError(true);
       setPin("");

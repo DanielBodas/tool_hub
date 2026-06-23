@@ -4,6 +4,8 @@ import React from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { ToolSecurityGate } from "./ToolSecurityGate";
+import { useSession } from "next-auth/react";
+import { useSecurity } from "./SecurityProvider";
 
 interface ToolBaseLayoutProps {
   children: React.ReactNode;
@@ -16,9 +18,15 @@ interface ToolBaseLayoutProps {
  * It enforces visual inheritance and provides common navigation.
  */
 export function ToolBaseLayout({ children, toolId, toolName }: ToolBaseLayoutProps) {
+  const { data: session } = useSession();
+  const { isToolUnlocked } = useSecurity();
+
+  if (!session && !isToolUnlocked(toolId)) {
+    return <ToolSecurityGate toolId={toolId} toolName={toolName} />;
+  }
+
   return (
-    <ToolSecurityGate toolId={toolId} toolName={toolName}>
-      <div className="min-h-screen bg-gray-50/50 pb-20">
+    <div className="min-h-screen bg-gray-50/50 pb-20">
         {/* Tool Breadcrumb/Nav */}
         <div className="bg-white border-b mb-8">
           <div className="container mx-auto px-4 h-14 flex items-center">
@@ -37,7 +45,6 @@ export function ToolBaseLayout({ children, toolId, toolName }: ToolBaseLayoutPro
             {children}
           </div>
         </div>
-      </div>
-    </ToolSecurityGate>
+    </div>
   );
 }
