@@ -1,4 +1,4 @@
-import { PiggyBank, TrendingUp, CreditCard, Wallet, PlusCircle } from "lucide-react";
+import { TrendingUp, CreditCard, Wallet, PlusCircle } from "lucide-react";
 
 export function FinanceTrackerModule() {
   return (

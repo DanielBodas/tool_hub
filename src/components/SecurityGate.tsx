@@ -6,11 +6,6 @@ import { Lock } from "lucide-react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-interface SecurityGateProps {
-  children: React.ReactNode;
-  toolId?: string;
-}
-
 /**
  * SecurityGate is the single entry point for the Dashboard.
  * It only requires ONE pin to enter.

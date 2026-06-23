@@ -6,12 +6,6 @@ import { Lock } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
-interface ToolSecurityGateProps {
-  children: React.ReactNode;
-  toolId: string;
-  toolName: string;
-}
-
 /**
  * ToolSecurityGate is the individual login for EACH tool.
  */
