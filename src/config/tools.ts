@@ -1,4 +1,4 @@
-import { LucideIcon, Calculator, Globe } from "lucide-react";
+import { LucideIcon, Calculator, Globe, PiggyBank } from "lucide-react";
 
 export interface Tool {
   id: string;
@@ -10,6 +10,14 @@ export interface Tool {
 }
 
 export const tools: Tool[] = [
+  {
+    id: "finance-tracker",
+    name: "Gestor Financiero",
+    description: "Seguimiento de ahorros, inversiones y préstamos en un solo lugar.",
+    icon: PiggyBank,
+    href: "/tools/finance-tracker",
+    category: "Finanzas",
+  },
   {
     id: "tool-one",
     name: "Herramienta Uno",
