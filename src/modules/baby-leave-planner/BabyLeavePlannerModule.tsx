@@ -35,8 +35,8 @@ export function BabyLeavePlannerModule() {
   const [flexibleBlocks, setFlexibleBlocks] = useState<LeaveBlock[]>([]);
 
   const [allowances, setAllowances] = useState<Allowance[]>([
-    { id: 'birth-mother', name: 'Permiso Nacimiento', totalDays: 112, parent: 'mother', consumptionMode: 'weeks' },
-    { id: 'birth-father', name: 'Permiso Nacimiento', totalDays: 112, parent: 'father', consumptionMode: 'weeks' }
+    { id: 'birth-mother', name: 'Permiso Nacimiento', totalDays: 133, parent: 'mother', consumptionMode: 'weeks' },
+    { id: 'birth-father', name: 'Permiso Nacimiento', totalDays: 133, parent: 'father', consumptionMode: 'weeks' }
   ]);
 
   const [editingAllowance, setEditingAllowance] = useState<string | null>(null);
@@ -230,21 +230,35 @@ export function BabyLeavePlannerModule() {
   return (
     <div className="relative min-h-screen pb-20 md:pb-0">
       {/* Summary Bar (Desktop & Mobile) */}
-      <div className="grid grid-cols-2 gap-2 mb-4">
+      <div className="grid grid-cols-2 gap-3 mb-6">
         {(['mother', 'father'] as const).map(p => (
           <button
             key={p}
-            onClick={() => setMobileTab(p)}
-            className={`p-2 rounded-xl border flex flex-col items-center gap-1 transition ${
-              p === 'mother' ? 'bg-pink-50 border-pink-100' : 'bg-blue-50 border-blue-100'
+            onClick={() => {
+              if (window.innerWidth < 768) {
+                setMobileTab(p);
+              } else {
+                if (p === 'mother') setLeftDrawerOpen(true);
+                else setRightDrawerOpen(true);
+              }
+            }}
+            className={`relative p-3 rounded-2xl border transition-all hover:shadow-md ${
+              p === 'mother' ? 'bg-pink-50 border-pink-100 text-pink-700' : 'bg-blue-50 border-blue-100 text-blue-700'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <User size={14} className={p === 'mother' ? 'text-pink-500' : 'text-blue-500'} />
-              <span className="text-[10px] font-bold uppercase text-gray-500">{p === 'mother' ? 'Mamá' : 'Papá'}</span>
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-[10px] font-extrabold uppercase tracking-wider opacity-70">{p === 'mother' ? 'Mamá' : 'Papá'}</span>
+              <User size={14} className="opacity-50" />
             </div>
-            <div className="w-full bg-white/50 h-1.5 rounded-full overflow-hidden max-w-[100px]">
-              {/* Progress for main allowance (Birth) */}
+            <div className="flex items-end gap-1 mb-2">
+              {allowances.filter(a => a.parent === p && a.id.startsWith('birth-')).map(a => (
+                <React.Fragment key={a.id}>
+                  <span className="text-lg font-black leading-none">{Math.floor(getUsedDays(a.id) / 7)}</span>
+                  <span className="text-[10px] font-bold opacity-60 pb-0.5">/ {Math.floor(a.totalDays / 7)} sem</span>
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="w-full bg-white/50 h-1.5 rounded-full overflow-hidden">
               {allowances.filter(a => a.parent === p && a.id.startsWith('birth-')).map(a => (
                 <div
                   key={a.id}
@@ -257,14 +271,13 @@ export function BabyLeavePlannerModule() {
         ))}
       </div>
 
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <Baby className="text-blue-600" size={28} />
-            Leave Planner
-          </h1>
-        </div>
-        <div className="flex items-center gap-2 self-end md:self-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
+          <Baby className="text-blue-600" size={28} />
+          <span>Leave Planner</span>
+        </h1>
+        {/* Only show top buttons on Desktop, mobile uses bottom nav */}
+        <div className="hidden md:flex items-center gap-2">
           <button
             onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
             className={`p-2 rounded-xl border transition-colors ${leftDrawerOpen ? 'bg-pink-50 border-pink-200 text-pink-600' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
@@ -291,14 +304,18 @@ export function BabyLeavePlannerModule() {
 
       {/* Side Drawer Madre (Desktop) / Tab (Mobile) */}
       <div className={`fixed inset-y-0 left-0 w-full md:w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-gray-100 p-6 overflow-y-auto
-        ${(leftDrawerOpen || (mobileTab === 'mother')) ? 'translate-x-0' : '-translate-x-full'}
-        ${mobileTab === 'mother' ? 'md:translate-x-0' : ''}`}>
+        ${(leftDrawerOpen || (mobileTab === 'mother')) ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-extrabold flex items-center gap-2 text-pink-600">
             <User size={20} />
             Gestión Madre
           </h3>
-          <button onClick={() => setLeftDrawerOpen(false)} className="text-gray-400 hover:text-gray-600"><ChevronLeft size={24} /></button>
+          <button
+            onClick={() => { setLeftDrawerOpen(false); if (mobileTab === 'mother') setMobileTab('calendar'); }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <ChevronLeft size={24} />
+          </button>
         </div>
         <div className="space-y-6">
           <div className="flex justify-between items-center">
@@ -406,10 +423,14 @@ export function BabyLeavePlannerModule() {
 
       {/* Side Drawer Padre (Desktop) / Tab (Mobile) */}
       <div className={`fixed inset-y-0 right-0 w-full md:w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-gray-100 p-6 overflow-y-auto
-        ${(rightDrawerOpen || (mobileTab === 'father')) ? 'translate-x-0' : 'translate-x-full'}
-        ${mobileTab === 'father' ? 'md:translate-x-0' : ''}`}>
+        ${(rightDrawerOpen || (mobileTab === 'father')) ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="flex justify-between items-center mb-6">
-          <button onClick={() => setRightDrawerOpen(false)} className="text-gray-400 hover:text-gray-600"><ChevronRight size={24} /></button>
+          <button
+            onClick={() => { setRightDrawerOpen(false); if (mobileTab === 'father') setMobileTab('calendar'); }}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <ChevronRight size={24} />
+          </button>
           <h3 className="font-extrabold flex items-center gap-2 text-blue-600">
             Gestión Padre
             <User size={20} />
@@ -642,8 +663,10 @@ export function BabyLeavePlannerModule() {
                 </div>
               )}
               {selectedDay && (
-                <div className="fixed inset-x-0 bottom-16 md:relative md:bottom-0 md:mt-6 p-4 bg-white md:bg-gray-50 rounded-t-3xl md:rounded-2xl border-t md:border border-gray-200 shadow-2xl md:shadow-none animate-in slide-in-from-bottom md:zoom-in-95 duration-300 z-40">
-                  <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4 md:hidden"></div>
+                <>
+                <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden" onClick={() => setSelectedDay(null)}></div>
+                <div className="fixed inset-x-0 bottom-16 md:relative md:bottom-0 md:mt-6 p-6 md:p-4 bg-white md:bg-gray-50 rounded-t-[2.5rem] md:rounded-2xl border-t md:border border-gray-200 shadow-2xl md:shadow-none animate-in slide-in-from-bottom md:zoom-in-95 duration-300 z-40">
+                  <div className="w-12 h-1.5 bg-gray-100 rounded-full mx-auto mb-6 md:hidden"></div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-sm font-bold flex items-center gap-2">
                       <CalendarIcon size={16} className="text-blue-600" />
@@ -692,7 +715,7 @@ export function BabyLeavePlannerModule() {
                                 }`}
                               >
                                 <span>{a.name}</span>
-                                <span className="text-[9px] opacity-60">
+                                <span className="text-[9px] opacity-60 px-2 py-0.5 bg-gray-50 rounded-md">
                                   {a.consumptionMode === 'weeks' ? '+1 sem' : a.consumptionMode === 'all' ? 'Todo' : '+1 d'}
                                 </span>
                               </button>
@@ -703,6 +726,7 @@ export function BabyLeavePlannerModule() {
                     ))}
                   </div>
                 </div>
+                </>
               )}
 
               <div className="mt-6 flex flex-wrap gap-4 text-[10px] font-bold uppercase tracking-wider justify-center md:justify-start">
