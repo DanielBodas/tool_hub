@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   Calendar as CalendarIcon,
   Baby,
@@ -26,6 +26,7 @@ import {
 } from "./leaveUtils";
 
 export function BabyLeavePlannerModule() {
+  const [isLoaded, setIsLoaded] = useState(false);
   const [birthDate, setBirthDate] = useState<string>("");
   const [holidays, setHolidays] = useState<string[]>([]);
   const [newHoliday, setNewHoliday] = useState<string>("");
@@ -45,6 +46,51 @@ export function BabyLeavePlannerModule() {
 
   const now = new Date();
   const [viewDate, setViewDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
+
+  // Fetch initial data
+  useEffect(() => {
+    fetch("/api/baby-leave-planner")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.birthDate) setBirthDate(data.birthDate);
+        if (data.holidays) setHolidays(data.holidays);
+        if (data.allowances) setAllowances(data.allowances);
+        if (data.flexibleBlocks) {
+          // Convert string dates back to Date objects
+          const blocks = data.flexibleBlocks.map((b: { id: string; allowanceId: string; startDate: string; endDate: string; parent: 'mother' | 'father' }) => ({
+            ...b,
+            startDate: new Date(b.startDate),
+            endDate: new Date(b.endDate),
+          }));
+          setFlexibleBlocks(blocks);
+        }
+        setIsLoaded(true);
+      })
+      .catch((err) => {
+        console.error("Error loading data:", err);
+        setIsLoaded(true);
+      });
+  }, []);
+
+  // Save data on change
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const timeout = setTimeout(() => {
+      fetch("/api/baby-leave-planner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          birthDate,
+          holidays,
+          allowances,
+          flexibleBlocks,
+        }),
+      });
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [birthDate, holidays, allowances, flexibleBlocks, isLoaded]);
 
   const birthDateObj = useMemo(() => {
     if (!birthDate) return null;
@@ -217,29 +263,90 @@ export function BabyLeavePlannerModule() {
           <button onClick={() => setLeftDrawerOpen(false)} className="text-gray-400 hover:text-gray-600"><ChevronLeft size={24} /></button>
         </div>
         <div className="space-y-6">
-          {allowances.filter(a => a.parent === 'mother').map(a => (
-            <div key={a.id} className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-sm font-bold text-gray-700">{a.name}</span>
-                <span className="text-[10px] font-bold text-gray-400">{getUsedDays(a.id)} / {a.totalDays} d</span>
+          <div className="flex justify-between items-center">
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Configuración Permisos</h4>
+            <button onClick={() => addAllowance('mother')} className="text-pink-600 hover:bg-pink-50 p-1 rounded-lg transition">
+              <Plus size={16} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            {allowances.filter(a => a.parent === 'mother').map(a => (
+              <div key={a.id} className="p-3 border border-gray-100 rounded-xl bg-gray-50/30">
+                {editingAllowance === a.id ? (
+                  <div className="space-y-3">
+                    <input
+                      className="text-xs font-bold w-full border-b border-pink-200 focus:border-pink-500 outline-none bg-transparent py-1"
+                      value={a.name}
+                      onChange={e => updateAllowance(a.id, { name: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 block uppercase font-bold">Días Totales</label>
+                        <input
+                          type="number"
+                          className="w-full border-b border-gray-100 text-xs py-1 bg-transparent"
+                          value={a.totalDays}
+                          onChange={e => updateAllowance(a.id, { totalDays: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 block uppercase font-bold">Modo</label>
+                        <select
+                          className="w-full text-xs bg-transparent py-1 border-b border-gray-100"
+                          value={a.consumptionMode}
+                          onChange={e => updateAllowance(a.id, { consumptionMode: e.target.value as ConsumptionMode })}
+                        >
+                          <option value="days">Días</option>
+                          <option value="weeks">Semanas</option>
+                          <option value="all">Bloque</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <button onClick={() => deleteAllowance(a.id)} className="text-red-500 p-1"><Trash2 size={14}/></button>
+                      <button onClick={() => setEditingAllowance(null)} className="bg-pink-600 text-white px-2 py-1 rounded text-[10px] font-bold">OK</button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-xs font-bold text-gray-700">{a.name}</span>
+                          <button onClick={() => setEditingAllowance(a.id)} className="text-gray-400 hover:text-pink-500"><Edit2 size={12} /></button>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-gray-400 mb-1">
+                          <span>{a.consumptionMode === 'weeks' ? `${Math.floor(a.totalDays / 7)} sem` : `${a.totalDays} d`}</span>
+                          <span>{a.consumptionMode === 'weeks' ? `${Math.floor(getUsedDays(a.id) / 7)} / ${Math.floor(a.totalDays / 7)} sem` : `${getUsedDays(a.id)} / ${a.totalDays} d`}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-pink-400 transition-all duration-500"
+                            style={{ width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-pink-400 transition-all duration-500"
-                  style={{ width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%` }}
-                ></div>
-              </div>
-              <p className="text-[10px] text-gray-400 italic">Modo: {a.consumptionMode === 'weeks' ? 'Semanas' : 'Días'}</p>
-            </div>
-          ))}
+            ))}
+          </div>
+
           <div className="pt-4 border-t border-gray-50">
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Periodos Planificados</h4>
             <div className="space-y-3">
               {allBlocks.filter(b => b.parent === 'mother').map(b => (
                 <div key={b.id} className="p-3 bg-pink-50/30 rounded-xl border border-pink-100">
                   <div className="flex justify-between text-[10px] font-bold text-pink-700 mb-1">
-                    <span>{allowances.find(al => al.id === b.allowanceId)?.name}</span>
-                    <span>{countEffectiveLeaveDays(b.startDate, b.endDate, holidays)} d</span>
+                    <span>{allowances.find(al => al.id === b.allowanceId)?.name}{b.id.startsWith('mandatory-') ? ' (Obligatorio)' : ''}</span>
+                    <span>
+                      {allowances.find(al => al.id === b.allowanceId)?.consumptionMode === 'weeks'
+                        ? `${Math.floor(countEffectiveLeaveDays(b.startDate, b.endDate, holidays) / 7)} sem`
+                        : `${countEffectiveLeaveDays(b.startDate, b.endDate, holidays)} d`
+                      }
+                    </span>
                   </div>
                   <p className="text-xs font-medium">{formatDate(b.startDate)} al {formatDate(b.endDate)}</p>
                   {!b.id.startsWith('mandatory-') && (
@@ -261,30 +368,91 @@ export function BabyLeavePlannerModule() {
             <User size={20} />
           </h3>
         </div>
-        <div className="space-y-6 text-right">
-          {allowances.filter(a => a.parent === 'father').map(a => (
-            <div key={a.id} className="space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-bold text-gray-400">{getUsedDays(a.id)} / {a.totalDays} d</span>
-                <span className="text-sm font-bold text-gray-700">{a.name}</span>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <button onClick={() => addAllowance('father')} className="text-blue-600 hover:bg-blue-50 p-1 rounded-lg transition">
+              <Plus size={16} />
+            </button>
+            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Configuración Permisos</h4>
+          </div>
+
+          <div className="space-y-4">
+            {allowances.filter(a => a.parent === 'father').map(a => (
+              <div key={a.id} className="p-3 border border-gray-100 rounded-xl bg-gray-50/30">
+                {editingAllowance === a.id ? (
+                  <div className="space-y-3">
+                    <input
+                      className="text-xs font-bold w-full border-b border-blue-200 focus:border-blue-500 outline-none bg-transparent py-1 text-right"
+                      value={a.name}
+                      onChange={e => updateAllowance(a.id, { name: e.target.value })}
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="text-[9px] text-gray-400 block uppercase font-bold text-right">Modo</label>
+                        <select
+                          className="w-full text-xs bg-transparent py-1 border-b border-gray-100 text-right"
+                          value={a.consumptionMode}
+                          onChange={e => updateAllowance(a.id, { consumptionMode: e.target.value as ConsumptionMode })}
+                        >
+                          <option value="days">Días</option>
+                          <option value="weeks">Semanas</option>
+                          <option value="all">Bloque</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[9px] text-gray-400 block uppercase font-bold text-right">Días Totales</label>
+                        <input
+                          type="number"
+                          className="w-full border-b border-gray-100 text-xs py-1 bg-transparent text-right"
+                          value={a.totalDays}
+                          onChange={e => updateAllowance(a.id, { totalDays: parseInt(e.target.value) || 0 })}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-start gap-2">
+                      <button onClick={() => setEditingAllowance(null)} className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold">OK</button>
+                      <button onClick={() => deleteAllowance(a.id)} className="text-red-500 p-1"><Trash2 size={14}/></button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex justify-between items-center mb-1">
+                          <button onClick={() => setEditingAllowance(a.id)} className="text-gray-400 hover:text-blue-500"><Edit2 size={12} /></button>
+                          <span className="text-xs font-bold text-gray-700">{a.name}</span>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-gray-400 mb-1">
+                          <span>{a.consumptionMode === 'weeks' ? `${Math.floor(getUsedDays(a.id) / 7)} / ${Math.floor(a.totalDays / 7)} sem` : `${getUsedDays(a.id)} / ${a.totalDays} d`}</span>
+                          <span>{a.consumptionMode === 'weeks' ? `${Math.floor(a.totalDays / 7)} sem` : `${a.totalDays} d`}</span>
+                        </div>
+                        <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-400 transition-all duration-500 ml-auto"
+                            style={{ width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="w-full bg-gray-100 h-2.5 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-400 transition-all duration-500 ml-auto"
-                  style={{ width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%` }}
-                ></div>
-              </div>
-              <p className="text-[10px] text-gray-400 italic">Modo: {a.consumptionMode === 'weeks' ? 'Semanas' : 'Días'}</p>
-            </div>
-          ))}
+            ))}
+          </div>
+
           <div className="pt-4 border-t border-gray-50">
             <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Periodos Planificados</h4>
             <div className="space-y-3">
               {allBlocks.filter(b => b.parent === 'father').map(b => (
                 <div key={b.id} className="p-3 bg-blue-50/30 rounded-xl border border-blue-100">
                   <div className="flex justify-between text-[10px] font-bold text-blue-700 mb-1">
-                    <span>{countEffectiveLeaveDays(b.startDate, b.endDate, holidays)} d</span>
-                    <span>{allowances.find(al => al.id === b.allowanceId)?.name}</span>
+                    <span>
+                      {allowances.find(al => al.id === b.allowanceId)?.consumptionMode === 'weeks'
+                        ? `${Math.floor(countEffectiveLeaveDays(b.startDate, b.endDate, holidays) / 7)} sem`
+                        : `${countEffectiveLeaveDays(b.startDate, b.endDate, holidays)} d`
+                      }
+                    </span>
+                    <span>{allowances.find(al => al.id === b.allowanceId)?.name}{b.id.startsWith('mandatory-') ? ' (Obligatorio)' : ''}</span>
                   </div>
                   <p className="text-xs font-medium">{formatDate(b.startDate)} al {formatDate(b.endDate)}</p>
                   {!b.id.startsWith('mandatory-') && (
@@ -298,125 +466,46 @@ export function BabyLeavePlannerModule() {
       </div>
 
       {showSettings ? (
-        <div className="grid lg:grid-cols-3 gap-8 animate-in fade-in zoom-in-95 duration-300">
-          <div className="space-y-6">
-            <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <Settings size={20} className="text-gray-500" />
-                Datos Generales
-              </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Nacimiento</label>
+        <div className="max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              <Settings size={20} className="text-gray-500" />
+              Datos Generales
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de Nacimiento</label>
+                <input
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Festivos de Empresa</label>
+                <div className="flex gap-2">
                   <input
                     type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
+                    value={newHoliday}
+                    onChange={(e) => setNewHoliday(e.target.value)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Festivos de Empresa</label>
-                  <div className="flex gap-2">
-                    <input
-                      type="date"
-                      value={newHoliday}
-                      onChange={(e) => setNewHoliday(e.target.value)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                    />
-                    <button onClick={handleAddHoliday} className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
-                      <Plus size={24} />
-                    </button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {holidays.map(h => (
-                      <span key={h} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium border border-gray-200">
-                        {h}
-                        <button onClick={() => removeHoliday(h)} className="hover:text-red-600"><Trash2 size={12} /></button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-2 grid md:grid-cols-2 gap-6">
-            {(['mother', 'father'] as const).map((p) => (
-              <div key={p} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold flex items-center gap-2 capitalize text-lg">
-                    <User size={20} className={p === 'mother' ? 'text-pink-500' : 'text-blue-500'} />
-                    Permisos {p === 'mother' ? 'Madre' : 'Padre'}
-                  </h3>
-                  <button onClick={() => addAllowance(p)} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-3 py-1 rounded-lg text-sm font-bold flex items-center gap-1">
-                    <Plus size={16} /> Añadir
+                  <button onClick={handleAddHoliday} className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
+                    <Plus size={24} />
                   </button>
                 </div>
-                <div className="space-y-4">
-                  {allowances.filter(a => a.parent === p).map(a => (
-                    <div key={a.id} className="p-4 border border-gray-100 rounded-xl hover:border-blue-100 transition-colors bg-gray-50/30">
-                      {editingAllowance === a.id ? (
-                        <div className="space-y-3">
-                          <input
-                            className="text-sm font-bold w-full border-b border-blue-200 focus:border-blue-500 outline-none bg-transparent py-1"
-                            value={a.name}
-                            onChange={e => updateAllowance(a.id, { name: e.target.value })}
-                            placeholder="Nombre del permiso"
-                          />
-                          <div className="grid grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[10px] text-gray-400 block uppercase font-bold mb-1">Días Totales</label>
-                              <input
-                                type="number"
-                                className="w-full border-b border-gray-200 text-sm py-1 bg-transparent"
-                                value={a.totalDays}
-                                onChange={e => updateAllowance(a.id, { totalDays: parseInt(e.target.value) || 0 })}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[10px] text-gray-400 block uppercase font-bold mb-1">Modo de Uso</label>
-                              <select
-                                className="w-full text-sm bg-transparent py-1 border-b border-gray-200"
-                                value={a.consumptionMode}
-                                onChange={e => updateAllowance(a.id, { consumptionMode: e.target.value as ConsumptionMode })}
-                              >
-                                <option value="days">Día a día</option>
-                                <option value="weeks">Semanas (7d)</option>
-                                <option value="all">Todo junto</option>
-                              </select>
-                            </div>
-                          </div>
-                          <div className="flex justify-end gap-2 pt-2">
-                            <button onClick={() => deleteAllowance(a.id)} className="text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition"><Trash2 size={16}/></button>
-                            <button onClick={() => setEditingAllowance(null)} className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm font-bold hover:bg-green-700 transition">Guardar</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="text-sm font-bold text-gray-800">{a.name}</p>
-                            <p className="text-xs text-gray-500 mt-0.5">{a.totalDays} días • {a.consumptionMode === 'weeks' ? 'Semanal' : a.consumptionMode === 'all' ? 'Bloque único' : 'Flexibilidad total'}</p>
-                            <div className="w-full bg-gray-200 h-2 rounded-full mt-3 overflow-hidden">
-                              <div
-                                className={`h-full ${p === 'mother' ? 'bg-pink-400' : 'bg-blue-400'} transition-all duration-500`}
-                                style={{ width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%` }}
-                              ></div>
-                            </div>
-                            <div className="flex justify-between mt-1.5">
-                              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Progreso</span>
-                              <span className="text-[10px] text-gray-600 font-bold">{getUsedDays(a.id)} / {a.totalDays} d</span>
-                            </div>
-                          </div>
-                          <button onClick={() => setEditingAllowance(a.id)} className="ml-4 text-gray-400 hover:text-blue-500 p-1 hover:bg-blue-50 rounded-lg transition"><Edit2 size={14} /></button>
-                        </div>
-                      )}
-                    </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {holidays.map(h => (
+                    <span key={h} className="inline-flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium border border-gray-200">
+                      {h}
+                      <button onClick={() => removeHoliday(h)} className="hover:text-red-600"><Trash2 size={12} /></button>
+                    </span>
                   ))}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       ) : (
