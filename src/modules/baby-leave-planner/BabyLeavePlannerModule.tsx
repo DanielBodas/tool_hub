@@ -10,7 +10,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  Edit2
+  Edit2,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import {
   LeaveBlock,
@@ -43,6 +45,8 @@ export function BabyLeavePlannerModule() {
   const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
   const [viewMode, setViewMode] = useState<'month' | 'year'>('month');
+  const [mobileTab, setMobileTab] = useState<'calendar' | 'mother' | 'father' | 'settings'>('calendar');
+  const [expandedPeriods, setExpandedPeriods] = useState<Record<string, boolean>>({ mother: false, father: false });
 
   const now = new Date();
   const [viewDate, setViewDate] = useState(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -219,8 +223,40 @@ export function BabyLeavePlannerModule() {
     );
   };
 
+  const togglePeriods = (parent: 'mother' | 'father') => {
+    setExpandedPeriods(prev => ({ ...prev, [parent]: !prev[parent] }));
+  };
+
   return (
-    <div className="relative min-h-[600px] overflow-hidden">
+    <div className="relative min-h-screen pb-20 md:pb-0">
+      {/* Summary Bar (Desktop & Mobile) */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        {(['mother', 'father'] as const).map(p => (
+          <button
+            key={p}
+            onClick={() => setMobileTab(p)}
+            className={`p-2 rounded-xl border flex flex-col items-center gap-1 transition ${
+              p === 'mother' ? 'bg-pink-50 border-pink-100' : 'bg-blue-50 border-blue-100'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <User size={14} className={p === 'mother' ? 'text-pink-500' : 'text-blue-500'} />
+              <span className="text-[10px] font-bold uppercase text-gray-500">{p === 'mother' ? 'Mamá' : 'Papá'}</span>
+            </div>
+            <div className="w-full bg-white/50 h-1.5 rounded-full overflow-hidden max-w-[100px]">
+              {/* Progress for main allowance (Birth) */}
+              {allowances.filter(a => a.parent === p && a.id.startsWith('birth-')).map(a => (
+                <div
+                  key={a.id}
+                  className={`h-full ${p === 'mother' ? 'bg-pink-500' : 'bg-blue-500'}`}
+                  style={{ width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%` }}
+                ></div>
+              ))}
+            </div>
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900 flex items-center gap-2">
@@ -253,8 +289,10 @@ export function BabyLeavePlannerModule() {
         </div>
       </div>
 
-      {/* Side Drawer Madre */}
-      <div className={`fixed inset-y-0 left-0 w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-gray-100 p-6 overflow-y-auto ${leftDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+      {/* Side Drawer Madre (Desktop) / Tab (Mobile) */}
+      <div className={`fixed inset-y-0 left-0 w-full md:w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-gray-100 p-6 overflow-y-auto
+        ${(leftDrawerOpen || (mobileTab === 'mother')) ? 'translate-x-0' : '-translate-x-full'}
+        ${mobileTab === 'mother' ? 'md:translate-x-0' : ''}`}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-extrabold flex items-center gap-2 text-pink-600">
             <User size={20} />
@@ -335,8 +373,15 @@ export function BabyLeavePlannerModule() {
           </div>
 
           <div className="pt-4 border-t border-gray-50">
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Periodos Planificados</h4>
-            <div className="space-y-3">
+            <button
+              onClick={() => togglePeriods('mother')}
+              className="w-full flex justify-between items-center mb-4 text-gray-400 hover:text-gray-600"
+            >
+              <h4 className="text-[10px] font-bold uppercase tracking-widest">Periodos Planificados</h4>
+              {expandedPeriods.mother ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            <div className={`space-y-3 transition-all duration-300 overflow-hidden ${expandedPeriods.mother ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
               {allBlocks.filter(b => b.parent === 'mother').map(b => (
                 <div key={b.id} className="p-3 bg-pink-50/30 rounded-xl border border-pink-100">
                   <div className="flex justify-between text-[10px] font-bold text-pink-700 mb-1">
@@ -359,8 +404,10 @@ export function BabyLeavePlannerModule() {
         </div>
       </div>
 
-      {/* Side Drawer Padre */}
-      <div className={`fixed inset-y-0 right-0 w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-gray-100 p-6 overflow-y-auto ${rightDrawerOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+      {/* Side Drawer Padre (Desktop) / Tab (Mobile) */}
+      <div className={`fixed inset-y-0 right-0 w-full md:w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-gray-100 p-6 overflow-y-auto
+        ${(rightDrawerOpen || (mobileTab === 'father')) ? 'translate-x-0' : 'translate-x-full'}
+        ${mobileTab === 'father' ? 'md:translate-x-0' : ''}`}>
         <div className="flex justify-between items-center mb-6">
           <button onClick={() => setRightDrawerOpen(false)} className="text-gray-400 hover:text-gray-600"><ChevronRight size={24} /></button>
           <h3 className="font-extrabold flex items-center gap-2 text-blue-600">
@@ -441,8 +488,15 @@ export function BabyLeavePlannerModule() {
           </div>
 
           <div className="pt-4 border-t border-gray-50">
-            <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Periodos Planificados</h4>
-            <div className="space-y-3">
+            <button
+              onClick={() => togglePeriods('father')}
+              className="w-full flex justify-between items-center mb-4 text-gray-400 hover:text-gray-600"
+            >
+              <h4 className="text-[10px] font-bold uppercase tracking-widest">Periodos Planificados</h4>
+              {expandedPeriods.father ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            <div className={`space-y-3 transition-all duration-300 overflow-hidden ${expandedPeriods.father ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'}`}>
               {allBlocks.filter(b => b.parent === 'father').map(b => (
                 <div key={b.id} className="p-3 bg-blue-50/30 rounded-xl border border-blue-100">
                   <div className="flex justify-between text-[10px] font-bold text-blue-700 mb-1">
@@ -465,8 +519,8 @@ export function BabyLeavePlannerModule() {
         </div>
       </div>
 
-      {showSettings ? (
-        <div className="max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300">
+      {(showSettings || mobileTab === 'settings') ? (
+        <div className="max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300 px-4 md:px-0">
           <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <Settings size={20} className="text-gray-500" />
@@ -509,7 +563,7 @@ export function BabyLeavePlannerModule() {
           </div>
         </div>
       ) : (
-        <div className="animate-in slide-in-from-bottom-4 duration-300">
+        <div className={`animate-in slide-in-from-bottom-4 duration-300 ${mobileTab !== 'calendar' ? 'hidden md:block' : ''}`}>
           <div className="max-w-5xl mx-auto space-y-6">
             <div className="bg-white p-4 md:p-6 rounded-2xl border border-gray-200 shadow-sm">
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
@@ -530,14 +584,14 @@ export function BabyLeavePlannerModule() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100">
-                  <button onClick={() => changeMonth(viewMode === 'month' ? -1 : -12)} className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition"><ChevronLeft size={20} /></button>
-                  <span className="font-extrabold text-gray-900 min-w-[140px] text-center capitalize text-sm">
+                <div className="flex items-center gap-2 bg-gray-50 p-1 rounded-xl border border-gray-100 w-full md:w-auto justify-between md:justify-start">
+                  <button onClick={() => changeMonth(viewMode === 'month' ? -1 : -12)} className="p-3 md:p-2 hover:bg-white hover:shadow-sm rounded-lg transition bg-white/50 md:bg-transparent"><ChevronLeft size={24} className="md:w-5 md:h-5" /></button>
+                  <span className="font-extrabold text-gray-900 min-w-[120px] text-center capitalize text-xs md:text-sm">
                     {viewMode === 'month'
                       ? viewDate.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
                       : viewDate.getFullYear()}
                   </span>
-                  <button onClick={() => changeMonth(viewMode === 'month' ? 1 : 12)} className="p-2 hover:bg-white hover:shadow-sm rounded-lg transition"><ChevronRight size={20} /></button>
+                  <button onClick={() => changeMonth(viewMode === 'month' ? 1 : 12)} className="p-3 md:p-2 hover:bg-white hover:shadow-sm rounded-lg transition bg-white/50 md:bg-transparent"><ChevronRight size={24} className="md:w-5 md:h-5" /></button>
                 </div>
               </div>
 
@@ -588,22 +642,25 @@ export function BabyLeavePlannerModule() {
                 </div>
               )}
               {selectedDay && (
-                <div className="mt-6 p-4 bg-gray-50 rounded-2xl border border-gray-200 animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-x-0 bottom-16 md:relative md:bottom-0 md:mt-6 p-4 bg-white md:bg-gray-50 rounded-t-3xl md:rounded-2xl border-t md:border border-gray-200 shadow-2xl md:shadow-none animate-in slide-in-from-bottom md:zoom-in-95 duration-300 z-40">
+                  <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4 md:hidden"></div>
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-sm font-bold flex items-center gap-2">
                       <CalendarIcon size={16} className="text-blue-600" />
-                      Asignar día: {formatDate(selectedDay)}
+                      Asignar: {formatDate(selectedDay)}
                     </h3>
-                    <button onClick={() => setSelectedDay(null)} className="text-gray-400 hover:text-gray-600">
-                      <Trash2 size={16} />
+                    <button onClick={() => setSelectedDay(null)} className="text-gray-400 hover:text-gray-600 p-1">
+                      <Trash2 size={18} />
                     </button>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {(['mother', 'father'] as const).map(p => (
-                      <div key={p} className="space-y-2">
-                        <p className="text-[10px] font-extrabold uppercase text-gray-400 px-1">{p === 'mother' ? 'Madre' : 'Padre'}</p>
-                        <div className="flex flex-wrap gap-2">
+                      <div key={p} className="space-y-3">
+                        <p className="text-[10px] font-extrabold uppercase text-gray-400 px-1 border-l-2 border-current ml-1" style={{ borderColor: p === 'mother' ? '#ec4899' : '#3b82f6' }}>
+                          {p === 'mother' ? 'Mamá' : 'Papá'}
+                        </p>
+                        <div className="flex flex-col gap-2">
                           {allowances.filter(a => a.parent === p).map(a => {
                             const used = getUsedDays(a.id);
                             const disabled = used >= a.totalDays;
@@ -626,15 +683,18 @@ export function BabyLeavePlannerModule() {
                                   setFlexibleBlocks([...flexibleBlocks, newBlock]);
                                   setSelectedDay(null);
                                 }}
-                                className={`text-[10px] px-3 py-1.5 rounded-lg font-bold transition shadow-sm border ${
+                                className={`text-xs px-4 py-3 rounded-xl font-bold transition shadow-sm border text-left flex justify-between items-center ${
                                   disabled
-                                    ? 'bg-gray-100 text-gray-300 border-gray-100 cursor-not-allowed'
+                                    ? 'bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed'
                                     : p === 'mother'
-                                      ? 'bg-white text-pink-600 border-pink-100 hover:bg-pink-50'
-                                      : 'bg-white text-blue-600 border-blue-100 hover:bg-blue-50'
+                                      ? 'bg-white text-pink-600 border-pink-100 hover:bg-pink-50 active:scale-95'
+                                      : 'bg-white text-blue-600 border-blue-100 hover:bg-blue-50 active:scale-95'
                                 }`}
                               >
-                                {a.name}
+                                <span>{a.name}</span>
+                                <span className="text-[9px] opacity-60">
+                                  {a.consumptionMode === 'weeks' ? '+1 sem' : a.consumptionMode === 'all' ? 'Todo' : '+1 d'}
+                                </span>
                               </button>
                             );
                           })}
@@ -656,6 +716,37 @@ export function BabyLeavePlannerModule() {
 
         </div>
       )}
+      {/* Mobile Navigation Bar */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-lg border-t border-gray-100 flex justify-around items-center p-2 z-[60] md:hidden">
+        <button
+          onClick={() => { setMobileTab('mother'); setShowSettings(false); }}
+          className={`flex flex-col items-center gap-1 p-2 flex-1 ${mobileTab === 'mother' ? 'text-pink-600' : 'text-gray-400'}`}
+        >
+          <User size={20} />
+          <span className="text-[9px] font-bold">MAMÁ</span>
+        </button>
+        <button
+          onClick={() => { setMobileTab('calendar'); setShowSettings(false); }}
+          className={`flex flex-col items-center gap-1 p-2 flex-1 ${mobileTab === 'calendar' ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <CalendarIcon size={20} />
+          <span className="text-[9px] font-bold">CALENDARIO</span>
+        </button>
+        <button
+          onClick={() => { setMobileTab('father'); setShowSettings(false); }}
+          className={`flex flex-col items-center gap-1 p-2 flex-1 ${mobileTab === 'father' ? 'text-blue-600' : 'text-gray-400'}`}
+        >
+          <User size={20} />
+          <span className="text-[9px] font-bold">PAPÁ</span>
+        </button>
+        <button
+          onClick={() => { setMobileTab('settings'); setShowSettings(false); }}
+          className={`flex flex-col items-center gap-1 p-2 flex-1 ${mobileTab === 'settings' ? 'text-gray-900' : 'text-gray-400'}`}
+        >
+          <Settings size={20} />
+          <span className="text-[9px] font-bold">AJUSTES</span>
+        </button>
+      </div>
     </div>
   );
 }
