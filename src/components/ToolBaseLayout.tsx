@@ -26,9 +26,9 @@ export function ToolBaseLayout({ children, toolId, toolName }: ToolBaseLayoutPro
   }
 
   return (
-    <div className="min-h-screen bg-gray-50/50 pb-20">
-        {/* Tool Breadcrumb/Nav */}
-        <div className="bg-white border-b mb-8">
+    <div className="min-h-screen pb-20">
+        {/* Tool Breadcrumb/Nav: Visible only on mobile */}
+        <div className="md:hidden bg-white border-b mb-8">
           <div className="container mx-auto px-4 h-14 flex items-center">
             <Link
               href="/dashboard"
@@ -40,8 +40,8 @@ export function ToolBaseLayout({ children, toolId, toolName }: ToolBaseLayoutPro
         </div>
 
         {/* Main Content with common padding and width constraints */}
-        <div className="container mx-auto px-4">
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 md:p-10">
+        <div className="container mx-auto px-4 pt-8 md:pt-12">
+          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm p-6 md:p-12">
             {children}
           </div>
         </div>

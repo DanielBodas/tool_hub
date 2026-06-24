@@ -5,6 +5,8 @@ import { AuthProvider } from "@/components/AuthProvider";
 import { SecurityProvider } from "@/components/SecurityProvider";
 import Link from "next/link";
 import { SecurityStatus } from "@/components/SecurityStatus";
+import { Sidebar } from "@/components/Sidebar";
+import { MobileHeader } from "@/components/MobileHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -28,29 +30,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-gray-50/50`}>
         <AuthProvider>
           <SecurityProvider>
-            <header className="border-b bg-white sticky top-0 z-50">
-              <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <Link href="/" className="font-bold text-xl">ToolPlatform</Link>
-                  <nav className="hidden md:flex gap-4">
-                    <Link href="/dashboard" className="text-sm font-medium hover:underline">Panel</Link>
-                  </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                  <SecurityStatus />
-                  <Link href="/login" className="text-sm font-medium px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition">Entrar</Link>
-                </div>
+            <div className="flex min-h-screen">
+              {/* Sidebar: Only visible on desktop */}
+              <Sidebar />
+
+              <div className="flex-1 flex flex-col min-w-0">
+                {/* Header: Visible only on mobile */}
+                <MobileHeader />
+
+                <main className="flex-grow">
+                  {children}
+                </main>
+
+                <footer className="border-t py-6 text-center text-sm text-gray-500 bg-white">
+                  © {new Date().getFullYear()} ToolPlatform. Todos los derechos reservados.
+                </footer>
               </div>
-            </header>
-            <main className="flex-grow">
-              {children}
-            </main>
-            <footer className="border-t py-6 text-center text-sm text-gray-500">
-              © {new Date().getFullYear()} ToolPlatform. Todos los derechos reservados.
-            </footer>
+            </div>
           </SecurityProvider>
         </AuthProvider>
       </body>
