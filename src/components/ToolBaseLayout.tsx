@@ -40,8 +40,8 @@ export function ToolBaseLayout({ children, toolId, toolName }: ToolBaseLayoutPro
         </div>
 
         {/* Main Content with common padding and width constraints */}
-        <div className="container mx-auto px-4">
-          <div className="bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm p-6 md:p-10">
+        <div className="container mx-auto md:px-4">
+          <div className="bg-white dark:bg-gray-900 md:rounded-3xl md:border border-gray-200 dark:border-gray-800 md:shadow-sm md:p-10">
             {children}
           </div>
         </div>
