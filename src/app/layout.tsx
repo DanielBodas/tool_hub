@@ -21,35 +21,78 @@ export const metadata: Metadata = {
   description: "Una plataforma escalable para tus herramientas",
 };
 
-export default function RootLayout({
+import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession(authOptions);
+  const cookieStore = await cookies();
+  const initialUnlockedTools: string[] = [];
+  
+  for (const cookie of cookieStore.getAll()) {
+    if (cookie.name === "auth_dashboard" && cookie.value === "true") {
+      initialUnlockedTools.push("dashboard");
+    } else if (cookie.name.startsWith("auth_tool_") && cookie.value === "true") {
+      initialUnlockedTools.push(cookie.name.replace("auth_tool_", ""));
+    }
+  }
+
   return (
     <html lang="es">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300`}
+      >
         <AuthProvider>
-          <SecurityProvider>
-            <header className="border-b dark:border-gray-800 bg-white dark:bg-gray-900 sticky top-0 z-50">
+          <SecurityProvider initialUnlockedTools={initialUnlockedTools} hasSession={!!session}>
+            <header className="border-b border-border bg-card sticky top-0 z-50">
               <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center gap-6">
-                  <Link href="/" className="font-bold text-xl">ToolPlatform</Link>
+                  <Link href="/" className="font-bold text-xl">
+                    ToolPlatform
+                  </Link>
                   <nav className="hidden md:flex gap-4">
-                    <Link href="/dashboard" className="text-sm font-medium hover:underline">Panel</Link>
+                    <Link
+                      href="/dashboard"
+                      className="text-sm font-medium hover:underline"
+                    >
+                      Panel
+                    </Link>
                   </nav>
                 </div>
                 <div className="flex items-center gap-4">
                   <SecurityStatus />
-                  <Link href="/login" className="text-sm font-medium px-4 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition">Entrar</Link>
+                  {session ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground hidden md:inline-block">
+                        {session.user?.name}
+                      </span>
+                      <Link
+                        href="/api/auth/signout"
+                        className="text-sm font-medium px-4 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition"
+                      >
+                        Salir
+                      </Link>
+                    </div>
+                  ) : (
+                    <Link
+                      href="/login"
+                      className="text-sm font-medium px-4 py-2 bg-muted rounded-lg hover:opacity-80 transition"
+                    >
+                      Entrar
+                    </Link>
+                  )}
                 </div>
               </div>
             </header>
-            <main className="flex-grow">
-              {children}
-            </main>
-            <footer className="border-t dark:border-gray-800 py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-              © {new Date().getFullYear()} ToolPlatform. Todos los derechos reservados.
+            <main className="flex-grow">{children}</main>
+            <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
+              © {new Date().getFullYear()} ToolPlatform. Todos los derechos
+              reservados.
             </footer>
           </SecurityProvider>
         </AuthProvider>

@@ -14,8 +14,13 @@ export async function POST(request: Request) {
     cookieName = "auth_dashboard";
   } else if (type === "tool" && toolId) {
     const envVarName = `${toolId.replace(/-/g, "_").toUpperCase()}_PIN`;
-    // If specific tool PIN is not set, use ADMIN_CODE or finally '1234'
-    securePin = process.env[envVarName] || process.env.ADMIN_CODE || "1234";
+    securePin = process.env[envVarName] as string;
+    
+    // Si la herramienta no tiene un PIN configurado, bloquéala (no permitas 1234 por defecto)
+    if (!securePin) {
+      console.error(`Missing PIN for tool: ${toolId}. Please set ${envVarName} in the .env file.`);
+      return NextResponse.json({ success: false, error: "Tool PIN not configured." }, { status: 500 });
+    }
     cookieName = `auth_tool_${toolId}`;
   }
 
