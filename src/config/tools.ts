@@ -1,4 +1,4 @@
-import { LucideIcon, Calculator, Globe, PiggyBank } from "lucide-react";
+import { LucideIcon, Calculator, Globe, PiggyBank, Baby } from "lucide-react";
 
 export interface Tool {
   id: string;
@@ -33,5 +33,13 @@ export const tools: Tool[] = [
     icon: Globe,
     href: "/tools/tool-two",
     category: "Web",
+  },
+  {
+    id: "baby-leave-planner",
+    name: "Permiso de Nacimiento",
+    description: "Planifica los días de permiso por nacimiento para madre y padre en España.",
+    icon: Baby,
+    href: "/tools/baby-leave-planner",
+    category: "Productividad",
   },
 ];
