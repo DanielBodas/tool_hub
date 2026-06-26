@@ -33,7 +33,7 @@ export async function GET() {
     }
 
     const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB_NAME || 'baby-leave-planner');
+    const db = client.db(process.env.BABY_LEAVE_PLANNER_DB_NAME || 'baby-leave-planner');
 
     const data = await db.collection('settings').findOne({ id: userId });
 
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     const body = await request.json();
     const client = await clientPromise;
-    const db = client.db(process.env.MONGODB_DB_NAME || 'baby-leave-planner');
+    const db = client.db(process.env.BABY_LEAVE_PLANNER_DB_NAME || 'baby-leave-planner');
 
     await db.collection('settings').updateOne(
       { id: userId },

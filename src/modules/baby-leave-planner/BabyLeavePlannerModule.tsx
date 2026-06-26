@@ -246,22 +246,25 @@ export function BabyLeavePlannerModule() {
           <Baby className="text-blue-600" size={32} />
           <span className="tracking-tight">Leave Planner</span>
         </h1>
-        {/* Only show top buttons on Desktop, mobile uses bottom nav */}
-        <div className="hidden md:flex items-center gap-3">
-          <button
-            onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
-            className={`p-3 rounded-2xl border transition-all active:scale-95 ${leftDrawerOpen ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 text-pink-600' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            title="Gestión Madre"
-          >
-            <User size={24} className="text-pink-500" />
-          </button>
-          <button
-            onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
-            className={`p-3 rounded-2xl border transition-all active:scale-95 ${rightDrawerOpen ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
-            title="Gestión Padre"
-          >
-            <User size={24} className="text-blue-500" />
-          </button>
+        <div className="flex items-center gap-3">
+          {/* Top buttons for Desktop and Mobile (consistent access) */}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
+              className={`p-3 rounded-2xl border transition-all active:scale-95 ${leftDrawerOpen ? 'bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 text-pink-600' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              title="Gestión Madre"
+            >
+              <User size={24} className="text-pink-500" />
+            </button>
+            <button
+              onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
+              className={`p-3 rounded-2xl border transition-all active:scale-95 ${rightDrawerOpen ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
+              title="Gestión Padre"
+            >
+              <User size={24} className="text-blue-500" />
+            </button>
+          </div>
+          {/* Settings gear accessible everywhere now */}
           <button
             onClick={() => { setShowSettings(!showSettings); setHolidayMode(false); }}
             className={`p-3 rounded-2xl border transition-all active:scale-95 ${showSettings ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800 text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-800'}`}
@@ -771,13 +774,6 @@ export function BabyLeavePlannerModule() {
         >
           <User size={28} />
           <span className="text-[11px] font-black uppercase tracking-tighter">PAPÁ</span>
-        </button>
-        <button
-          onClick={() => { setMobileTab('settings'); setShowSettings(true); setLeftDrawerOpen(false); setRightDrawerOpen(false); setHolidayMode(false); }}
-          className={`flex flex-col items-center gap-2 p-3 flex-1 transition-all active:scale-90 ${mobileTab === 'settings' ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}`}
-        >
-          <Settings size={28} />
-          <span className="text-[11px] font-black uppercase tracking-tighter">AJUSTES</span>
         </button>
       </div>
     </div>
