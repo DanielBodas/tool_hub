@@ -8,10 +8,13 @@ import { authOptions } from "@/lib/auth";
 export default async function FinanceTrackerPage() {
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
-  const isUnlocked = cookieStore.get("auth_tool_finance-tracker")?.value === "true";
+  const isUnlocked =
+    cookieStore.get("auth_tool_finance-tracker")?.value === "true";
 
   if (!session && !isUnlocked) {
-    return <ToolSecurityGate toolId="finance-tracker" toolName="Gestor Financiero" />;
+    return (
+      <ToolSecurityGate toolId="finance-tracker" toolName="Gestor Financiero" />
+    );
   }
 
   return (

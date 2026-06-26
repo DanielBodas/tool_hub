@@ -34,7 +34,9 @@ export default function LoginPage() {
       <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-xl border border-gray-100">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Bienvenido</h1>
-          <p className="text-gray-500 mt-2">Inicia sesión para acceder a tus herramientas</p>
+          <p className="text-gray-500 mt-2">
+            Inicia sesión para acceder a tus herramientas
+          </p>
         </div>
 
         {error && (
@@ -73,13 +75,17 @@ export default function LoginPage() {
             <span className="w-full border-t border-gray-200"></span>
           </div>
           <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500 uppercase tracking-wider">O administrador</span>
+            <span className="px-2 bg-white text-gray-500 uppercase tracking-wider">
+              O administrador
+            </span>
           </div>
         </div>
 
         <form onSubmit={handleAdminLogin} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Código de Acceso</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Código de Acceso
+            </label>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400">
                 <Lock size={18} />

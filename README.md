@@ -1,36 +1,166 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Tool Hub
 
-## Getting Started
+Una plataforma escalable para alojar múltiples herramientas web bajo un mismo login, con autenticación por PIN y soporte Google OAuth. Desplegable en Vercel con cero configuración.
 
-First, run the development server:
+---
+
+## Stack
+
+- **Next.js 16** (App Router)
+- **TypeScript**
+- **Tailwind CSS v4**
+- **NextAuth.js v4** (Google + Admin Code)
+- **MongoDB** (opcional, solo para tools que lo necesiten)
+
+---
+
+## Arrancar en local
 
 ```bash
+# 1. Instalar dependencias
+npm install
+
+# 2. Crear el fichero de variables de entorno
+Copy-Item example.env .env.local   # PowerShell
+# cp example.env .env.local        # bash/zsh
+
+# 3. Levantar el servidor de desarrollo
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre **http://localhost:3000** en el navegador.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Dashboard → `/dashboard` → PIN por defecto: `1234`
+- Cada tool tiene su propio PIN (configurable vía env vars)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+---
 
-## Learn More
+## Cómo añadir una nueva herramienta
 
-To learn more about Next.js, take a look at the following resources:
+El sistema necesita **3 pasos** para registrar un nuevo tool:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 1. Crear la carpeta del módulo
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/modules/mi-tool/
+├── metadata.ts          ← obligatorio (info del hub)
+├── MiToolModule.tsx     ← componente principal
+└── example.env          ← variables de entorno del tool
+```
 
-## Deploy on Vercel
+**`metadata.ts`** (copiar esta plantilla):
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```ts
+import { IconName } from "lucide-react";
+import type { ToolMeta } from "@/config/tools";
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+export const metadata: ToolMeta = {
+  id: "mi-tool",                       // kebab-case, debe coincidir con la carpeta
+  name: "Mi Herramienta",
+  description: "Descripción breve que aparece en el dashboard.",
+  icon: IconName,                      // cualquier icono de lucide-react
+  category: "Productividad",           // categoría del badge
+};
+```
+
+### 2. Crear la página de ruta
+
+```
+src/app/tools/mi-tool/page.tsx
+```
+
+```tsx
+import { ToolBaseLayout } from "@/components/ToolBaseLayout";
+import { MiToolModule } from "@/modules/mi-tool/MiToolModule";
+import { ToolSecurityGate } from "@/components/ToolSecurityGate";
+import { cookies } from "next/headers";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+
+export default async function MiToolPage() {
+  const session = await getServerSession(authOptions);
+  const cookieStore = await cookies();
+  const isUnlocked = cookieStore.get("auth_tool_mi-tool")?.value === "true";
+
+  if (!session && !isUnlocked) {
+    return <ToolSecurityGate toolId="mi-tool" toolName="Mi Herramienta" />;
+  }
+
+  return (
+    <ToolBaseLayout toolId="mi-tool" toolName="Mi Herramienta">
+      <MiToolModule />
+    </ToolBaseLayout>
+  );
+}
+```
+
+### 3. Registrar en el registry central
+
+En **`src/config/tools.ts`**, añadir una línea de import:
+
+```ts
+import { metadata as miTool } from "@/modules/mi-tool/metadata";
+
+export const tools: Tool[] = [babyLeave, finance, miTool].map(...);
+```
+
+---
+
+## Variables de entorno
+
+### Globales (`example.env` → `.env.local`)
+
+| Variable | Descripción |
+|---|---|
+| `NEXTAUTH_SECRET` | Secret para NextAuth (`openssl rand -base64 32`) |
+| `NEXTAUTH_URL` | URL base (`http://localhost:3000` en local) |
+| `ADMIN_CODE` | PIN del dashboard principal |
+| `MONGODB_URI` | URI de MongoDB (si aplica) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth de Google (opcional) |
+
+### Por tool
+
+Cada tool tiene su propio `example.env` dentro de su carpeta en `src/modules/<tool-id>/`. El PIN sigue el formato:
+
+```
+TOOL_ID_EN_MAYUSCULAS_PIN=1234
+```
+
+Ejemplos: `BABY_LEAVE_PLANNER_PIN`, `FINANCE_TRACKER_PIN`
+
+---
+
+## Despliegue en Vercel
+
+1. Conectar el repositorio en [vercel.com](https://vercel.com)
+2. En **Settings → Environment Variables**, añadir todas las variables del `example.env` global más las de cada tool activo
+3. `NEXTAUTH_URL` debe apuntar a la URL de producción (ej. `https://tu-app.vercel.app`)
+4. Deploy automático en cada push a `main`
+
+---
+
+## Estructura del proyecto
+
+```
+src/
+├── app/
+│   ├── api/auth/          → NextAuth + PIN secondary auth
+│   ├── dashboard/         → Panel principal (server component, protegido por cookie)
+│   ├── tools/[tool-id]/   → Una page.tsx por herramienta
+│   └── login/
+├── components/
+│   ├── SecurityGate.tsx       → PIN del dashboard
+│   ├── ToolSecurityGate.tsx   → PIN por tool (Google + PIN)
+│   ├── ToolBaseLayout.tsx     → Layout compartido de todas las tools
+│   └── SecurityProvider.tsx   → Context para unlock/lock client-side
+├── config/
+│   └── tools.ts           → Registry central (solo imports)
+├── lib/
+│   ├── auth.ts            → NextAuth config
+│   └── mongodb.ts         → Cliente MongoDB
+└── modules/
+    └── [tool-id]/
+        ├── metadata.ts    ← Fuente de verdad del tool en el hub
+        ├── *Module.tsx    ← Componente principal
+        └── example.env   ← Vars de entorno del tool
+```

@@ -1,45 +1,62 @@
-import { LucideIcon, Calculator, Globe, PiggyBank, Baby } from "lucide-react";
+import fs from "fs";
+import path from "path";
+import { LucideIcon } from "lucide-react";
 
-export interface Tool {
+/**
+ * ToolMeta is the interface every module must export from its metadata.ts.
+ * It contains all the information the hub needs to display and route to a tool.
+ */
+export interface ToolMeta {
+  /** Unique kebab-case identifier (must match the folder name in src/modules/ and src/app/tools/) */
   id: string;
+  /** Display name shown in dashboard cards and page titles */
   name: string;
+  /** Short description shown in the dashboard card */
   description: string;
+  /** Lucide icon component */
   icon: LucideIcon;
-  href: string;
+  /** Category label shown on the dashboard card badge */
   category: string;
 }
 
-export const tools: Tool[] = [
-  {
-    id: "finance-tracker",
-    name: "Gestor Financiero",
-    description: "Seguimiento de ahorros, inversiones y préstamos en un solo lugar.",
-    icon: PiggyBank,
-    href: "/tools/finance-tracker",
-    category: "Finanzas",
-  },
-  {
-    id: "tool-one",
-    name: "Herramienta Uno",
-    description: "Una descripción breve de lo que hace la herramienta uno.",
-    icon: Calculator,
-    href: "/tools/tool-one",
-    category: "Productividad",
-  },
-  {
-    id: "tool-two",
-    name: "Herramienta Dos",
-    description: "Una descripción breve de lo que hace la herramienta dos.",
-    icon: Globe,
-    href: "/tools/tool-two",
-    category: "Web",
-  },
-  {
-    id: "baby-leave-planner",
-    name: "Permiso de Nacimiento",
-    description: "Planifica los días de permiso por nacimiento para madre y padre en España.",
-    icon: Baby,
-    href: "/tools/baby-leave-planner",
-    category: "Productividad",
-  },
-];
+/**
+ * Tool extends ToolMeta with derived fields computed by the hub.
+ * Components should use this type when consuming tools from this registry.
+ */
+export type Tool = ToolMeta & {
+  /** Derived automatically from id: /tools/<id> */
+  href: string;
+};
+
+/**
+ * Automatically discovers tools by scanning the src/modules directory.
+ * NOTE: This function can only be called from Server Components!
+ */
+export async function getTools(): Promise<Tool[]> {
+  const modulesDir = path.join(process.cwd(), "src", "modules");
+  
+  if (!fs.existsSync(modulesDir)) return [];
+
+  const folders = fs.readdirSync(modulesDir).filter(f => {
+    return fs.statSync(path.join(modulesDir, f)).isDirectory();
+  });
+
+  const tools: Tool[] = [];
+
+  for (const folder of folders) {
+    try {
+      // Dynamic import
+      const { metadata } = await import(`@/modules/${folder}/metadata`);
+      if (metadata) {
+        tools.push({
+          ...metadata,
+          href: `/tools/${metadata.id}`,
+        });
+      }
+    } catch (e) {
+      console.warn(`Could not load metadata for tool: ${folder}`, e);
+    }
+  }
+
+  return tools;
+}
