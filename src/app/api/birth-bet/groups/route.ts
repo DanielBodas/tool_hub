@@ -16,10 +16,22 @@ export async function GET() {
     const client = await clientPromise;
     const db = client.db("birth-bet");
 
-    const groups = await db
+    const dbGroups = await db
       .collection("groups")
       .find({ id: { $in: accessibleGroupIds } })
       .toArray();
+
+    // Map accessible IDs to a name, prioritizing DB but falling back to formatted ID
+    const groups = accessibleGroupIds.map((id: string) => {
+      const dbGroup = dbGroups.find((g) => g.id === id);
+      if (dbGroup) return dbGroup;
+
+      // Format ID to Name (e.g. colleagues -> Colleagues)
+      return {
+        id,
+        name: id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, " "),
+      };
+    });
 
     return NextResponse.json(groups);
   } catch (e) {

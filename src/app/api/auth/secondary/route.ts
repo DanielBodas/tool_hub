@@ -15,11 +15,26 @@ export async function POST(request: Request) {
     cookieName = "auth_dashboard";
   } else if (type === "tool" && toolId) {
     if (toolId === "birth-bet") {
-      const client = await clientPromise;
-      const db = client.db("birth-bet");
-      const pinDoc = await db.collection("pins").findOne({ pin });
+      // 1. Check ENV variables for dynamic group PINs (e.g. PIN_COLLEAGUES)
+      const envPins = Object.entries(process.env).filter(([key]) => key.startsWith("PIN_"));
+      const matchedEnvPin = envPins.find(([, value]) => value === pin);
 
-      if (pinDoc) {
+      let groupIds: string[] = [];
+
+      if (matchedEnvPin) {
+        const groupId = matchedEnvPin[0].replace("PIN_", "").toLowerCase();
+        groupIds = [groupId];
+      } else {
+        // 2. Fallback to MongoDB pins (legacy/database-backed groups)
+        const client = await clientPromise;
+        const db = client.db("birth-bet");
+        const pinDoc = await db.collection("pins").findOne({ pin });
+        if (pinDoc) {
+          groupIds = pinDoc.groups;
+        }
+      }
+
+      if (groupIds.length > 0) {
         const response = NextResponse.json({ success: true });
         const cookieStore = await cookies();
 
@@ -32,11 +47,11 @@ export async function POST(request: Request) {
         });
 
         const existingGroupsCookie = cookieStore.get("birth_bet_groups")?.value;
-        let newGroups = pinDoc.groups;
+        let newGroups = groupIds;
         if (existingGroupsCookie) {
           try {
             const existingGroups = JSON.parse(existingGroupsCookie);
-            newGroups = Array.from(new Set([...existingGroups, ...pinDoc.groups]));
+            newGroups = Array.from(new Set([...existingGroups, ...groupIds]));
           } catch (e) {
             console.error(e);
           }
