@@ -1,141 +1,66 @@
 # Tool Hub
 
-Una plataforma escalable para alojar múltiples herramientas web bajo un mismo login, con autenticación por PIN y soporte Google OAuth. Desplegable en Vercel con cero configuración.
+Una plataforma escalable para alojar múltiples herramientas web bajo un mismo login, con autenticación por PIN y soporte Google OAuth.
 
 ---
 
-## Stack
+## Seguridad y Acceso
 
-- **Next.js 16** (App Router)
-- **TypeScript**
-- **Tailwind CSS v4**
-- **NextAuth.js v4** (Google + Admin Code)
-- **MongoDB** (opcional, solo para tools que lo necesiten)
+La plataforma utiliza un sistema de seguridad de dos niveles:
 
----
-
-## Arrancar en local
-
-```bash
-# 1. Instalar dependencias
-npm install
-
-# 2. Crear el fichero de variables de entorno
-Copy-Item example.env .env.local   # PowerShell
-# cp example.env .env.local        # bash/zsh
-
-# 3. Levantar el servidor de desarrollo
-npm run dev
-```
-
-Abre **http://localhost:3000** en el navegador.
-
-- Dashboard → `/dashboard` → PIN por defecto: `1234`
-- Cada tool tiene su propio PIN (configurable vía env vars)
+1.  **Acceso al Panel (Dashboard):** Se puede acceder mediante un **Código de Administrador** (`ADMIN_CODE`) o mediante **Google Auth**.
+2.  **Acceso a Herramientas:**
+    *   Si accedes con **Google Auth**, tienes acceso a todas las herramientas.
+    *   Si accedes con el **Código del Dashboard**, solo tienes acceso a las herramientas listadas en la variable de entorno `ALLOWED_TOOLS_FOR_PIN` (separadas por comas).
+    *   También es posible acceder a una herramienta individual directamente mediante su **PIN específico** (ej. `BABY_LEAVE_PLANNER_PIN`).
 
 ---
 
-## Cómo añadir una nueva herramienta
+## Variables de Entorno
 
-El sistema necesita **3 pasos** para registrar un nuevo tool:
+Crea un archivo `.env.local` basado en `example.env`:
 
-### 1. Crear la carpeta del módulo
-
-```
-src/modules/mi-tool/
-├── metadata.ts          ← obligatorio (info del hub)
-├── MiToolModule.tsx     ← componente principal
-└── example.env          ← variables de entorno del tool
-```
-
-**`metadata.ts`** (copiar esta plantilla):
-
-```ts
-import { IconName } from "lucide-react";
-import type { ToolMeta } from "@/config/tools";
-
-export const metadata: ToolMeta = {
-  id: "mi-tool",                       // kebab-case, debe coincidir con la carpeta
-  name: "Mi Herramienta",
-  description: "Descripción breve que aparece en el dashboard.",
-  icon: IconName,                      // cualquier icono de lucide-react
-  category: "Productividad",           // categoría del badge
-};
-```
-
-### 2. Crear la página de ruta
-
-```
-src/app/tools/mi-tool/page.tsx
-```
-
-```tsx
-import { ToolBaseLayout } from "@/components/ToolBaseLayout";
-import { MiToolModule } from "@/modules/mi-tool/MiToolModule";
-import { ToolSecurityGate } from "@/components/ToolSecurityGate";
-import { cookies } from "next/headers";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-
-export default async function MiToolPage() {
-  const session = await getServerSession(authOptions);
-  const cookieStore = await cookies();
-  const isUnlocked = cookieStore.get("auth_tool_mi-tool")?.value === "true";
-
-  if (!session && !isUnlocked) {
-    return <ToolSecurityGate toolId="mi-tool" toolName="Mi Herramienta" />;
-  }
-
-  return (
-    <ToolBaseLayout toolId="mi-tool" toolName="Mi Herramienta">
-      <MiToolModule />
-    </ToolBaseLayout>
-  );
-}
-```
-
-### 3. Registrar en el registry central
-
-En **`src/config/tools.ts`**, añadir una línea de import:
-
-```ts
-import { metadata as miTool } from "@/modules/mi-tool/metadata";
-
-export const tools: Tool[] = [babyLeave, finance, miTool].map(...);
-```
-
----
-
-## Variables de entorno
-
-### Globales (`example.env` → `.env.local`)
-
+### Globales
 | Variable | Descripción |
 |---|---|
-| `NEXTAUTH_SECRET` | Secret para NextAuth (`openssl rand -base64 32`) |
+| `NEXTAUTH_SECRET` | Secreto para NextAuth (`openssl rand -base64 32`) |
 | `NEXTAUTH_URL` | URL base (`http://localhost:3000` en local) |
-| `ADMIN_CODE` | PIN del dashboard principal |
-| `MONGODB_URI` | URI de MongoDB (si aplica) |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth de Google (opcional) |
+| `ADMIN_CODE` | Código principal para el Dashboard (ej. `1234`) |
+| `ALLOWED_TOOLS_FOR_PIN` | Herramientas permitidas para el `ADMIN_CODE` (ej. `baby-leave-planner`) |
+| `MONGODB_URI` | URI de MongoDB (si la herramienta lo requiere) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Credenciales de Google OAuth (opcional) |
 
-### Por tool
-
-Cada tool tiene su propio `example.env` dentro de su carpeta en `src/modules/<tool-id>/`. El PIN sigue el formato:
-
-```
-TOOL_ID_EN_MAYUSCULAS_PIN=1234
-```
-
-Ejemplos: `BABY_LEAVE_PLANNER_PIN`, `FINANCE_TRACKER_PIN`
+### Por herramienta
+Cada herramienta puede definir su propio PIN de acceso directo:
+`TOOL_ID_EN_MAYUSCULAS_PIN=1234`
+Ejemplos: `BABY_LEAVE_PLANNER_PIN`, `FINANCE_TRACKER_PIN`.
 
 ---
 
 ## Despliegue en Vercel
 
-1. Conectar el repositorio en [vercel.com](https://vercel.com)
-2. En **Settings → Environment Variables**, añadir todas las variables del `example.env` global más las de cada tool activo
-3. `NEXTAUTH_URL` debe apuntar a la URL de producción (ej. `https://tu-app.vercel.app`)
-4. Deploy automático en cada push a `main`
+1. Conectar el repositorio en [vercel.com](https://vercel.com).
+2. En **Settings → Environment Variables**, añadir todas las variables del `example.env`.
+3. `NEXTAUTH_URL` debe apuntar a la URL de producción (ej. `https://tu-app.vercel.app`).
+4. Si usas MongoDB Atlas, recuerda permitir el acceso desde las IPs de Vercel (0.0.0.0/0).
+
+---
+
+## Desarrollo Local
+
+```bash
+npm install
+npm run dev
+```
+
+---
+
+## Cómo añadir una nueva herramienta
+
+1. **Módulo:** Crea la carpeta en `src/modules/[id]`.
+2. **Metadata:** Crea `metadata.ts` con la info de la herramienta.
+3. **Página:** Crea `src/app/tools/[id]/page.tsx` usando el componente `isToolAllowed` para gestionar el acceso.
+4. **API:** Si necesitas persistencia, usa `isToolAllowed` en tu ruta de API.
 
 ---
 
@@ -144,23 +69,12 @@ Ejemplos: `BABY_LEAVE_PLANNER_PIN`, `FINANCE_TRACKER_PIN`
 ```
 src/
 ├── app/
-│   ├── api/auth/          → NextAuth + PIN secondary auth
-│   ├── dashboard/         → Panel principal (server component, protegido por cookie)
-│   ├── tools/[tool-id]/   → Una page.tsx por herramienta
-│   └── login/
-├── components/
-│   ├── SecurityGate.tsx       → PIN del dashboard
-│   ├── ToolSecurityGate.tsx   → PIN por tool (Google + PIN)
-│   ├── ToolBaseLayout.tsx     → Layout compartido de todas las tools
-│   └── SecurityProvider.tsx   → Context para unlock/lock client-side
-├── config/
-│   └── tools.ts           → Registry central (solo imports)
+│   ├── api/auth/          → Lógica de autenticación
+│   ├── dashboard/         → Panel principal
+│   └── tools/[id]/        → Rutas de las herramientas
+├── components/            → UI compartida y Gates de seguridad
 ├── lib/
-│   ├── auth.ts            → NextAuth config
-│   └── mongodb.ts         → Cliente MongoDB
-└── modules/
-    └── [tool-id]/
-        ├── metadata.ts    ← Fuente de verdad del tool en el hub
-        ├── *Module.tsx    ← Componente principal
-        └── example.env   ← Vars de entorno del tool
+│   ├── auth.ts            → Configuración de NextAuth
+│   └── security.ts        → Lógica central de permisos
+└── modules/               → Código fuente de cada herramienta
 ```

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isToolAllowed } from "@/lib/security";
 
 export async function POST(request: Request) {
   const { pin, toolId, type } = await request.json();

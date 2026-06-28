@@ -4,6 +4,7 @@ import { ToolSecurityGate } from "@/components/ToolSecurityGate";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isToolAllowed } from "@/lib/security";
 
 export default async function BabyLeavePlannerPage() {
   const session = await getServerSession(authOptions);

@@ -3,6 +3,7 @@ import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { cookies } from "next/headers";
+import { isToolAllowed } from "@/lib/security";
 
 async function getUserId() {
   const session = await getServerSession(authOptions);

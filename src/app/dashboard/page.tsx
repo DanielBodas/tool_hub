@@ -5,17 +5,19 @@ import { SecurityGate } from "@/components/SecurityGate";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { isToolAllowed } from "@/lib/security";
 
 export default async function DashboardPage() {
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
-  const isUnlocked = cookieStore.get("auth_dashboard")?.value === "true";
+  const hasDashboardAccess = cookieStore.get("auth_dashboard")?.value === "true";
 
-  if (!session && !isUnlocked) {
+  if (!session && !hasDashboardAccess) {
     return <SecurityGate />;
   }
 
-  const tools = await getTools();
+  const allTools = await getTools();
+  const tools = allTools.filter(tool => isToolAllowed(tool.id, !!session, hasDashboardAccess));
 
   return (
     <div className="container mx-auto px-4 py-12">
