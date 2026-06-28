@@ -2,9 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
-import { SecurityProvider } from "@/components/SecurityProvider";
 import Link from "next/link";
-import { SecurityStatus } from "@/components/SecurityStatus";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -31,16 +29,6 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await getServerSession(authOptions);
-  const cookieStore = await cookies();
-  const initialUnlockedTools: string[] = [];
-  
-  for (const cookie of cookieStore.getAll()) {
-    if (cookie.name === "auth_dashboard" && cookie.value === "true") {
-      initialUnlockedTools.push("dashboard");
-    } else if (cookie.name.startsWith("auth_tool_") && cookie.value === "true") {
-      initialUnlockedTools.push(cookie.name.replace("auth_tool_", ""));
-    }
-  }
 
   return (
     <html lang="es">
@@ -48,53 +36,50 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300`}
       >
         <AuthProvider>
-          <SecurityProvider initialUnlockedTools={initialUnlockedTools} hasSession={!!session}>
-            <header className="border-b border-border bg-card sticky top-0 z-50">
-              <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center gap-6">
-                  <Link href="/" className="font-bold text-xl">
-                    ToolPlatform
+          <header className="border-b border-border bg-card sticky top-0 z-50">
+            <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+              <div className="flex items-center gap-6">
+                <Link href="/" className="font-bold text-xl">
+                  ToolPlatform
+                </Link>
+                <nav className="hidden md:flex gap-4">
+                  <Link
+                    href="/dashboard"
+                    className="text-sm font-medium hover:underline"
+                  >
+                    Panel
                   </Link>
-                  <nav className="hidden md:flex gap-4">
-                    <Link
-                      href="/dashboard"
-                      className="text-sm font-medium hover:underline"
-                    >
-                      Panel
-                    </Link>
-                  </nav>
-                </div>
-                <div className="flex items-center gap-4">
-                  <SecurityStatus />
-                  {session ? (
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm text-muted-foreground hidden md:inline-block">
-                        {session.user?.name}
-                      </span>
-                      <Link
-                        href="/api/auth/signout"
-                        className="text-sm font-medium px-4 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition"
-                      >
-                        Salir
-                      </Link>
-                    </div>
-                  ) : (
-                    <Link
-                      href="/login"
-                      className="text-sm font-medium px-4 py-2 bg-muted rounded-lg hover:opacity-80 transition"
-                    >
-                      Entrar
-                    </Link>
-                  )}
-                </div>
+                </nav>
               </div>
-            </header>
-            <main className="flex-grow">{children}</main>
-            <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
-              © {new Date().getFullYear()} ToolPlatform. Todos los derechos
-              reservados.
-            </footer>
-          </SecurityProvider>
+              <div className="flex items-center gap-4">
+                {session ? (
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground hidden md:inline-block">
+                      {session.user?.name}
+                    </span>
+                    <Link
+                      href="/api/auth/signout"
+                      className="text-sm font-medium px-4 py-2 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition"
+                    >
+                      Salir
+                    </Link>
+                  </div>
+                ) : (
+                  <Link
+                    href="/login"
+                    className="text-sm font-medium px-4 py-2 bg-muted rounded-lg hover:opacity-80 transition"
+                  >
+                    Entrar
+                  </Link>
+                )}
+              </div>
+            </div>
+          </header>
+          <main className="flex-grow">{children}</main>
+          <footer className="border-t border-border py-6 text-center text-sm text-muted-foreground">
+            © {new Date().getFullYear()} ToolPlatform. Todos los derechos
+            reservados.
+          </footer>
         </AuthProvider>
       </body>
     </html>
