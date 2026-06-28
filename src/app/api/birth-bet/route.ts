@@ -25,17 +25,35 @@ async function getUserId() {
   return null;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const userId = await getUserId();
     if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const groupId = searchParams.get("groupId");
+
+    if (!groupId) {
+      return NextResponse.json({ error: "Missing groupId" }, { status: 400 });
+    }
+
+    // Verify access to the group
+    const cookieStore = await cookies();
+    const groupsCookie = cookieStore.get("birth_bet_groups")?.value;
+    if (!groupsCookie) {
+      return NextResponse.json({ error: "No groups authorized" }, { status: 403 });
+    }
+    const accessibleGroupIds = JSON.parse(groupsCookie);
+    if (!accessibleGroupIds.includes(groupId)) {
+      return NextResponse.json({ error: "Access denied to group" }, { status: 403 });
+    }
+
     const client = await clientPromise;
     const db = client.db("birth-bet");
 
-    const data = await db.collection("bets").find({}).toArray();
+    const data = await db.collection("bets").find({ groupId }).toArray();
 
     return NextResponse.json(data || []);
   } catch (e) {
@@ -54,21 +72,29 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await request.json(); // { date: "2026-07-15", name: "User" }
-    const { date, name } = body;
+    const body = await request.json(); // { date: "2026-07-15", name: "User", groupId: "..." }
+    const { date, name, groupId } = body;
 
-    if (!date || !name) {
+    if (!date || !name || !groupId) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
 
     const client = await clientPromise;
     const db = client.db("birth-bet");
 
+    // Verify access
+    const cookieStore = await cookies();
+    const groupsCookie = cookieStore.get("birth_bet_groups")?.value;
+    if (!groupsCookie || !JSON.parse(groupsCookie).includes(groupId)) {
+      return NextResponse.json({ error: "Unauthorized for this group" }, { status: 403 });
+    }
+
     // We store multiple bets per date, but maybe one name per person?
     // For now, let's just add the bet.
     const result = await db.collection("bets").insertOne({
       date,
       name,
+      groupId,
       createdAt: new Date(),
     });
 
