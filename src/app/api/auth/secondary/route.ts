@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import clientPromise from "@/lib/mongodb";
 
 export async function POST(request: Request) {
   const { pin, toolId, type } = await request.json();
@@ -13,9 +14,64 @@ export async function POST(request: Request) {
     securePin = process.env.ADMIN_CODE || "1234";
     cookieName = "auth_dashboard";
   } else if (type === "tool" && toolId) {
+    if (toolId === "birth-bet") {
+      // 1. Check ENV variables for dynamic group PINs (e.g. PIN_COLLEAGUES)
+      const envPins = Object.entries(process.env).filter(([key]) => key.startsWith("PIN_"));
+      const matchedEnvPin = envPins.find(([, value]) => value === pin);
+
+      let groupIds: string[] = [];
+
+      if (matchedEnvPin) {
+        const groupId = matchedEnvPin[0].replace("PIN_", "").toLowerCase();
+        groupIds = [groupId];
+      } else {
+        // 2. Fallback to MongoDB pins (legacy/database-backed groups)
+        const client = await clientPromise;
+        const db = client.db("birth-bet");
+        const pinDoc = await db.collection("pins").findOne({ pin });
+        if (pinDoc) {
+          groupIds = pinDoc.groups;
+        }
+      }
+
+      if (groupIds.length > 0) {
+        const response = NextResponse.json({ success: true });
+        const cookieStore = await cookies();
+
+        cookieStore.set("auth_tool_birth-bet", "true", {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 2,
+          path: "/",
+        });
+
+        const existingGroupsCookie = cookieStore.get("birth_bet_groups")?.value;
+        let newGroups = groupIds;
+        if (existingGroupsCookie) {
+          try {
+            const existingGroups = JSON.parse(existingGroupsCookie);
+            newGroups = Array.from(new Set([...existingGroups, ...groupIds]));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        cookieStore.set("birth_bet_groups", JSON.stringify(newGroups), {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 2,
+          path: "/",
+        });
+
+        return response;
+      }
+    }
+
     const envVarName = `${toolId.replace(/-/g, "_").toUpperCase()}_PIN`;
     securePin = process.env[envVarName] as string;
-    
+
     // Si la herramienta no tiene un PIN configurado, bloquéala (no permitas 1234 por defecto)
     if (!securePin) {
       console.error(`Missing PIN for tool: ${toolId}. Please set ${envVarName} in the .env file.`);
@@ -29,14 +85,25 @@ export async function POST(request: Request) {
 
   if (isAuthorized) {
     const response = NextResponse.json({ success: true });
+    const cookieStore = await cookies();
 
-    (await cookies()).set(cookieName, "true", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 2, // 2 hours
-      path: "/",
-    });
+    if (cookieName) {
+      cookieStore.set(cookieName, "true", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 2, // 2 hours
+        path: "/",
+      });
+    }
+
+    // Special case for session access to birth-bet: give access to all groups if admin?
+    // Or just require PIN for everyone for now to ensure group isolation as requested.
+    if (toolId === "birth-bet" && !pin && session) {
+        // If they access via session, we might want to give them all groups if they are admin
+        // or just let them enter but they'll see nothing until they enter a PIN.
+        // Given the user's request, let's keep it strictly PIN-based for group access.
+    }
 
     return response;
   }
