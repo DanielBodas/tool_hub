@@ -9,6 +9,8 @@ import {
   Calendar as CalendarIcon,
   ChevronRight,
   Info,
+  LogOut,
+  Settings,
 } from "lucide-react";
 
 interface Bet {
@@ -119,6 +121,15 @@ export function BirthBetModule() {
     return `${year}-${month}-${day}`;
   };
 
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/birth-bet/logout", { method: "POST" });
+      window.location.reload();
+    } catch (error) {
+      console.error("Logout failed", error);
+    }
+  };
+
   const handleAddBet = async () => {
     if (!selectedDay || !userName.trim() || !selectedGroupId) return;
 
@@ -206,27 +217,64 @@ export function BirthBetModule() {
         </div>
       </div>
 
-      {/* Group Selector */}
-      {groups.length > 1 && (
-        <div className="flex flex-wrap justify-center gap-2 relative z-10">
-          {groups.map((group) => (
+      {/* Group Selector & Controls */}
+      <div className="flex flex-col items-center gap-4 relative z-20">
+        {groups.length > 0 && (
+          <div className="flex flex-wrap justify-center gap-2">
+            {groups.map((group) => (
+              <button
+                key={group.id}
+                onClick={() => {
+                  setSelectedGroupId(group.id);
+                  setIsLoading(true);
+                }}
+                className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all duration-200 shadow-sm ${
+                  selectedGroupId === group.id
+                    ? "bg-pink-600 text-white scale-105 shadow-pink-200"
+                    : "bg-white dark:bg-gray-800 text-pink-600 hover:bg-pink-50 border border-pink-100 dark:border-pink-900"
+                }`}
+              >
+                {group.name}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div className="flex gap-2">
             <button
-              key={group.id}
-              onClick={() => {
-                setSelectedGroupId(group.id);
-                setIsLoading(true);
-              }}
-              className={`px-6 py-2 rounded-full font-black text-xs uppercase tracking-widest transition-all duration-200 shadow-sm ${
-                selectedGroupId === group.id
-                  ? "bg-pink-600 text-white scale-105 shadow-pink-200"
-                  : "bg-white dark:bg-gray-800 text-pink-600 hover:bg-pink-50 border border-pink-100 dark:border-pink-900"
-              }`}
+            onClick={() => {
+                // To add a new group, we just re-trigger the PIN gate
+                // In our current ToolSecurityGate implementation, it will show up if we clear the cookie
+                // but we want to KEEP existing groups.
+                // For now, let's just provide a way to "Add Group" by entering a PIN.
+                // We'll use a simple prompt for now, or just rely on Logout + New PIN.
+                const pin = prompt("Introduce el PIN del nuevo grupo:");
+                if (pin) {
+                    fetch("/api/auth/secondary", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ pin, toolId: "birth-bet", type: "tool" })
+                    }).then(res => {
+                        if (res.ok) window.location.reload();
+                        else alert("PIN incorrecto");
+                    });
+                }
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-border rounded-xl text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-all shadow-sm"
             >
-              {group.name}
+            <Settings size={14} />
+            Añadir Grupo
             </button>
-          ))}
+
+            <button
+            onClick={handleLogout}
+            className="flex items-center gap-2 px-4 py-2 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-xl text-[10px] font-bold uppercase tracking-widest text-red-600 hover:bg-red-100 transition-all shadow-sm"
+            >
+            <LogOut size={14} />
+            Cerrar Sesión
+            </button>
         </div>
-      )}
+      </div>
 
       <div className="relative z-10 text-center">
         <p className="text-muted-foreground font-bold uppercase text-[10px] tracking-[0.2em] mb-2">

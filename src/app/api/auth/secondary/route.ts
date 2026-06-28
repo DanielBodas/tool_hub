@@ -31,7 +31,18 @@ export async function POST(request: Request) {
           path: "/",
         });
 
-        cookieStore.set("birth_bet_groups", JSON.stringify(pinDoc.groups), {
+        const existingGroupsCookie = cookieStore.get("birth_bet_groups")?.value;
+        let newGroups = pinDoc.groups;
+        if (existingGroupsCookie) {
+          try {
+            const existingGroups = JSON.parse(existingGroupsCookie);
+            newGroups = Array.from(new Set([...existingGroups, ...pinDoc.groups]));
+          } catch (e) {
+            console.error(e);
+          }
+        }
+
+        cookieStore.set("birth_bet_groups", JSON.stringify(newGroups), {
           httpOnly: true,
           secure: process.env.NODE_ENV === "production",
           sameSite: "lax",
@@ -59,14 +70,25 @@ export async function POST(request: Request) {
 
   if (isAuthorized) {
     const response = NextResponse.json({ success: true });
+    const cookieStore = await cookies();
 
-    (await cookies()).set(cookieName, "true", {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 2, // 2 hours
-      path: "/",
-    });
+    if (cookieName) {
+      cookieStore.set(cookieName, "true", {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 2, // 2 hours
+        path: "/",
+      });
+    }
+
+    // Special case for session access to birth-bet: give access to all groups if admin?
+    // Or just require PIN for everyone for now to ensure group isolation as requested.
+    if (toolId === "birth-bet" && !pin && session) {
+        // If they access via session, we might want to give them all groups if they are admin
+        // or just let them enter but they'll see nothing until they enter a PIN.
+        // Given the user's request, let's keep it strictly PIN-based for group access.
+    }
 
     return response;
   }
