@@ -1,30 +1,34 @@
 import { ToolBaseLayout } from "@/components/ToolBaseLayout";
 import { BabyLeavePlannerModule } from "@/modules/baby-leave-planner/BabyLeavePlannerModule";
-import { ToolSecurityGate } from "@/components/ToolSecurityGate";
-import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isToolAllowed } from "@/lib/security";
+import { redirect } from "next/navigation";
 
 export default async function BabyLeavePlannerPage() {
   const session = await getServerSession(authOptions);
-  const cookieStore = await cookies();
-  const isUnlocked =
-    cookieStore.get("auth_tool_baby-leave-planner")?.value === "true";
+  const toolId = "baby-leave-planner";
+  const toolName = "Permiso de Nacimiento";
 
-  if (!session && !isUnlocked) {
+  if (!session) {
+    redirect("/login");
+  }
+
+  if (!isToolAllowed(toolId, session)) {
     return (
-      <ToolSecurityGate
-        toolId="baby-leave-planner"
-        toolName="Permiso de Nacimiento"
-      />
+      <div className="min-h-[60vh] flex items-center justify-center p-4">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-2">Acceso Denegado</h1>
+          <p className="text-muted-foreground">No tienes permiso para acceder a esta herramienta.</p>
+        </div>
+      </div>
     );
   }
 
   return (
     <ToolBaseLayout
-      toolId="baby-leave-planner"
-      toolName="Permiso de Nacimiento"
+      toolId={toolId}
+      toolName={toolName}
     >
       <BabyLeavePlannerModule />
     </ToolBaseLayout>
