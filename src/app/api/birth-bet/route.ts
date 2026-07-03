@@ -78,3 +78,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Failed to save data" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const userId = await getUserId();
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    if (!id) return NextResponse.json({ error: "ID required" }, { status: 400 });
+
+    const client = await clientPromise;
+    const db = client.db("birth-bet");
+
+    const mongodb = require("mongodb");
+    await db.collection("bets").deleteOne({ _id: new mongodb.ObjectId(id) });
+
+    return NextResponse.json({ success: true });
+  } catch (e) {
+    return NextResponse.json({ error: "Failed" }, { status: 500 });
+  }
+}
