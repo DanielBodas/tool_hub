@@ -1,31 +1,31 @@
 import { ToolBaseLayout } from "@/components/ToolBaseLayout";
-import { BirthCalendarModule } from "@/modules/birth-calendar/BirthCalendarModule";
+import { BirthBetModule } from "@/modules/birth-bet/BirthBetModule";
 import { ToolSecurityGate } from "@/components/ToolSecurityGate";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-export default async function BirthCalendarPage() {
+export default async function BirthBetPage() {
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
   const isUnlocked =
-    cookieStore.get("auth_tool_birth-calendar")?.value === "true";
+    cookieStore.get("auth_tool_birth-bet")?.value === "true";
 
   if (!session && !isUnlocked) {
     return (
       <ToolSecurityGate
-        toolId="birth-calendar"
-        toolName="Calendario de Nacimiento"
+        toolId="birth-bet"
+        toolName="Porra de Nacimiento"
       />
     );
   }
 
   return (
     <ToolBaseLayout
-      toolId="birth-calendar"
-      toolName="Calendario de Nacimiento"
+      toolId="birth-bet"
+      toolName="Porra de Nacimiento"
     >
-      <BirthCalendarModule />
+      <BirthBetModule />
     </ToolBaseLayout>
   );
 }
