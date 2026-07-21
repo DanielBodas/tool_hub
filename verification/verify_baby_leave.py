@@ -17,38 +17,28 @@ def run_cuj(page, context):
     page.reload()
     page.wait_for_timeout(1000)
 
-    # Verify we are inside the leave planner page
-    assert "Leave Planner" in page.title() or page.locator("text=Leave Planner").is_visible()
-
-    # 3. Choose a birth date in Settings
-    # Open settings
-    page.click("button[title='Configuración de Nacimiento']")
+    # 3. Open Gestón Madre Drawer
+    page.click("button[title='Gestión Madre']")
     page.wait_for_timeout(1000)
 
-    # Fill birth date
-    page.fill("input[type='date']", "2026-08-10")
+    # Locate all buttons inside the Mother drawer
+    # The first button in the drawer is the close button (ChevronLeft).
+    # Then there is one for addAllowance (Plus).
+    # Then there is the edit button for 'Permiso Nacimiento' (Edit2).
+    # Let's find all buttons within the container and click the third one.
+    drawer_buttons = page.locator("div.fixed.inset-y-0.left-0 button")
+    edit_button = drawer_buttons.nth(2)
+    edit_button.click()
     page.wait_for_timeout(1000)
 
-    # Close settings to go back to calendar
-    page.click("text=Volver al Calendario")
-    page.wait_for_timeout(1000)
-
-    # 4. Click on a calendar day button to open our redesigned Drawer/Sheet
-    # Click on day 15
-    day_15_button = page.get_by_role("button", name="15", exact=True).first
-    day_15_button.click()
-    page.wait_for_timeout(1000)
-
-    # Take screenshot at the key moment (showing the beautiful newly redesigned day selection bottom drawer/sheet)
-    screenshot_path = "verification/screenshots/verification.png"
+    # Take screenshot showing weeks edit inputs
+    screenshot_path = "verification/screenshots/verification_weeks.png"
     page.screenshot(path=screenshot_path)
     print(f"Screenshot taken at {screenshot_path}")
 
-    # 5. Let's select "MAMÁ" and add/mark a leave block
-    page.click("text=MAMÁ")
-    page.wait_for_timeout(1000)
-
-    # Take a final look
+    # Close Mother Drawer
+    close_button = drawer_buttons.first
+    close_button.click()
     page.wait_for_timeout(1000)
 
 if __name__ == "__main__":

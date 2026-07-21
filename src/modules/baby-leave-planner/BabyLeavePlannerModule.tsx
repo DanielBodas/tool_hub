@@ -396,18 +396,24 @@ export function BabyLeavePlannerModule() {
                       <div className="grid grid-cols-2 gap-2">
                         <div>
                           <label className="text-[9px] text-muted-foreground block uppercase font-bold">
-                            Días Totales
+                            {a.consumptionMode === "weeks" ? "Semanas" : "Días Totales"}
                           </label>
                           <input
                             type="number"
                             className="w-full border-b border-border text-xs py-1 bg-transparent text-foreground"
-                            value={a.totalDays}
-                            onChange={(e) =>
+                            value={a.consumptionMode === "weeks" ? Math.floor(a.totalDays / 7) : a.totalDays}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
                               updateAllowance(a.id, {
-                                totalDays: parseInt(e.target.value) || 0,
-                              })
-                            }
+                                totalDays: a.consumptionMode === "weeks" ? val * 7 : val,
+                              });
+                            }}
                           />
+                          {a.consumptionMode === "weeks" && (
+                            <span className="text-[9px] text-muted-foreground block mt-0.5">
+                              ({a.totalDays} días)
+                            </span>
+                          )}
                         </div>
                         <div>
                           <label className="text-[9px] text-muted-foreground block uppercase font-bold">
@@ -619,18 +625,24 @@ export function BabyLeavePlannerModule() {
                         </div>
                         <div>
                           <label className="text-[9px] text-muted-foreground block uppercase font-bold text-right">
-                            Días Totales
+                            {a.consumptionMode === "weeks" ? "Semanas" : "Días Totales"}
                           </label>
                           <input
                             type="number"
                             className="w-full border-b border-border text-xs py-1 bg-transparent text-right text-foreground"
-                            value={a.totalDays}
-                            onChange={(e) =>
+                            value={a.consumptionMode === "weeks" ? Math.floor(a.totalDays / 7) : a.totalDays}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value) || 0;
                               updateAllowance(a.id, {
-                                totalDays: parseInt(e.target.value) || 0,
-                              })
-                            }
+                                totalDays: a.consumptionMode === "weeks" ? val * 7 : val,
+                              });
+                            }}
                           />
+                          {a.consumptionMode === "weeks" && (
+                            <span className="text-[9px] text-muted-foreground block text-right mt-0.5">
+                              ({a.totalDays} días)
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex justify-start gap-2">
