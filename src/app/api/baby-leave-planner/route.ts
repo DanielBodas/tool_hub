@@ -3,6 +3,10 @@ import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { cookies } from "next/headers";
+import { loadAllToolEnvs } from "@/lib/env";
+
+loadAllToolEnvs();
+
 
 async function getUserId() {
   const session = await getServerSession(authOptions);
@@ -10,16 +14,13 @@ async function getUserId() {
     return session.user.email;
   }
 
-  // Fallback to a tool-specific cookie if unlocked via PIN
+  // Fallback to a tool-specific cookie or dashboard cookie if unlocked via PIN
   const cookieStore = await cookies();
   const isUnlocked =
-    cookieStore.get("auth_tool_baby-leave-planner")?.value === "true";
+    cookieStore.get("auth_tool_baby-leave-planner")?.value === "true" ||
+    cookieStore.get("auth_dashboard")?.value === "true";
 
   if (isUnlocked) {
-    // We use a separate cookie to identify the specific PIN-authenticated session
-    // if we want multiple families using the same PIN to have separate data,
-    // but the current requirement implies PIN access is "per-installation/family".
-    // For simplicity, we use the PIN itself or a dedicated "family-id" cookie.
     return cookieStore.get("planner_id")?.value || "default_family";
   }
 

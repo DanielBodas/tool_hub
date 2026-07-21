@@ -2,8 +2,10 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { loadAllToolEnvs } from "@/lib/env";
 
 export async function POST(request: Request) {
+  loadAllToolEnvs();
   const { pin, toolId, type } = await request.json();
 
   let securePin = "";
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 2, // 2 hours
+      maxAge: 60 * 60 * 24 * 30, // 30 days
       path: "/",
     });
 

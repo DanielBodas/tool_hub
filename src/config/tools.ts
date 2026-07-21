@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { LucideIcon } from "lucide-react";
+import { loadAllToolEnvs } from "@/lib/env";
 
 /**
  * ToolMeta is the interface every module must export from its metadata.ts.
@@ -33,6 +34,7 @@ export type Tool = ToolMeta & {
  * NOTE: This function can only be called from Server Components!
  */
 export async function getTools(): Promise<Tool[]> {
+  loadAllToolEnvs();
   const modulesDir = path.join(process.cwd(), "src", "modules");
   
   if (!fs.existsSync(modulesDir)) return [];

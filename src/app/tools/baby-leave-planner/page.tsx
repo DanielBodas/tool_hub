@@ -22,7 +22,6 @@ export default async function BabyLeavePlannerPage() {
 
   return (
     <ToolBaseLayout
-      toolId="baby-leave-planner"
       toolName="Permiso de Nacimiento"
     >
       <BabyLeavePlannerModule />
