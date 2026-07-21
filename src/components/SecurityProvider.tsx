@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { signOut } from "next-auth/react";
 
 interface SecurityContextType {
   unlockedTools: string[];
@@ -9,8 +10,9 @@ interface SecurityContextType {
     toolId?: string,
     type?: "dashboard" | "tool",
   ) => Promise<boolean>;
-  lock: (toolId?: string) => void;
+  lock: (toolId?: string) => Promise<void>;
   isToolUnlocked: (toolId?: string) => boolean;
+  hasSession: boolean;
 }
 
 const SecurityContext = createContext<SecurityContextType | undefined>(
@@ -29,7 +31,7 @@ export function SecurityProvider({
   const [unlockedTools, setUnlockedTools] = useState<string[]>(initialUnlockedTools);
 
   useEffect(() => {
-    const status = sessionStorage.getItem("unlocked_tools");
+    const status = localStorage.getItem("unlocked_tools");
     let storedTools: string[] = [];
     if (status) {
       try {
@@ -39,12 +41,12 @@ export function SecurityProvider({
       }
     }
     
-    // Merge server cookies state with sessionStorage state
+    // Merge server cookies state with localStorage state
     const mergedTools = Array.from(new Set([...initialUnlockedTools, ...storedTools]));
     
     window.requestAnimationFrame(() => {
       setUnlockedTools(mergedTools);
-      sessionStorage.setItem("unlocked_tools", JSON.stringify(mergedTools));
+      localStorage.setItem("unlocked_tools", JSON.stringify(mergedTools));
     });
   }, [initialUnlockedTools]);
 
@@ -71,7 +73,7 @@ export function SecurityProvider({
         setUnlockedTools((prev) => {
           if (prev.includes(id)) return prev;
           const newTools = [...prev, id];
-          sessionStorage.setItem("unlocked_tools", JSON.stringify(newTools));
+          localStorage.setItem("unlocked_tools", JSON.stringify(newTools));
           return newTools;
         });
         return true;
@@ -82,21 +84,44 @@ export function SecurityProvider({
     return false;
   }, []);
 
-  const lock = useCallback((toolId?: string) => {
+  const lock = useCallback(async (toolId?: string) => {
     const id = toolId || "dashboard";
-    setUnlockedTools((prev) => {
-      const newTools = prev.filter((t) => t !== id);
-      sessionStorage.setItem("unlocked_tools", JSON.stringify(newTools));
-      return newTools;
-    });
-  }, []);
+
+    // Clear server-side cookies
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (e) {
+      console.error("Failed to clear server cookies", e);
+    }
+
+    // Clear client-side local storage
+    if (!toolId || toolId === "dashboard") {
+      localStorage.removeItem("unlocked_tools");
+      setUnlockedTools([]);
+    } else {
+      setUnlockedTools((prev) => {
+        const newTools = prev.filter((t) => t !== id);
+        localStorage.setItem("unlocked_tools", JSON.stringify(newTools));
+        return newTools;
+      });
+    }
+
+    // Sign out from NextAuth if session exists
+    if (hasSession) {
+      await signOut({ redirect: false });
+    }
+
+    // Redirect to login
+    window.location.href = "/login";
+  }, [hasSession]);
 
   const contextValue = useMemo(() => ({
     unlockedTools,
     unlock,
     lock,
-    isToolUnlocked
-  }), [unlockedTools, unlock, lock, isToolUnlocked]);
+    isToolUnlocked,
+    hasSession
+  }), [unlockedTools, unlock, lock, isToolUnlocked, hasSession]);
 
   return (
     <SecurityContext.Provider value={contextValue}>

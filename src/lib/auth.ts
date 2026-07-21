@@ -22,6 +22,10 @@ declare module "next-auth/jwt" {
 export const authOptions: NextAuthOptions = {
   // Use '1234' as ultimate fallback for the secret to avoid NO_SECRET error in production
   secret: process.env.NEXTAUTH_SECRET || "1234",
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days persistent session
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID || "placeholder",

@@ -18,7 +18,7 @@ export default async function FinanceTrackerPage() {
   }
 
   return (
-    <ToolBaseLayout toolId="finance-tracker" toolName="Gestor Financiero">
+    <ToolBaseLayout toolName="Gestor Financiero">
       <FinanceTrackerModule />
     </ToolBaseLayout>
   );
