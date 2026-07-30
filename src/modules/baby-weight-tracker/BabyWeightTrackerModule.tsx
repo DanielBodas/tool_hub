@@ -16,7 +16,9 @@ import {
   X,
   Settings,
   Plus,
-  Sliders
+  Sliders,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 
 interface WeightRecord {
@@ -77,6 +79,10 @@ export function BabyWeightTrackerModule() {
 
   // Filter States
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
+
+  // Accordion Expand/Collapse States (for vertical space saving on mobile)
+  const [isDetailExpanded, setIsDetailExpanded] = useState<boolean>(true);
+  const [isTrendsExpanded, setIsTrendsExpanded] = useState<boolean>(false);
 
   // Local helper date initializers
   const getTodayDateString = () => {
@@ -787,6 +793,12 @@ export function BabyWeightTrackerModule() {
     return `${parseInt(parts[2])} ${months[parseInt(parts[1]) - 1]}`;
   };
 
+  // Helper trigger to auto-expand details on selected candle
+  const handleSelectRecord = (record: WeightRecord) => {
+    setSelectedRecord(record);
+    setIsDetailExpanded(true); // Always expand the details section on mobile when clicked
+  };
+
   return (
     <div className="space-y-4 md:space-y-6 flex-1 flex flex-col">
       {/* Error alert banner */}
@@ -1042,7 +1054,8 @@ export function BabyWeightTrackerModule() {
                                 x={chartDimensions.paddingLeft - 8}
                                 y={y + 4}
                                 textAnchor="end"
-                                className="fill-muted-foreground font-mono text-[10px] font-bold"
+                                fill="currentColor"
+                                className="text-muted-foreground font-mono text-[9px] font-bold"
                               >
                                 {val.toFixed(2)}
                               </text>
@@ -1063,7 +1076,6 @@ export function BabyWeightTrackerModule() {
                           const yLow = scaleY(netWeight);
 
                           // Open of Candle = Recorded Weight, Close = Net weight
-                          // So it forms a beautiful downward block showing the clothes/blanket margin exact span
                           const yOpen = yHigh;
                           const yClose = yLow;
 
@@ -1090,7 +1102,7 @@ export function BabyWeightTrackerModule() {
                                 }
                                 fill={isHovered ? "currentColor" : "transparent"}
                                 className={isHovered ? "text-primary/5 rounded-xl" : ""}
-                                onClick={() => setSelectedRecord(record)}
+                                onClick={() => handleSelectRecord(record)}
                               />
 
                               {/* Wick (vertical line) */}
@@ -1114,7 +1126,7 @@ export function BabyWeightTrackerModule() {
                                 stroke={isHovered || isSelected ? "var(--color-foreground)" : "none"}
                                 strokeWidth="2"
                                 className="transition-all shadow-xs cursor-pointer"
-                                onClick={() => setSelectedRecord(record)}
+                                onClick={() => handleSelectRecord(record)}
                               />
 
                               {/* Single node dots for extra visual center */}
@@ -1132,14 +1144,15 @@ export function BabyWeightTrackerModule() {
                                 x={x}
                                 y={chartDimensions.height - 18}
                                 textAnchor="middle"
+                                fill="currentColor"
                                 className={`font-bold text-[9px] ${
                                   isSelected
-                                    ? "fill-primary font-extrabold"
+                                    ? "text-primary font-extrabold"
                                     : isHovered
-                                    ? "fill-foreground"
-                                    : "fill-muted-foreground"
+                                    ? "text-foreground"
+                                    : "text-muted-foreground"
                                 }`}
-                                onClick={() => setSelectedRecord(record)}
+                                onClick={() => handleSelectRecord(record)}
                               >
                                 {formatDateLabel(record.date)}
                               </text>
@@ -1149,8 +1162,9 @@ export function BabyWeightTrackerModule() {
                                 x={x}
                                 y={chartDimensions.height - 8}
                                 textAnchor="middle"
-                                className="font-semibold text-[8px] fill-muted-foreground/70"
-                                onClick={() => setSelectedRecord(record)}
+                                fill="currentColor"
+                                className="font-semibold text-[8px] text-muted-foreground/75"
+                                onClick={() => handleSelectRecord(record)}
                               >
                                 {record.time}
                               </text>
@@ -1373,120 +1387,142 @@ export function BabyWeightTrackerModule() {
           )}
         </div>
 
-        {/* Selected Record Details Card (Right Sidebar Column) + Trends Section */}
+        {/* Side column: COLLAPSIBLE Details and Trends Accordions (Saves vertical space on mobile) */}
         <div className="space-y-4 flex flex-col h-full">
-          {/* Record specific breakdown */}
-          <div className="bg-card border border-border/80 rounded-3xl p-5 shadow-xs flex flex-col space-y-4">
-            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-card-foreground border-b border-border pb-3">
-              <Calendar size={15} className="text-primary" />
-              <span>Desglose del Pesaje</span>
-            </div>
-
-            {selectedRecord ? (
-              <div className="space-y-4 animate-fade-in">
-                <div className="flex items-center justify-between">
-                  <span className="font-extrabold text-foreground text-sm">{formatDateLabel(selectedRecord.date)} {selectedRecord.time}</span>
-                  <button
-                    onClick={() => setSelectedRecord(null)}
-                    className="p-1 hover:bg-muted rounded-lg text-muted-foreground cursor-pointer"
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
-
-                <div className="p-3 bg-muted/40 rounded-2xl border border-border/30 space-y-1.5 animate-fade-in text-xs font-semibold text-muted-foreground">
-                  <div className="flex justify-between">
-                    <span>Sitio de Pesaje:</span>
-                    <span className="font-bold text-foreground">{selectedRecord.scale}</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border/30 pt-1.5">
-                    <span>Peso Bruto (High):</span>
-                    <span className="font-mono font-bold text-foreground">{selectedRecord.weight.toFixed(3)} kg</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Margen Ropa:</span>
-                    <span className="font-mono text-foreground">-{(selectedRecord.margin * 1000).toFixed(0)}g ({selectedRecord.clothes})</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Manta/Trapo:</span>
-                    <span className="font-mono text-foreground">-{((selectedRecord.blanketMargin || 0) * 1000).toFixed(0)}g ({selectedRecord.blanket || "Ninguna"})</span>
-                  </div>
-                  <div className="flex justify-between border-t border-border/30 pt-1.5">
-                    <span>Peso Neto Real (Low):</span>
-                    <span className="font-mono font-black text-emerald-500 text-sm">{(selectedRecord.weight - selectedRecord.margin - (selectedRecord.blanketMargin || 0)).toFixed(3)} kg</span>
-                  </div>
-                </div>
-
-                {selectedRecord.notes && (
-                  <p className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl italic">
-                    &ldquo;{selectedRecord.notes}&rdquo;
-                  </p>
-                )}
-
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(selectedRecord)}
-                    className="flex-1 py-2 border border-border bg-muted hover:bg-muted/80 rounded-xl text-xs font-bold transition cursor-pointer"
-                  >
-                    Editar
-                  </button>
-                  <button
-                    onClick={() => setDeleteId(selectedRecord._id)}
-                    className="flex-1 py-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl text-xs font-bold transition cursor-pointer"
-                  >
-                    Eliminar
-                  </button>
-                </div>
+          {/* 1. COLLAPSIBLE Record specific breakdown */}
+          <div className="bg-card border border-border/80 rounded-3xl overflow-hidden shadow-xs flex flex-col">
+            <button
+              onClick={() => setIsDetailExpanded(!isDetailExpanded)}
+              className="w-full px-5 py-4 flex items-center justify-between text-xs font-extrabold uppercase tracking-widest text-card-foreground hover:bg-muted/30 transition select-none cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <Calendar size={15} className="text-primary" />
+                <span>Desglose del Pesaje</span>
               </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center py-10 text-muted-foreground">
-                <Info size={28} className="text-primary/30 mb-2" />
-                <p className="text-xs max-w-[200px]">
-                  Pulsa sobre cualquier vela en el gráfico para ver el desglose completo del pesaje, escala, mantas y vestimenta.
-                </p>
+              {isDetailExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
+
+            {isDetailExpanded && (
+              <div className="px-5 pb-5 pt-1 space-y-4 border-t border-border/40 animate-fade-in">
+                {selectedRecord ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="font-extrabold text-foreground text-sm">{formatDateLabel(selectedRecord.date)} {selectedRecord.time}</span>
+                      <button
+                        onClick={() => setSelectedRecord(null)}
+                        className="p-1 hover:bg-muted rounded-lg text-muted-foreground cursor-pointer"
+                      >
+                        <X size={15} />
+                      </button>
+                    </div>
+
+                    <div className="p-3 bg-muted/40 rounded-2xl border border-border/30 space-y-1.5 text-xs font-semibold text-muted-foreground">
+                      <div className="flex justify-between">
+                        <span>Sitio de Pesaje:</span>
+                        <span className="font-bold text-foreground">{selectedRecord.scale}</span>
+                      </div>
+                      <div className="flex justify-between border-t border-border/30 pt-1.5">
+                        <span>Peso Bruto (High):</span>
+                        <span className="font-mono font-bold text-foreground">{selectedRecord.weight.toFixed(3)} kg</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Margen Ropa:</span>
+                        <span className="font-mono text-foreground">-{(selectedRecord.margin * 1000).toFixed(0)}g ({selectedRecord.clothes})</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Manta/Trapo:</span>
+                        <span className="font-mono text-foreground">-{((selectedRecord.blanketMargin || 0) * 1000).toFixed(0)}g ({selectedRecord.blanket || "Ninguna"})</span>
+                      </div>
+                      <div className="flex justify-between border-t border-border/30 pt-1.5">
+                        <span>Peso Neto Real (Low):</span>
+                        <span className="font-mono font-black text-emerald-500 text-sm">{(selectedRecord.weight - selectedRecord.margin - (selectedRecord.blanketMargin || 0)).toFixed(3)} kg</span>
+                      </div>
+                    </div>
+
+                    {selectedRecord.notes && (
+                      <p className="text-[11px] text-muted-foreground bg-muted/40 p-2.5 rounded-xl italic">
+                        &ldquo;{selectedRecord.notes}&rdquo;
+                      </p>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleEdit(selectedRecord)}
+                        className="flex-1 py-2 border border-border bg-muted hover:bg-muted/80 rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(selectedRecord._id)}
+                        className="flex-1 py-2 bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center text-center py-6 text-muted-foreground">
+                    <Info size={24} className="text-primary/30 mb-2" />
+                    <p className="text-xs max-w-[200px] leading-relaxed">
+                      Pulsa sobre cualquier vela en el gráfico para ver el desglose completo del pesaje.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Scale trends */}
-          <div className="bg-card border border-border/80 rounded-3xl p-5 shadow-xs flex flex-col space-y-4">
-            <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-widest text-card-foreground border-b border-border pb-3">
-              <TrendingUp size={15} className="text-emerald-500" />
-              <span>Tendencias por Sitio</span>
-            </div>
+          {/* 2. COLLAPSIBLE Scale trends (starts collapsed on mobile to save space) */}
+          <div className="bg-card border border-border/80 rounded-3xl overflow-hidden shadow-xs flex flex-col">
+            <button
+              onClick={() => setIsTrendsExpanded(!isTrendsExpanded)}
+              className="w-full px-5 py-4 flex items-center justify-between text-xs font-extrabold uppercase tracking-widest text-card-foreground hover:bg-muted/30 transition select-none cursor-pointer"
+            >
+              <div className="flex items-center gap-2">
+                <TrendingUp size={15} className="text-emerald-500" />
+                <span>Tendencias por Sitio</span>
+              </div>
+              {isTrendsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+            </button>
 
-            <div className="space-y-3 overflow-y-auto max-h-[220px] pr-1">
-              {siteTrends.map((trend) => {
-                const color = siteColors[trend.scale] || { hex: "#888" };
-                return (
-                  <div
-                    key={trend.scale}
-                    className="p-3 bg-muted/30 border border-border/50 rounded-xl space-y-1.5"
-                    style={{ borderLeft: `3px solid ${color.hex}` }}
-                  >
-                    <div className="flex items-center justify-between text-xs font-bold text-foreground">
-                      <span>{trend.scale}</span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {trend.count} pesos
-                      </span>
-                    </div>
+            {isTrendsExpanded && (
+              <div className="px-5 pb-5 pt-1 space-y-3 border-t border-border/40 animate-fade-in max-h-[250px] overflow-y-auto">
+                {siteTrends.length === 0 ? (
+                  <div className="text-xs text-muted-foreground text-center py-4">Sin datos de tendencias.</div>
+                ) : (
+                  siteTrends.map((trend) => {
+                    const color = siteColors[trend.scale] || { hex: "#888" };
+                    return (
+                      <div
+                        key={trend.scale}
+                        className="p-3 bg-muted/30 border border-border/50 rounded-xl space-y-1"
+                        style={{ borderLeft: `3.5px solid ${color.hex}` }}
+                      >
+                        <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                          <span className="truncate pr-1">{trend.scale}</span>
+                          <span className="text-[9px] text-muted-foreground shrink-0">
+                            {trend.count} pesos
+                          </span>
+                        </div>
 
-                    {trend.count <= 1 ? (
-                      <div className="text-[10px] text-muted-foreground italic">
-                        Datos insuficientes para tendencia.
+                        {trend.count <= 1 ? (
+                          <div className="text-[10px] text-muted-foreground italic">
+                            Datos insuficientes para tendencia.
+                          </div>
+                        ) : (
+                          <div className="flex items-baseline gap-1.5 text-xs">
+                            <span className="font-extrabold animate-pulse" style={{ color: color.hex }}>
+                              +{trend.growthRate.toFixed(1)}g
+                            </span>
+                            <span className="text-[10px] text-muted-foreground font-semibold">por día</span>
+                          </div>
+                        )}
                       </div>
-                    ) : (
-                      <div className="flex items-baseline gap-1.5 text-xs">
-                        <span className="font-extrabold" style={{ color: color.hex }}>
-                          +{trend.growthRate.toFixed(1)}g
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">por día</span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -1494,7 +1530,7 @@ export function BabyWeightTrackerModule() {
       {/* Popover Form Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col space-y-4 max-h-[90vh] overflow-y-auto animate-fade-in">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
@@ -1754,7 +1790,7 @@ export function BabyWeightTrackerModule() {
       {/* Config Customization Modal */}
       {showConfigModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col space-y-5 max-h-[90vh] overflow-y-auto font-sans">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-6 md:p-8 flex flex-col space-y-5 max-h-[90vh] overflow-y-auto font-sans animate-fade-in">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
