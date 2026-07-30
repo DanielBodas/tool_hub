@@ -21,6 +21,20 @@ interface DBWeightRecord {
   updatedAt: Date;
 }
 
+const DEFAULT_SITES = [
+  "Báscula Casa (Bebé)",
+  "Báscula Farmacia",
+  "Consulta Pediatra",
+  "Báscula Cocina"
+];
+
+const DEFAULT_CLOTHING = [
+  { name: "Sin ropa", margin: 0.0, label: "Sin ropa (Desnudo)" },
+  { name: "Pañal limpio", margin: 0.025, label: "Pañal limpio (+25g)" },
+  { name: "Ropa ligera", margin: 0.100, label: "Ropa ligera (+100g)" },
+  { name: "Ropa de abrigo", margin: 0.250, label: "Ropa de abrigo (+250g)" }
+];
+
 async function getUserId() {
   const session = await getServerSession(authOptions);
   if (session?.user?.email) {
@@ -52,19 +66,33 @@ export async function GET() {
       process.env.BABY_WEIGHT_TRACKER_DB_NAME || "baby-weight-tracker",
     );
 
-    const data = (await db
+    // Fetch weight records
+    const weightsData = (await db
       .collection("weights")
       .find({ userId })
       .toArray()) as unknown as DBWeightRecord[];
 
-    // Sort by date and time in javascript to make sure it's consistent
-    const sorted = data.sort((a, b) => {
+    // Fetch custom settings
+    const settingsDoc = await db
+      .collection("settings")
+      .findOne({ userId });
+
+    const sorted = weightsData.sort((a, b) => {
       const dateA = `${a.date}T${a.time || "00:00"}`;
       const dateB = `${b.date}T${b.time || "00:00"}`;
       return dateA.localeCompare(dateB);
     });
 
-    return NextResponse.json(sorted);
+    const responseData = {
+      weights: sorted,
+      settings: settingsDoc || {
+        userId,
+        sites: DEFAULT_SITES,
+        clothing: DEFAULT_CLOTHING
+      }
+    };
+
+    return NextResponse.json(responseData);
   } catch (e) {
     console.error("GET baby-weight-tracker error:", e);
     return NextResponse.json(
@@ -87,6 +115,27 @@ export async function POST(request: Request) {
       process.env.BABY_WEIGHT_TRACKER_DB_NAME || "baby-weight-tracker",
     );
 
+    // Check if we are saving configurations
+    if (body.type === "settings") {
+      const cleanSettings = {
+        userId,
+        sites: body.sites || DEFAULT_SITES,
+        clothing: body.clothing || DEFAULT_CLOTHING,
+        updatedAt: new Date()
+      };
+
+      await db
+        .collection("settings")
+        .updateOne(
+          { userId },
+          { $set: cleanSettings },
+          { upsert: true }
+        );
+
+      return NextResponse.json({ success: true, settings: cleanSettings });
+    }
+
+    // Otherwise, save a weight record
     const recordId = body.id || crypto.randomUUID();
 
     const weightRecord = {
