@@ -13,8 +13,10 @@ interface DBWeightRecord {
   userId: string;
   date: string;
   time: string;
-  weight: number;
-  margin: number;
+  weight: number;      // Recorded raw weight (high of candle) in kg
+  margin: number;      // Clothing margin in kg
+  blanket: string;     // Blanket name
+  blanketMargin: number; // Blanket margin in kg
   scale: string;
   clothes: string;
   notes: string;
@@ -33,6 +35,12 @@ const DEFAULT_CLOTHING = [
   { name: "Pañal limpio", margin: 0.025, label: "Pañal limpio (+25g)" },
   { name: "Ropa ligera", margin: 0.100, label: "Ropa ligera (+100g)" },
   { name: "Ropa de abrigo", margin: 0.250, label: "Ropa de abrigo (+250g)" }
+];
+
+const DEFAULT_BLANKETS = [
+  { name: "Ninguna", margin: 0.0, label: "Ninguna (0g)" },
+  { name: "Toalla fina", margin: 0.100, label: "Toalla fina (+100g)" },
+  { name: "Manta algodón", margin: 0.200, label: "Manta algodón (+200g)" }
 ];
 
 async function getUserId() {
@@ -88,7 +96,8 @@ export async function GET() {
       settings: settingsDoc || {
         userId,
         sites: DEFAULT_SITES,
-        clothing: DEFAULT_CLOTHING
+        clothing: DEFAULT_CLOTHING,
+        blankets: DEFAULT_BLANKETS
       }
     };
 
@@ -121,6 +130,7 @@ export async function POST(request: Request) {
         userId,
         sites: body.sites || DEFAULT_SITES,
         clothing: body.clothing || DEFAULT_CLOTHING,
+        blankets: body.blankets || DEFAULT_BLANKETS,
         updatedAt: new Date()
       };
 
@@ -145,6 +155,8 @@ export async function POST(request: Request) {
       time: body.time || "12:00",
       weight: parseFloat(body.weight),
       margin: parseFloat(body.margin || "0"),
+      blanket: body.blanket || "Ninguna",
+      blanketMargin: parseFloat(body.blanketMargin || "0"),
       scale: body.scale || "Principal",
       clothes: body.clothes || "Sin ropa",
       notes: body.notes || "",
