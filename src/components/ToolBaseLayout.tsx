@@ -2,8 +2,9 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowLeft, LogOut, Wrench } from "lucide-react";
+import { ArrowLeft, LogOut } from "lucide-react";
 import { useSecurity } from "./SecurityProvider";
+import { BrandLogo } from "./BrandLogo";
 
 interface ToolBaseLayoutProps {
   children: React.ReactNode;
@@ -37,7 +38,7 @@ export function ToolBaseLayout({
 
         {/* Center: Tool Name (Truncates safely on small screens) */}
         <div className="flex items-center gap-1.5 shrink min-w-0 overflow-hidden text-center px-1">
-          <Wrench size={11} className="text-primary shrink-0" />
+          <BrandLogo className="w-3.5 h-3.5 rounded-xs shrink-0 shadow-xs" />
           <span className="text-[11px] font-extrabold tracking-tight text-foreground uppercase truncate">
             {toolName}
           </span>

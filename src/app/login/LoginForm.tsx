@@ -3,7 +3,7 @@
 import { signIn } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export function LoginForm() {
   const [adminCode, setAdminCode] = useState("");
@@ -46,8 +46,8 @@ export function LoginForm() {
     <div className="min-h-[80vh] flex items-center justify-center p-4 bg-background">
       <div className="max-w-md w-full bg-card p-6 sm:p-10 rounded-3xl sm:rounded-[2.5rem] shadow-xl border border-border">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Lock size={32} />
+          <div className="flex justify-center mb-6">
+            <BrandLogo className="w-20 h-20 rounded-3xl shadow-lg" />
           </div>
           <h1 className="text-3xl font-extrabold text-foreground tracking-tight">Bienvenido</h1>
           <p className="text-muted-foreground mt-2">
