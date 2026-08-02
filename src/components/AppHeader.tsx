@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { HeaderNav } from "./HeaderNav";
-import { Wrench } from "lucide-react";
+import { BrandLogo } from "./BrandLogo";
 
 export function AppHeader() {
   const pathname = usePathname();
@@ -21,9 +21,7 @@ export function AppHeader() {
             href="/dashboard"
             className="flex items-center gap-2 font-black text-sm tracking-tight text-foreground hover:opacity-90 transition"
           >
-            <div className="w-6 h-6 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-              <Wrench size={14} />
-            </div>
+            <BrandLogo className="w-6 h-6 rounded-md shadow-xs" />
             <span>ToolHub</span>
           </Link>
         </div>
