@@ -13,51 +13,57 @@ export function BrandLogo({ className = "w-10 h-10", ...props }: BrandLogoProps)
       {...props}
     >
       <defs>
-        <linearGradient id="brand-logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4F46E5" />
-          <stop offset="35%" stopColor="#7C3AED" />
-          <stop offset="70%" stopColor="#EC4899" />
-          <stop offset="100%" stopColor="#F43F5E" />
+        {/* Isolated gradient and filter IDs to prevent collisions on duplicate rendering */}
+        <linearGradient id="bl-ring-pink" x1="0%" y1="100%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#8B5CF6" />
+          <stop offset="100%" stopColor="#EC4899" />
         </linearGradient>
-        <filter id="brand-logo-glow" x="-10%" y="-10%" width="120%" height="120%">
-          <feDropShadow dx="0" dy="8" stdDeviation="16" floodColor="#000000" floodOpacity="0.2" />
+        <linearGradient id="bl-ring-blue" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stopColor="#3B82F6" />
+          <stop offset="100%" stopColor="#06B6D4" />
+        </linearGradient>
+        <linearGradient id="bl-ring-gold" x1="100%" y1="100%" x2="0%" y2="0%">
+          <stop offset="0%" stopColor="#F59E0B" />
+          <stop offset="100%" stopColor="#EF4444" />
+        </linearGradient>
+
+        <radialGradient id="bl-bg-grad" cx="50%" cy="50%" r="70%">
+          <stop offset="0%" stopColor="#1E1B4B" />
+          <stop offset="60%" stopColor="#0F0C24" />
+          <stop offset="100%" stopColor="#070514" />
+        </radialGradient>
+
+        <filter id="bl-ring-glow" x="-20%" y="-20%" width="140%" height="140%">
+          <feGaussianBlur stdDeviation="10" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+        <filter id="bl-core-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feDropShadow dx="0" dy="0" stdDeviation="12" floodColor="#FFFFFF" floodOpacity="0.8" />
         </filter>
       </defs>
 
-      {/* Background Squircle */}
-      <rect width="512" height="512" rx="144" fill="url(#brand-logo-grad)" />
+      {/* Dark Premium Background Squircle */}
+      <rect width="512" height="512" rx="144" fill="url(#bl-bg-grad)" />
 
-      <g filter="url(#brand-logo-glow)">
-        {/* Central Hub Circle representing Platform */}
-        <circle cx="256" cy="256" r="110" fill="none" stroke="#FFFFFF" strokeWidth="24" strokeLinecap="round" opacity="0.9" />
+      {/* Interlocking Rings Group with screen blend mode */}
+      <g filter="url(#bl-ring-glow)" style={{ mixBlendMode: "screen" }}>
+        {/* Blue Ring (Bottom-Left / Finance & Precision) */}
+        <circle cx="195" cy="295" r="94" fill="none" stroke="url(#bl-ring-blue)" strokeWidth="32" opacity="0.9" />
 
-        {/* Gear Teeth / Spokes (8 radiating pill shapes) */}
-        <g fill="#FFFFFF" opacity="0.9">
-          <rect x="244" y="100" width="24" height="40" rx="12" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(45 256 256)" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(90 256 256)" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(135 256 256)" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(180 256 256)" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(225 256 256)" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(270 256 256)" />
-          <rect x="244" y="100" width="24" height="40" rx="12" transform="rotate(315 256 256)" />
-        </g>
+        {/* Gold Ring (Bottom-Right / Bets & Celebration) */}
+        <circle cx="317" cy="295" r="94" fill="none" stroke="url(#bl-ring-gold)" strokeWidth="32" opacity="0.9" />
 
-        {/* Stylized Wrench Diagonal crossing the center */}
-        <g transform="rotate(-45 256 256)">
-          <rect x="240" y="180" width="32" height="200" rx="16" fill="#FFFFFF" />
-          <rect x="248" y="220" width="16" height="120" rx="8" fill="url(#brand-logo-grad)" />
+        {/* Pink Ring (Top / Care & Baby Leaves) */}
+        <circle cx="256" cy="190" r="94" fill="none" stroke="url(#bl-ring-pink)" strokeWidth="32" opacity="0.9" />
+      </g>
 
-          <circle cx="256" cy="170" r="44" fill="#FFFFFF" />
-          <rect x="238" y="110" width="36" height="60" rx="8" fill="url(#brand-logo-grad)" />
-
-          <circle cx="256" cy="380" r="32" fill="#FFFFFF" />
-          <circle cx="256" cy="380" r="14" fill="url(#brand-logo-grad)" />
-        </g>
-
-        {/* Sparkles / Stars */}
-        <path d="M380,100 Q380,130 410,130 Q380,130 380,160 Q380,130 350,130 Q380,130 380,100 Z" fill="#FFFFFF" />
-        <path d="M130,350 Q130,370 150,370 Q130,370 130,390 Q130,370 110,370 Q130,370 130,350 Z" fill="#FFFFFF" opacity="0.8" />
+      {/* Central Glow & Core Connection Sparkle */}
+      <g filter="url(#bl-core-glow)">
+        <circle cx="256" cy="260" r="14" fill="#FFFFFF" />
+        <path d="M256,220 Q256,260 296,260 Q256,260 256,300 Q256,260 216,260 Q256,260 256,220 Z" fill="#FFFFFF" />
       </g>
     </svg>
   );
