@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Boxes,
   Plus,
@@ -19,7 +19,10 @@ import {
   HelpCircle,
   FolderOpen,
   Tag,
-  Check
+  Check,
+  ArrowUp,
+  ArrowDown,
+  Info
 } from "lucide-react";
 
 // Types
@@ -39,25 +42,26 @@ interface StorageItem {
   id: string;
   name: string;
   type: "caja" | "suelto";
-  color: string; // Tailwind class name or Hex (e.g. 'indigo', 'emerald', 'rose', 'amber', 'sky', 'slate')
+  color: string; // Color name
   description: string;
-  tags: string[]; // array of tags
-  contents: string[]; // sub-items inside boxes
+  tags: string[];
+  contents: string[];
   shelfId: string;
   baldaId: string;
-  huecoIndex: number; // 0-based index
+  huecoIndex: number;
+  stackIndex: number; // Vertical position inside the slot (0 is bottom)
 }
 
 // Colors list for visual customization
 const COLOR_OPTIONS = [
-  { name: "Slate", class: "bg-slate-500 border-slate-600 text-white" },
-  { name: "Red", class: "bg-rose-500 border-rose-600 text-white" },
-  { name: "Orange", class: "bg-orange-500 border-orange-600 text-white" },
-  { name: "Yellow", class: "bg-amber-500 border-amber-600 text-white" },
-  { name: "Green", class: "bg-emerald-500 border-emerald-600 text-white" },
-  { name: "Blue", class: "bg-sky-500 border-sky-600 text-white" },
-  { name: "Indigo", class: "bg-indigo-500 border-indigo-600 text-white" },
-  { name: "Purple", class: "bg-purple-500 border-purple-600 text-white" },
+  { name: "Slate", class: "bg-slate-500 hover:bg-slate-600 border-slate-700 text-white shadow-slate-500/30" },
+  { name: "Red", class: "bg-rose-500 hover:bg-rose-600 border-rose-700 text-white shadow-rose-500/30" },
+  { name: "Orange", class: "bg-orange-500 hover:bg-orange-600 border-orange-700 text-white shadow-orange-500/30" },
+  { name: "Yellow", class: "bg-amber-500 hover:bg-amber-600 border-amber-700 text-white shadow-amber-500/30" },
+  { name: "Green", class: "bg-emerald-500 hover:bg-emerald-600 border-emerald-700 text-white shadow-emerald-500/30" },
+  { name: "Blue", class: "bg-sky-500 hover:bg-sky-600 border-sky-700 text-white shadow-sky-500/30" },
+  { name: "Indigo", class: "bg-indigo-500 hover:bg-indigo-600 border-indigo-700 text-white shadow-indigo-500/30" },
+  { name: "Purple", class: "bg-purple-500 hover:bg-purple-600 border-purple-700 text-white shadow-purple-500/30" },
 ];
 
 export function StorageOrganizerModule() {
@@ -74,6 +78,14 @@ export function StorageOrganizerModule() {
     shelfId: string;
     baldaId: string;
     huecoIndex: number;
+    itemId?: string; // Optional specific item selected within the stack
+  } | null>(null);
+
+  // Drag and Drop Dragged Item State
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<{
+    baldaId: string;
+    huecoIndex: number;
   } | null>(null);
 
   // Compact Form states
@@ -83,7 +95,6 @@ export function StorageOrganizerModule() {
   const [newShelfHuecosDefault, setNewShelfHuecosDefault] = useState(3);
 
   const [isConfiguringShelves, setIsConfiguringShelves] = useState(false);
-  const [editingShelfId, setEditingShelfId] = useState<string | null>(null);
 
   // Form states for adding/editing box or item
   const [itemForm, setItemForm] = useState<{
@@ -103,7 +114,7 @@ export function StorageOrganizerModule() {
     contentsInput: "",
   });
 
-  // State to handle moving boxes
+  // State to handle moving boxes manually
   const [movingItem, setMovingItem] = useState<StorageItem | null>(null);
 
   // Fetch initial data
@@ -114,11 +125,15 @@ export function StorageOrganizerModule() {
         const resData = await response.json();
 
         if (resData.offline) {
-          // MongoDB offline fallback to local storage
           loadFromLocalStorage();
         } else if (response.ok && resData.shelves) {
           setShelves(resData.shelves);
-          setItems(resData.items || []);
+          // Migrate old data if any item has missing stackIndex
+          const loadedItems = (resData.items || []).map((it: any, idx: number) => ({
+            ...it,
+            stackIndex: typeof it.stackIndex === "number" ? it.stackIndex : 0,
+          }));
+          setItems(loadedItems);
           setSyncStatus("cloud");
           if (resData.shelves.length > 0) {
             setSelectedShelfId(resData.shelves[0].id);
@@ -143,8 +158,13 @@ export function StorageOrganizerModule() {
       const parsedShelves = storedShelves ? JSON.parse(storedShelves) : getInitialDefaultShelves();
       const parsedItems = storedItems ? JSON.parse(storedItems) : [];
 
+      const migratedItems = parsedItems.map((it: any) => ({
+        ...it,
+        stackIndex: typeof it.stackIndex === "number" ? it.stackIndex : 0,
+      }));
+
       setShelves(parsedShelves);
-      setItems(parsedItems);
+      setItems(migratedItems);
       setSyncStatus("local");
 
       if (parsedShelves.length > 0) {
@@ -171,7 +191,7 @@ export function StorageOrganizerModule() {
     ];
   }
 
-  // Trigger auto-save on shelves or items change
+  // Trigger auto-save
   const isFirstRender = useRef(true);
   useEffect(() => {
     if (isFirstRender.current) {
@@ -184,7 +204,6 @@ export function StorageOrganizerModule() {
     const delayDebounceFn = setTimeout(async () => {
       setIsSaving(true);
 
-      // Always write to local storage first
       try {
         localStorage.setItem("trastero_shelves", JSON.stringify(shelves));
         localStorage.setItem("trastero_items", JSON.stringify(items));
@@ -215,17 +234,24 @@ export function StorageOrganizerModule() {
     return () => clearTimeout(delayDebounceFn);
   }, [shelves, items, syncStatus]);
 
-  // Find currently selected shelf
   const currentShelf = shelves.find((s) => s.id === selectedShelfId) || shelves[0];
 
-  // Group items by location for fast access
+  // Group items by location & sort by stackIndex ascending
   const itemsByLocation = items.reduce((acc, item) => {
     const key = `${item.shelfId}-${item.baldaId}-${item.huecoIndex}`;
-    acc[key] = item;
+    if (!acc[key]) {
+      acc[key] = [];
+    }
+    acc[key].push(item);
     return acc;
-  }, {} as Record<string, StorageItem>);
+  }, {} as Record<string, StorageItem[]>);
 
-  // Live matching search helper
+  // Sort stacks inside each slot
+  Object.keys(itemsByLocation).forEach((key) => {
+    itemsByLocation[key].sort((a, b) => a.stackIndex - b.stackIndex);
+  });
+
+  // Search matching helper
   function isMatchingSearch(item: StorageItem, query: string): boolean {
     if (!query.trim()) return true;
     const cleanQuery = query.toLowerCase().trim();
@@ -238,19 +264,27 @@ export function StorageOrganizerModule() {
     return nameMatch || descMatch || tagMatch || contentMatch;
   }
 
-  // Any item search match inside the active shelf
   const hasActiveSearch = searchQuery.trim().length > 0;
 
-  // Active item in the selected slot
-  const selectedSlotItem = activeSlot
-    ? itemsByLocation[`${activeSlot.shelfId}-${activeSlot.baldaId}-${activeSlot.huecoIndex}`]
+  // Find currently selected item in the selected slot
+  const slotItems = activeSlot
+    ? (itemsByLocation[`${activeSlot.shelfId}-${activeSlot.baldaId}-${activeSlot.huecoIndex}`] || [])
+    : [];
+
+  const selectedSlotItem = activeSlot && activeSlot.itemId
+    ? (slotItems.find((it) => it.id === activeSlot.itemId) || null)
     : null;
 
-  // Action: Open slot details or edit/create item form
-  function handleSlotClick(shelfId: string, baldaId: string, huecoIndex: number) {
-    setActiveSlot({ shelfId, baldaId, huecoIndex });
+  // Action: Click slot (empty space or clicking specific item)
+  function handleSlotClick(shelfId: string, baldaId: string, huecoIndex: number, specificItemId?: string) {
+    const slotKey = `${shelfId}-${baldaId}-${huecoIndex}`;
+    const slotList = itemsByLocation[slotKey] || [];
 
-    const existing = itemsByLocation[`${shelfId}-${baldaId}-${huecoIndex}`];
+    const targetItemId = specificItemId || (slotList.length > 0 ? slotList[slotList.length - 1].id : undefined);
+
+    setActiveSlot({ shelfId, baldaId, huecoIndex, itemId: targetItemId });
+
+    const existing = targetItemId ? slotList.find((it) => it.id === targetItemId) : null;
     if (existing) {
       setItemForm({
         id: existing.id,
@@ -262,7 +296,6 @@ export function StorageOrganizerModule() {
         contentsInput: existing.contents.join(", "),
       });
     } else {
-      // Empty slot: reset form for fresh entry
       setItemForm({
         name: "",
         type: "caja",
@@ -274,7 +307,25 @@ export function StorageOrganizerModule() {
     }
   }
 
-  // Action: Save Item/Box to slot
+  // Action: Select another specific item in the same stack (from the stack details list)
+  function handleSelectSpecificItem(itemId: string) {
+    if (!activeSlot) return;
+    setActiveSlot({ ...activeSlot, itemId });
+    const existing = slotItems.find((it) => it.id === itemId);
+    if (existing) {
+      setItemForm({
+        id: existing.id,
+        name: existing.name,
+        type: existing.type,
+        color: existing.color,
+        description: existing.description,
+        tagsInput: existing.tags.join(", "),
+        contentsInput: existing.contents.join(", "),
+      });
+    }
+  }
+
+  // Action: Save/Place Item
   function handleSaveItem(e: React.FormEvent) {
     e.preventDefault();
     if (!activeSlot) return;
@@ -290,6 +341,17 @@ export function StorageOrganizerModule() {
       .map((c) => c.trim())
       .filter((c) => c.length > 0);
 
+    const slotKey = `${activeSlot.shelfId}-${activeSlot.baldaId}-${activeSlot.huecoIndex}`;
+    const currentStack = itemsByLocation[slotKey] || [];
+
+    let finalStackIndex = 0;
+    if (itemForm.id) {
+      const existing = currentStack.find((it) => it.id === itemForm.id);
+      finalStackIndex = existing ? existing.stackIndex : currentStack.length;
+    } else {
+      finalStackIndex = currentStack.length; // place on top of stack
+    }
+
     const newItem: StorageItem = {
       id: itemForm.id || `item-${Date.now()}`,
       name: itemForm.name.trim(),
@@ -301,17 +363,20 @@ export function StorageOrganizerModule() {
       shelfId: activeSlot.shelfId,
       baldaId: activeSlot.baldaId,
       huecoIndex: activeSlot.huecoIndex,
+      stackIndex: finalStackIndex,
     };
 
+    let updatedItems;
     if (itemForm.id) {
-      // Edit existing
-      setItems(items.map((it) => (it.id === itemForm.id ? newItem : it)));
+      updatedItems = items.map((it) => (it.id === itemForm.id ? newItem : it));
     } else {
-      // Create new
-      setItems([...items, newItem]);
+      updatedItems = [...items, newItem];
     }
 
-    // Refresh details context
+    setItems(updatedItems);
+    setActiveSlot({ ...activeSlot, itemId: newItem.id });
+
+    // Populate form with newly saved values
     setItemForm({
       id: newItem.id,
       name: newItem.name,
@@ -323,16 +388,141 @@ export function StorageOrganizerModule() {
     });
   }
 
-  // Action: Remove Item/Box
+  // Action: Delete/Remove Item
   function handleRemoveItem(itemId: string) {
-    if (confirm("¿Estás seguro de que quieres quitar esta caja o artículo?")) {
-      setItems(items.filter((it) => it.id !== itemId));
-      // Reset form & active slot state
+    if (confirm("¿Estás seguro de que deseas quitar este artículo?")) {
+      const itemToRemove = items.find((it) => it.id === itemId);
+      if (!itemToRemove) return;
+
+      const slotKey = `${itemToRemove.shelfId}-${itemToRemove.baldaId}-${itemToRemove.huecoIndex}`;
+      const remainingInSlot = items
+        .filter((it) => it.id !== itemId && `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` === slotKey)
+        .sort((a, b) => a.stackIndex - b.stackIndex);
+
+      // Re-index remaining stack
+      const reindexedItemsInSlot = remainingInSlot.map((it, idx) => ({
+        ...it,
+        stackIndex: idx,
+      }));
+
+      const otherItems = items.filter(
+        (it) => `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` !== slotKey
+      );
+
+      setItems([...otherItems, ...reindexedItemsInSlot]);
       setActiveSlot(null);
     }
   }
 
-  // Action: Add Shelf
+  // Stacking reorder manually: Up / Down
+  function handleMoveStackIndex(itemId: string, direction: "up" | "down") {
+    const targetItem = items.find((it) => it.id === itemId);
+    if (!targetItem) return;
+
+    const slotKey = `${targetItem.shelfId}-${targetItem.baldaId}-${targetItem.huecoIndex}`;
+    const slotStack = items
+      .filter((it) => `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` === slotKey)
+      .sort((a, b) => a.stackIndex - b.stackIndex);
+
+    const currentIdx = slotStack.findIndex((it) => it.id === itemId);
+    if (currentIdx === -1) return;
+
+    const targetSwapIdx = direction === "up" ? currentIdx + 1 : currentIdx - 1;
+    if (targetSwapIdx < 0 || targetSwapIdx >= slotStack.length) return; // out of bounds
+
+    // Swap indexes
+    const tempIndex = slotStack[currentIdx].stackIndex;
+    slotStack[currentIdx].stackIndex = slotStack[targetSwapIdx].stackIndex;
+    slotStack[targetSwapIdx].stackIndex = tempIndex;
+
+    const otherItems = items.filter(
+      (it) => `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` !== slotKey
+    );
+
+    setItems([...otherItems, ...slotStack]);
+    // Refresh slot selection to currently moved item
+    if (activeSlot) {
+      setActiveSlot({ ...activeSlot, itemId });
+    }
+  }
+
+  // HTML5 Drag and Drop event handlers
+  function handleDragStart(e: React.DragEvent, item: StorageItem) {
+    e.dataTransfer.setData("text/plain", item.id);
+    setDraggedItemId(item.id);
+  }
+
+  function handleDragOver(e: React.DragEvent, baldaId: string, huecoIndex: number) {
+    e.preventDefault();
+    if (dragOverSlot?.baldaId !== baldaId || dragOverSlot?.huecoIndex !== huecoIndex) {
+      setDragOverSlot({ baldaId, huecoIndex });
+    }
+  }
+
+  function handleDragLeave() {
+    setDragOverSlot(null);
+  }
+
+  function handleDrop(e: React.DragEvent, shelfId: string, baldaId: string, huecoIndex: number) {
+    e.preventDefault();
+    setDragOverSlot(null);
+
+    const itemId = e.dataTransfer.getData("text/plain") || draggedItemId;
+    if (!itemId) return;
+
+    setDraggedItemId(null);
+
+    const item = items.find((it) => it.id === itemId);
+    if (!item) return;
+
+    // If dropped in the same slot, do nothing
+    if (item.shelfId === shelfId && item.baldaId === baldaId && item.huecoIndex === huecoIndex) {
+      return;
+    }
+
+    // Move to the new slot, assign top stackIndex
+    const destinationSlotKey = `${shelfId}-${baldaId}-${huecoIndex}`;
+    const destStack = itemsByLocation[destinationSlotKey] || [];
+
+    const sourceSlotKey = `${item.shelfId}-${item.baldaId}-${item.huecoIndex}`;
+
+    // Adjust stackIndex of original slot (re-index remaining)
+    const remainingInSource = items
+      .filter((it) => it.id !== itemId && `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` === sourceSlotKey)
+      .sort((a, b) => a.stackIndex - b.stackIndex)
+      .map((it, idx) => ({ ...it, stackIndex: idx }));
+
+    const otherItems = items.filter(
+      (it) =>
+        `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` !== sourceSlotKey &&
+        `${it.shelfId}-${it.baldaId}-${it.huecoIndex}` !== destinationSlotKey &&
+        it.id !== itemId
+    );
+
+    const movedItem: StorageItem = {
+      ...item,
+      shelfId,
+      baldaId,
+      huecoIndex,
+      stackIndex: destStack.length, // placed on top
+    };
+
+    setItems([...otherItems, ...remainingInSource, movedItem]);
+    setActiveSlot({ shelfId, baldaId, huecoIndex, itemId: movedItem.id });
+
+    // Reset form to moved item
+    setItemForm({
+      id: movedItem.id,
+      name: movedItem.name,
+      type: movedItem.type,
+      color: movedItem.color,
+      description: movedItem.description,
+      tagsInput: movedItem.tags.join(", "),
+      contentsInput: movedItem.contents.join(", "),
+    });
+  }
+
+  // Manual Shelf Creation
   function handleAddShelf(e: React.FormEvent) {
     e.preventDefault();
     if (!newShelfName.trim()) return;
@@ -358,7 +548,7 @@ export function StorageOrganizerModule() {
     setNewShelfName("");
   }
 
-  // Action: Rename/Update Shelf baldas & slots
+  // Actions for modifying shelves
   function updateShelfBaldas(shelfId: string, updatedBaldas: Balda[]) {
     setShelves(
       shelves.map((sh) => (sh.id === shelfId ? { ...sh, baldas: updatedBaldas } : sh))
@@ -373,7 +563,7 @@ export function StorageOrganizerModule() {
     const newBalda: Balda = {
       id: `balda-${Date.now()}-${newBaldaNum}`,
       name: `Balda ${newBaldaNum}`,
-      huecoCount: 3, // default
+      huecoCount: 3,
     };
 
     updateShelfBaldas(shelfId, [...target.baldas, newBalda]);
@@ -387,12 +577,11 @@ export function StorageOrganizerModule() {
     if (itemsInBalda.length > 0) {
       if (
         !confirm(
-          `Esta balda contiene ${itemsInBalda.length} artículos. Al eliminar la balda, se perderán. ¿Quieres continuar?`
+          `Esta balda contiene ${itemsInBalda.length} artículos en sus huecos. Se perderán. ¿Quieres continuar?`
         )
       ) {
         return;
       }
-      // Remove orphans
       setItems(items.filter((it) => !(it.shelfId === shelfId && it.baldaId === baldaId)));
     }
 
@@ -410,29 +599,26 @@ export function StorageOrganizerModule() {
       if (b.id === baldaId) {
         const nextCount = increment ? b.huecoCount + 1 : Math.max(1, b.huecoCount - 1);
 
-        // If shrinking, verify if we are deleting slots containing items
         if (!increment && b.huecoCount > 1) {
-          const removedSlotIndex = b.huecoCount - 1; // 0-based index of last slot
+          const removedSlotIdx = b.huecoCount - 1;
           const itemsInRemovedSlot = items.filter(
-            (it) => it.shelfId === shelfId && it.baldaId === baldaId && it.huecoIndex === removedSlotIndex
+            (it) => it.shelfId === shelfId && it.baldaId === baldaId && it.huecoIndex === removedSlotIdx
           );
           if (itemsInRemovedSlot.length > 0) {
             if (
               !confirm(
-                `El último hueco contiene un artículo (${itemsInRemovedSlot[0].name}). Se borrará si reduces el tamaño. ¿Continuar?`
+                `El último hueco contiene ${itemsInRemovedSlot.length} artículos apilados. Se borrarán si reduces el tamaño. ¿Continuar?`
               )
             ) {
               return b;
             }
-            // Remove orphan
             setItems(
               items.filter(
-                (it) => !(it.shelfId === shelfId && it.baldaId === baldaId && it.huecoIndex === removedSlotIndex)
+                (it) => !(it.shelfId === shelfId && it.baldaId === baldaId && it.huecoIndex === removedSlotIdx)
               )
             );
           }
         }
-
         return { ...b, huecoCount: nextCount };
       }
       return b;
@@ -465,13 +651,12 @@ export function StorageOrganizerModule() {
     const itemsOnShelf = items.filter((it) => it.shelfId === shelfId);
     if (
       confirm(
-        `¿Seguro que quieres eliminar esta estantería? Se borrarán todos sus huecos y los ${itemsOnShelf.length} artículos/cajas que contiene.`
+        `¿Seguro que quieres eliminar esta estantería? Se borrarán todos sus huecos y los ${itemsOnShelf.length} artículos que contiene.`
       )
     ) {
       setShelves(shelves.filter((sh) => sh.id !== shelfId));
       setItems(items.filter((it) => it.shelfId !== shelfId));
       setActiveSlot(null);
-      // Select another remaining shelf
       const remaining = shelves.filter((sh) => sh.id !== shelfId);
       if (remaining.length > 0) {
         setSelectedShelfId(remaining[0].id);
@@ -479,61 +664,19 @@ export function StorageOrganizerModule() {
     }
   }
 
-  // Action: Move items/boxes
-  function initiateMove(item: StorageItem) {
-    setMovingItem(item);
-    setActiveSlot(null);
-  }
-
-  function completeMove(shelfId: string, baldaId: string, huecoIndex: number) {
-    if (!movingItem) return;
-
-    // Check if destination slot is occupied
-    const destItem = itemsByLocation[`${shelfId}-${baldaId}-${huecoIndex}`];
-    if (destItem) {
-      alert(`La ubicación de destino ya está ocupada por "${destItem.name}".`);
-      return;
-    }
-
-    // Move
-    setItems(
-      items.map((it) =>
-        it.id === movingItem.id
-          ? { ...it, shelfId, baldaId, huecoIndex }
-          : it
-      )
-    );
-
-    // Refresh views
-    setMovingItem(null);
-    setActiveSlot({ shelfId, baldaId, huecoIndex });
-
-    // Reset form to moved item
-    setItemForm({
-      id: movingItem.id,
-      name: movingItem.name,
-      type: movingItem.type,
-      color: movingItem.color,
-      description: movingItem.description,
-      tagsInput: movingItem.tags.join(", "),
-      contentsInput: movingItem.contents.join(", "),
-    });
-  }
-
   return (
     <div className="space-y-6">
-      {/* Top Title Bar with Sync Status indicator */}
+      {/* Title Header with Sync Status */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card border border-border/80 p-4 rounded-2xl shadow-xs">
         <div>
           <h1 className="text-xl font-bold text-foreground flex items-center gap-2">
             <Boxes className="text-primary" size={24} /> Organizador de Trastero
           </h1>
           <p className="text-xs text-muted-foreground">
-            Control visual e inmediato de tus estanterías. Micro-entradas adaptadas a móviles.
+            Gestión visual y realista. Organiza cajas en pilas con Drag & Drop o cambia su orden manualmente.
           </p>
         </div>
 
-        {/* Sync Indicator Pill */}
         <div className="flex items-center gap-2 self-stretch sm:self-auto justify-between sm:justify-start">
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-secondary/50 text-secondary-foreground border border-border">
             {syncStatus === "cloud" ? (
@@ -567,15 +710,16 @@ export function StorageOrganizerModule() {
         </div>
       </div>
 
-      {/* Main Grid: Control panel */}
+      {/* Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left column (Grid + Maps) (Occupies 8/12 of horizontal space on desktop) */}
+
+        {/* Left Column (Shelf Visualizer & Config) */}
         <div className="lg:col-span-8 space-y-4">
-          {/* Controls: Select Shelf, Search, Configure */}
-          <div className="bg-card border border-border/85 p-3 rounded-2xl shadow-xs space-y-3">
+
+          {/* Controls: Select, Search, Config */}
+          <div className="bg-card border border-border/80 p-3 rounded-2xl shadow-xs space-y-3">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
 
-              {/* Shelf Selection Dropdown */}
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
                 <span className="text-xs font-bold text-muted-foreground shrink-0 hidden sm:inline">
                   Estantería:
@@ -599,7 +743,6 @@ export function StorageOrganizerModule() {
                 </div>
               </div>
 
-              {/* Action buttons */}
               <div className="flex items-center gap-1.5 shrink-0 justify-end">
                 <button
                   onClick={() => setIsAddingShelf(!isAddingShelf)}
@@ -626,7 +769,7 @@ export function StorageOrganizerModule() {
               </div>
             </div>
 
-            {/* Sub-form: Add New Shelf */}
+            {/* Add Shelf Sub-Form */}
             {isAddingShelf && (
               <form onSubmit={handleAddShelf} className="p-3 bg-muted/50 border border-border/80 rounded-xl space-y-2.5">
                 <div className="flex justify-between items-center border-b border-border/50 pb-1.5">
@@ -636,7 +779,6 @@ export function StorageOrganizerModule() {
                   </button>
                 </div>
 
-                {/* Space saving grid for inputs */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <div className="space-y-1">
                     <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre</label>
@@ -646,18 +788,18 @@ export function StorageOrganizerModule() {
                       value={newShelfName}
                       onChange={(e) => setNewShelfName(e.target.value)}
                       required
-                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary"
+                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden"
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nº Baldas (Filas)</label>
+                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nº Baldas</label>
                     <input
                       type="number"
                       min={1}
-                      max={15}
+                      max={12}
                       value={newShelfBaldasCount}
                       onChange={(e) => setNewShelfBaldasCount(parseInt(e.target.value) || 4)}
-                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary"
+                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden"
                     />
                   </div>
                   <div className="space-y-1">
@@ -668,7 +810,7 @@ export function StorageOrganizerModule() {
                       max={10}
                       value={newShelfHuecosDefault}
                       onChange={(e) => setNewShelfHuecosDefault(parseInt(e.target.value) || 3)}
-                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary"
+                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -684,7 +826,7 @@ export function StorageOrganizerModule() {
               </form>
             )}
 
-            {/* Smart Micro Live Search */}
+            {/* Smart Live Search */}
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
               <input
@@ -705,30 +847,26 @@ export function StorageOrganizerModule() {
             </div>
           </div>
 
-          {/* Configuration Mode: Customizing baldass and huecos */}
+          {/* Configuration/Personalization Panel */}
           {isConfiguringShelves && currentShelf && (
             <div className="bg-card border-2 border-dashed border-primary/25 p-4 rounded-2xl shadow-xs space-y-3">
               <div className="flex justify-between items-center border-b border-border/60 pb-2">
                 <div className="flex items-center gap-1.5">
                   <Settings size={16} className="text-primary" />
                   <h3 className="text-sm font-black text-foreground">
-                    Modo Personalización: {currentShelf.name}
+                    Personalizar: {currentShelf.name}
                   </h3>
                 </div>
                 <button
-                  onClick={() => {
-                    setIsConfiguringShelves(false);
-                    setEditingShelfId(null);
-                  }}
+                  onClick={() => setIsConfiguringShelves(false)}
                   className="text-xs font-bold text-muted-foreground hover:text-foreground bg-muted px-2 py-1 rounded-md"
                 >
                   Cerrar
                 </button>
               </div>
 
-              {/* Shelf Name editing */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-muted/40 p-2 rounded-xl">
-                <span className="text-xs font-bold text-muted-foreground shrink-0">Renombrar Estantería:</span>
+                <span className="text-xs font-bold text-muted-foreground shrink-0">Nombre de Estantería:</span>
                 <input
                   type="text"
                   value={currentShelf.name}
@@ -744,7 +882,6 @@ export function StorageOrganizerModule() {
                 </button>
               </div>
 
-              {/* Customize Baldas & Huecos individually */}
               <div className="space-y-2">
                 <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">
                   Configuración individual de baldas y huecos (de arriba a abajo):
@@ -753,7 +890,6 @@ export function StorageOrganizerModule() {
                 <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
                   {currentShelf.baldas.map((balda, idx) => (
                     <div key={balda.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      {/* Name of Balda */}
                       <div className="flex items-center gap-2 min-w-0 flex-1">
                         <span className="text-xs font-bold text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded-md">
                           #{idx + 1}
@@ -767,10 +903,9 @@ export function StorageOrganizerModule() {
                         />
                       </div>
 
-                      {/* Customize slot count */}
                       <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
                         <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground mr-1.5">Huecos (Huecos):</span>
+                          <span className="text-xs text-muted-foreground mr-1.5">Huecos:</span>
                           <button
                             type="button"
                             onClick={() => handleUpdateBaldaHuecos(currentShelf.id, balda.id, false)}
@@ -789,7 +924,6 @@ export function StorageOrganizerModule() {
                           </button>
                         </div>
 
-                        {/* Remove this single balda */}
                         <button
                           type="button"
                           onClick={() => handleRemoveBaldaFromShelf(currentShelf.id, balda.id)}
@@ -803,7 +937,6 @@ export function StorageOrganizerModule() {
                   ))}
                 </div>
 
-                {/* Add new Balda button */}
                 <button
                   type="button"
                   onClick={() => handleAddBaldaToShelf(currentShelf.id)}
@@ -816,152 +949,194 @@ export function StorageOrganizerModule() {
             </div>
           )}
 
-          {/* Visual Shelf Render */}
+          {/* Highly Visual Real Shelf Renderer */}
           {currentShelf ? (
             <div className="bg-card border border-border/85 rounded-2xl p-4 shadow-xs relative">
-              {/* Shelf Title & Info */}
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-xs font-black text-foreground uppercase tracking-wider flex items-center gap-1.5">
                   <Layers size={14} className="text-primary" />
-                  {currentShelf.name}
+                  Plano de {currentShelf.name}
                 </span>
 
-                {movingItem && (
-                  <div className="flex items-center gap-2 bg-primary/10 text-primary border border-primary/20 px-2 py-1 rounded-lg text-xs animate-pulse">
-                    <Move size={12} />
-                    <span>Moviendo &quot;{movingItem.name}&quot;... Elige un hueco vacío de destino</span>
-                    <button
-                      onClick={() => setMovingItem(null)}
-                      className="p-0.5 hover:bg-primary/20 rounded-md"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                )}
+                <div className="text-[10px] text-muted-foreground flex items-center gap-2 font-bold bg-muted/40 px-2 py-1 rounded-md">
+                  <Info size={12} className="text-primary" />
+                  <span className="hidden xs:inline">Arrastra cajas para recolocarlas o apilarlas</span>
+                  <span className="xs:hidden">Toca un hueco para apilar o ver detalles</span>
+                </div>
               </div>
 
-              {/* Shelf Frame (Outer border representing a sturdy bookshelf) */}
-              <div className="border-[6px] border-amber-900/80 dark:border-slate-800 rounded-xl bg-muted/40 overflow-hidden shadow-inner p-2.5 space-y-4">
+              {/* Realistic Bookcase Outer Structure */}
+              <div className="relative border-x-[14px] border-slate-700 dark:border-slate-800 bg-muted/30 p-4 rounded-xl shadow-lg flex flex-col gap-6">
+
+                {/* Structural metallic/wood frame pillars */}
+                <div className="absolute inset-y-0 left-0 w-1 bg-black/20 border-r border-white/5 pointer-events-none" />
+                <div className="absolute inset-y-0 right-0 w-1 bg-black/20 border-l border-white/5 pointer-events-none" />
+
+                {/* Notch holes (Cremallera de estantería) to make it look exceptionally visual */}
+                <div className="absolute inset-y-2 left-[-10px] w-1 flex flex-col justify-between items-center opacity-30 pointer-events-none">
+                  {Array.from({ length: 15 }).map((_, i) => (
+                    <div key={i} className="w-1.5 h-1 bg-black rounded-xs" />
+                  ))}
+                </div>
+                <div className="absolute inset-y-2 right-[-10px] w-1 flex flex-col justify-between items-center opacity-30 pointer-events-none">
+                  {Array.from({ length: 15 }).map((_, i) => (
+                    <div key={i} className="w-1.5 h-1 bg-black rounded-xs" />
+                  ))}
+                </div>
+
                 {currentShelf.baldas.length === 0 ? (
-                  <div className="py-10 text-center text-xs text-muted-foreground">
-                    Esta estantería no tiene baldas. Haz clic en &quot;Personalizar&quot; para añadirlas.
+                  <div className="py-12 text-center text-xs text-muted-foreground font-semibold">
+                    No hay baldas todavía. Usa &quot;Personalizar&quot; para crear estantes.
                   </div>
                 ) : (
                   currentShelf.baldas.map((balda) => (
-                    <div key={balda.id} className="space-y-1">
-                      {/* Balda Label */}
-                      <div className="flex justify-between items-center text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground/80 px-1">
+                    <div key={balda.id} className="relative space-y-1.5">
+
+                      {/* Balda Label Header */}
+                      <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider text-muted-foreground/90 px-1">
                         <span>{balda.name}</span>
-                        <span>{balda.huecoCount} huecos</span>
+                        <span>{balda.huecoCount} Huecos</span>
                       </div>
 
-                      {/* Baldas Row Slots */}
+                      {/* Row Slots container */}
                       <div
-                        className="grid gap-1.5"
+                        className="grid gap-2"
                         style={{
                           gridTemplateColumns: `repeat(${balda.huecoCount}, minmax(0, 1fr))`,
                         }}
                       >
                         {Array.from({ length: balda.huecoCount }).map((_, slotIdx) => {
-                          const locationKey = `${currentShelf.id}-${balda.id}-${slotIdx}`;
-                          const slotItem = itemsByLocation[locationKey];
-                          const isActive =
-                            activeSlot?.shelfId === currentShelf.id &&
-                            activeSlot?.baldaId === balda.id &&
-                            activeSlot?.huecoIndex === slotIdx;
+                          const slotKey = `${currentShelf.id}-${balda.id}-${slotIdx}`;
+                          const stackList = itemsByLocation[slotKey] || [];
 
-                          // Search filter matching
-                          const matchesQuery = slotItem ? isMatchingSearch(slotItem, searchQuery) : false;
-                          const isDimmed = hasActiveSearch && !matchesQuery;
+                          // Drag and drop states
+                          const isOver = dragOverSlot?.baldaId === balda.id && dragOverSlot?.huecoIndex === slotIdx;
 
-                          // Visual Color Badge mapping
-                          let colorClass = "bg-card border-border/80 hover:bg-muted text-card-foreground";
-                          if (slotItem) {
-                            const option = COLOR_OPTIONS.find((c) => c.name === slotItem.color);
-                            colorClass = option ? option.class : "bg-indigo-500 text-white";
-                          }
+                          // Check if any item in the stack matches search query
+                          const hasSearchQuery = searchQuery.trim().length > 0;
+                          const hasMatchInStack = stackList.some((it) => isMatchingSearch(it, searchQuery));
+                          const isDimmed = hasSearchQuery && !hasMatchInStack;
+
+                          const isSlotActive = activeSlot?.shelfId === currentShelf.id &&
+                                               activeSlot?.baldaId === balda.id &&
+                                               activeSlot?.huecoIndex === slotIdx;
 
                           return (
-                            <button
+                            <div
                               key={slotIdx}
-                              onClick={() => {
-                                if (movingItem) {
-                                  completeMove(currentShelf.id, balda.id, slotIdx);
-                                } else {
-                                  handleSlotClick(currentShelf.id, balda.id, slotIdx);
-                                }
-                              }}
-                              className={`group relative text-left h-14 md:h-16 p-1 rounded-lg border flex flex-col justify-between transition-all overflow-hidden ${colorClass} ${
-                                isActive ? "ring-2 ring-primary border-primary scale-[1.01]" : ""
-                              } ${isDimmed ? "opacity-20 saturate-50 scale-95" : "opacity-100 shadow-xs hover:scale-[1.005] cursor-pointer"}`}
+                              onDragOver={(e) => handleDragOver(e, balda.id, slotIdx)}
+                              onDragLeave={handleDragLeave}
+                              onDrop={(e) => handleDrop(e, currentShelf.id, balda.id, slotIdx)}
+                              onClick={() => handleSlotClick(currentShelf.id, balda.id, slotIdx)}
+                              className={`relative group min-h-[5rem] rounded-xl border-2 flex flex-col justify-end p-1.5 transition-all duration-200 ${
+                                isOver
+                                  ? "border-primary bg-primary/10 scale-102 ring-2 ring-primary/40"
+                                  : isSlotActive
+                                    ? "border-primary/80 bg-muted/60"
+                                    : "border-dashed border-border/80 hover:border-muted-foreground/40 bg-card/45 hover:bg-muted/30"
+                              } ${isDimmed ? "opacity-20 saturate-50 scale-95" : "opacity-100 cursor-pointer"}`}
                             >
-                              {/* Slot ID Badge */}
-                              <span className={`text-[8px] font-extrabold px-1 rounded-sm border select-none w-max ${
-                                slotItem
-                                  ? "bg-black/15 border-white/10 text-white/80"
-                                  : "bg-muted text-muted-foreground border-border"
-                              }`}>
+                              {/* Background Slot Indicator Number */}
+                              <div className="absolute top-1 left-1.5 text-[8px] font-extrabold uppercase tracking-widest text-muted-foreground/50 select-none z-0">
                                 H{slotIdx + 1}
-                              </span>
+                              </div>
 
-                              {/* Slot Content Summary */}
-                              {slotItem ? (
-                                <div className="mt-1 flex-1 flex flex-col justify-between min-w-0">
-                                  {/* Item Name */}
-                                  <p className="text-[10px] md:text-xs font-black leading-tight truncate">
-                                    {slotItem.name}
-                                  </p>
-                                  {/* Compact category or contents indicator */}
-                                  <div className="flex items-center justify-between text-[7px] md:text-[8px] text-white/80 shrink-0 truncate">
-                                    <span className="font-semibold truncate">
-                                      {slotItem.type === "caja" ? "📦 Caja" : "🏷️ Art."}
-                                    </span>
-                                    {slotItem.contents.length > 0 && (
-                                      <span className="bg-black/20 px-1 rounded-xs scale-90 shrink-0">
-                                        +{slotItem.contents.length} cos.
-                                      </span>
-                                    )}
-                                  </div>
+                              {/* Stacked Box Items (Rendered in stack order, bottom to top) */}
+                              {stackList.length > 0 ? (
+                                <div className="flex flex-col justify-end w-full space-y-[-6px] z-10 select-none">
+                                  {stackList.map((item, stackIdx) => {
+                                    const isItemSelected = activeSlot?.itemId === item.id;
+                                    const isQueryMatch = hasSearchQuery && isMatchingSearch(item, searchQuery);
+
+                                    // Color styling
+                                    const opt = COLOR_OPTIONS.find((c) => c.name === item.color);
+                                    const colorStyle = opt ? opt.class : "bg-indigo-500 text-white border-indigo-700";
+
+                                    // Visual 3D-like stacking style
+                                    // Higher stack items get smaller margins and progressive perspective scaling
+                                    const stackOffsetStyle = {
+                                      transform: `translateY(${-stackIdx * 1}px) scale(${1 - (stackList.length - 1 - stackIdx) * 0.02})`,
+                                      zIndex: stackIdx,
+                                    };
+
+                                    return (
+                                      <div
+                                        key={item.id}
+                                        draggable={true}
+                                        onDragStart={(e) => handleDragStart(e, item)}
+                                        onClick={(e) => {
+                                          e.stopPropagation(); // don't trigger slot click
+                                          handleSlotClick(currentShelf.id, balda.id, slotIdx, item.id);
+                                        }}
+                                        style={stackOffsetStyle}
+                                        className={`group/box relative px-2 py-1 md:py-1.5 rounded-md border text-left shadow-xs transition-all duration-150 cursor-grab active:cursor-grabbing ${colorStyle} ${
+                                          isItemSelected
+                                            ? "ring-2 ring-white ring-offset-2 ring-offset-primary scale-102 font-black border-white shadow-md"
+                                            : "border-black/15"
+                                        } ${hasSearchQuery && !isQueryMatch ? "opacity-30" : "opacity-100"}`}
+                                      >
+                                        <div className="flex items-center justify-between gap-1 min-w-0">
+                                          <p className="text-[9px] md:text-[10px] font-bold leading-tight truncate flex-1">
+                                            {item.name}
+                                          </p>
+                                          <span className="text-[8px] opacity-75 shrink-0 hidden xs:inline">
+                                            {item.type === "caja" ? "📦" : "🏷️"}
+                                          </span>
+                                        </div>
+
+                                        {/* Highlight glow if matching search query */}
+                                        {hasSearchQuery && isQueryMatch && (
+                                          <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-emerald-400 rounded-full animate-ping" />
+                                        )}
+                                      </div>
+                                    );
+                                  })}
                                 </div>
                               ) : (
-                                <div className="mt-1 flex-1 flex items-center justify-center border border-dashed border-muted-foreground/30 rounded-md text-muted-foreground group-hover:text-primary transition-colors">
-                                  <Plus size={12} />
+                                <div className="flex-1 flex items-center justify-center text-muted-foreground/30 group-hover:text-primary/60 transition-colors pointer-events-none py-6">
+                                  <Plus size={14} className="stroke-[3]" />
                                 </div>
                               )}
-
-                              {/* Mini Match Glow */}
-                              {hasActiveSearch && matchesQuery && (
-                                <div className="absolute top-0 right-0 w-1.5 h-1.5 bg-emerald-400 rounded-bl-full shadow-xs animate-ping" />
-                              )}
-                            </button>
+                            </div>
                           );
                         })}
                       </div>
 
-                      {/* Sturdy Wood plank line under the row */}
-                      <div className="h-2.5 bg-amber-950 dark:bg-slate-700/80 rounded-sm shadow-md" />
+                      {/* Sturdy wood shelf bracket supports on sides */}
+                      <div className="absolute bottom-[-1px] left-[-14px] w-3.5 h-3.5 bg-slate-400 dark:bg-slate-600 rounded-br-lg shadow-sm" />
+                      <div className="absolute bottom-[-1px] right-[-14px] w-3.5 h-3.5 bg-slate-400 dark:bg-slate-600 rounded-bl-lg shadow-sm" />
+
+                      {/* Heavy Duty Pine Wood Plank Plinth */}
+                      <div className="h-3.5 bg-amber-800 dark:bg-slate-700 rounded-md shadow-md border-b-2 border-amber-950/40 flex items-center px-2">
+                        <div className="w-full h-0.5 bg-amber-700/50 dark:bg-slate-600/50 rounded-full" />
+                      </div>
                     </div>
                   ))
                 )}
               </div>
             </div>
           ) : (
-            <div className="bg-card border border-border p-8 rounded-2xl text-center text-muted-foreground">
+            <div className="bg-card border border-border p-8 rounded-2xl text-center text-muted-foreground font-semibold">
               Cargando trastero...
             </div>
           )}
         </div>
 
-        {/* Right Column: Slot Details, Mini Editor & Content List (Occupies 4/12 of workspace) */}
+        {/* Right Column (Details, Manual Stack Ordering, Form Editor) */}
         <div className="lg:col-span-4 space-y-4">
 
-          {/* Section: Slot details or micro editor form */}
+          {/* Active Slot Details & Stack Ordering */}
           {activeSlot ? (
             <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3 relative">
               <div className="flex justify-between items-center border-b border-border/60 pb-2">
-                <span className="text-[10px] font-black uppercase text-primary tracking-wider">
-                  Detalle de Hueco ({activeSlot.huecoIndex + 1})
-                </span>
+                <div>
+                  <span className="text-[10px] font-black uppercase text-primary tracking-wider">
+                    Panel de Hueco (H{activeSlot.huecoIndex + 1})
+                  </span>
+                  <p className="text-[9px] text-muted-foreground font-bold uppercase">
+                    {currentShelf.baldas.find((b) => b.id === activeSlot.baldaId)?.name}
+                  </p>
+                </div>
                 <button
                   onClick={() => setActiveSlot(null)}
                   className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg"
@@ -970,43 +1145,91 @@ export function StorageOrganizerModule() {
                 </button>
               </div>
 
-              {selectedSlotItem ? (
-                /* Detail Mode: What is in this slot */
-                <div className="space-y-3 text-xs">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="flex items-center gap-1.5 mb-1">
-                        <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black text-white ${
-                          COLOR_OPTIONS.find((c) => c.name === selectedSlotItem.color)?.class.split(" ")[0] || "bg-indigo-500"
-                        }`}>
-                          {selectedSlotItem.type === "caja" ? "📦 Caja" : "🏷️ Suelto"}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground font-semibold">
-                          En {currentShelf.baldas.find(b => b.id === activeSlot.baldaId)?.name}, H{activeSlot.huecoIndex + 1}
-                        </span>
-                      </div>
-                      <h3 className="text-sm font-black text-foreground">
-                        {selectedSlotItem.name}
-                      </h3>
-                    </div>
+              {/* Stack List showing physical stack bottom to top */}
+              {slotItems.length > 0 && (
+                <div className="space-y-1.5 bg-muted/30 p-2 rounded-xl border border-border/60">
+                  <span className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
+                    <Layers size={11} /> Estructura de Apilado (Pila de Cajas):
+                  </span>
 
-                    {/* Action Row inside Card */}
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => initiateMove(selectedSlotItem)}
-                        className="p-1.5 bg-muted hover:bg-muted/80 text-muted-foreground hover:text-primary rounded-lg transition"
-                        title="Mover de lugar"
-                      >
-                        <Move size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleRemoveItem(selectedSlotItem.id)}
-                        className="p-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 rounded-lg transition"
-                        title="Eliminar / Vaciar"
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                  <div className="space-y-1 max-h-40 overflow-y-auto">
+                    {[...slotItems].reverse().map((item, idx) => {
+                      const listIdx = slotItems.length - 1 - idx;
+                      const isSelected = activeSlot.itemId === item.id;
+                      const opt = COLOR_OPTIONS.find((c) => c.name === item.color);
+                      const colorClass = opt ? opt.class.split(" ")[0] : "bg-indigo-500";
+
+                      return (
+                        <div
+                          key={item.id}
+                          className={`flex items-center justify-between p-1.5 rounded-lg border text-xs gap-2 transition ${
+                            isSelected
+                              ? "bg-card border-primary/80 ring-1 ring-primary/40 shadow-xs"
+                              : "bg-muted/50 border-border hover:bg-muted"
+                          }`}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => handleSelectSpecificItem(item.id)}
+                            className="flex-1 text-left min-w-0 font-bold truncate flex items-center gap-1.5"
+                          >
+                            <span className={`w-2 h-2 rounded-full ${colorClass}`} />
+                            <span className="truncate">{item.name}</span>
+                          </button>
+
+                          {/* Up & Down arrows to easily re-order stack */}
+                          <div className="flex items-center gap-0.5 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStackIndex(item.id, "up")}
+                              disabled={listIdx === slotItems.length - 1}
+                              className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-35 rounded-md"
+                              title="Subir de la pila (colocar encima)"
+                            >
+                              <ArrowUp size={11} className="stroke-[3]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleMoveStackIndex(item.id, "down")}
+                              disabled={listIdx === 0}
+                              className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-35 rounded-md"
+                              title="Bajar de la pila (colocar debajo)"
+                            >
+                              <ArrowDown size={11} className="stroke-[3]" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="p-1 hover:bg-rose-500/10 text-rose-500 rounded-md"
+                              title="Retirar artículo"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Selected Item Details */}
+              {selectedSlotItem ? (
+                <div className="space-y-3 text-xs border-b border-border/40 pb-3">
+                  <div>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black text-white ${
+                        COLOR_OPTIONS.find((c) => c.name === selectedSlotItem.color)?.class.split(" ")[0] || "bg-indigo-500"
+                      }`}>
+                        {selectedSlotItem.type === "caja" ? "📦 Caja" : "🏷️ Suelto"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-semibold">
+                        Posición #{selectedSlotItem.stackIndex + 1} de la pila
+                      </span>
                     </div>
+                    <h3 className="text-sm font-black text-foreground">
+                      {selectedSlotItem.name}
+                    </h3>
                   </div>
 
                   {selectedSlotItem.description && (
@@ -1015,7 +1238,6 @@ export function StorageOrganizerModule() {
                     </p>
                   )}
 
-                  {/* Tags */}
                   {selectedSlotItem.tags.length > 0 && (
                     <div className="space-y-1">
                       <p className="text-[9px] font-extrabold uppercase text-muted-foreground">Etiquetas</p>
@@ -1029,7 +1251,6 @@ export function StorageOrganizerModule() {
                     </div>
                   )}
 
-                  {/* Contents (For boxes) */}
                   {selectedSlotItem.type === "caja" && (
                     <div className="space-y-1 bg-muted/30 p-2.5 rounded-xl border border-border/50">
                       <p className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
@@ -1048,40 +1269,54 @@ export function StorageOrganizerModule() {
                       )}
                     </div>
                   )}
-
-                  {/* Quick Edit Trigger button */}
-                  <div className="pt-2 border-t border-border/40 flex justify-end">
-                    <button
-                      onClick={() => {
-                        // Keep current activeSlot but toggle to form mode by resetting the itemForm just in case,
-                        // actually, the form is already populated inside handleSlotClick, so we just let them edit.
-                        // We will show form inline below details
-                      }}
-                      className="text-[11px] font-bold text-primary hover:underline flex items-center gap-1"
-                    >
-                      <Edit3 size={12} /> Editar detalles
-                    </button>
-                  </div>
                 </div>
-              ) : null}
+              ) : (
+                <div className="text-xs text-muted-foreground italic py-2">
+                  No hay cajas colocadas en este hueco. Puedes añadir una abajo.
+                </div>
+              )}
 
-              {/* Form Mode: Inline Mini Inputs to edit or create item */}
-              <form onSubmit={handleSaveItem} className="space-y-2.5 border-t border-border/40 pt-3">
+              {/* Quick Stack Trigger button if slot has items */}
+              {slotItems.length > 0 && (
+                <div className="flex justify-between items-center bg-primary/10 border border-primary/20 p-2 rounded-xl">
+                  <span className="text-[10px] font-bold text-primary">¿Quieres apilar otra caja aquí?</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemForm({
+                        name: "",
+                        type: "caja",
+                        color: "Indigo",
+                        description: "",
+                        tagsInput: "",
+                        contentsInput: "",
+                      });
+                      if (activeSlot) {
+                        setActiveSlot({ ...activeSlot, itemId: undefined });
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-lg hover:bg-primary/95 transition cursor-pointer"
+                  >
+                    + Apilar nueva
+                  </button>
+                </div>
+              )}
+
+              {/* Form Editor for placing or editing */}
+              <form onSubmit={handleSaveItem} className="space-y-2.5 pt-1.5">
                 <div className="flex items-center gap-1">
                   <Edit3 size={12} className="text-primary" />
                   <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">
-                    {selectedSlotItem ? "Editar Información" : "Colocar Caja / Objeto aquí"}
+                    {selectedSlotItem ? "Editar Información" : "Apilar Caja / Objeto aquí"}
                   </span>
                 </div>
 
-                {/* Compact Grid for inputs */}
                 <div className="space-y-2">
-                  {/* Name field */}
                   <div className="space-y-0.5">
                     <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre de Caja u Objeto</label>
                     <input
                       type="text"
-                      placeholder="Ej. Caja 5 - Tornillos y Clavos"
+                      placeholder="Ej. Caja de Herramientas, Ropa de Invierno"
                       value={itemForm.name}
                       onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
                       required
@@ -1089,7 +1324,6 @@ export function StorageOrganizerModule() {
                     />
                   </div>
 
-                  {/* Type Selector (Compact Pills) */}
                   <div className="grid grid-cols-2 gap-1.5">
                     <button
                       type="button"
@@ -1117,7 +1351,6 @@ export function StorageOrganizerModule() {
                     </button>
                   </div>
 
-                  {/* Color Selector */}
                   <div className="space-y-0.5">
                     <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Código de Color Visual</label>
                     <div className="flex flex-wrap gap-1">
@@ -1141,9 +1374,8 @@ export function StorageOrganizerModule() {
                     </div>
                   </div>
 
-                  {/* Description field */}
                   <div className="space-y-0.5">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Breve Descripción (Opcional)</label>
+                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Breve Descripción</label>
                     <input
                       type="text"
                       placeholder="Ej. Herramientas pesadas de bricolaje"
@@ -1153,7 +1385,6 @@ export function StorageOrganizerModule() {
                     />
                   </div>
 
-                  {/* Inner contents (Only for boxes) */}
                   {itemForm.type === "caja" && (
                     <div className="space-y-0.5 bg-primary/5 p-2 rounded-lg border border-primary/10">
                       <label className="text-[9px] font-extrabold uppercase text-primary flex items-center gap-1">
@@ -1164,12 +1395,11 @@ export function StorageOrganizerModule() {
                         placeholder="Ej. Taladro, Martillo, Destornilladores, Cinta"
                         value={itemForm.contentsInput}
                         onChange={(e) => setItemForm({ ...itemForm, contentsInput: e.target.value })}
-                        className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary text-[11px]"
+                        className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden text-[11px]"
                       />
                     </div>
                   )}
 
-                  {/* Tags */}
                   <div className="space-y-0.5">
                     <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Etiquetas (Separadas por coma)</label>
                     <input
@@ -1186,7 +1416,7 @@ export function StorageOrganizerModule() {
                   type="submit"
                   className="w-full h-7 bg-primary text-primary-foreground text-xs font-bold rounded-md hover:bg-primary/95 cursor-pointer transition shadow-xs"
                 >
-                  {selectedSlotItem ? "Guardar Cambios" : "Colocar en este hueco"}
+                  {selectedSlotItem ? "Guardar Cambios" : "Apilar en este hueco"}
                 </button>
               </form>
             </div>
@@ -1197,7 +1427,7 @@ export function StorageOrganizerModule() {
                 ¿Cómo organizar tus cosas?
               </h4>
               <p className="text-[10px] text-muted-foreground max-w-[200px] mx-auto leading-relaxed">
-                Selecciona cualquier hueco vacío o caja en el plano de la estantería para colocar, ver, editar o mover objetos de manera ultra compacta.
+                Selecciona cualquier hueco vacío o caja en el plano de la estantería para colocar, ver, editar, reordenar la pila, o arrastrar objetos con Drag & Drop de forma ultra compacta.
               </p>
             </div>
           )}
@@ -1221,6 +1451,7 @@ export function StorageOrganizerModule() {
             </div>
           </div>
         </div>
+
       </div>
     </div>
   );
