@@ -14,6 +14,7 @@ import {
   Layers,
   Settings,
   ChevronDown,
+  ChevronUp,
   X,
   PlusCircle,
   HelpCircle,
@@ -22,7 +23,10 @@ import {
   Check,
   ArrowUp,
   ArrowDown,
-  Info
+  Info,
+  Sliders,
+  AlignLeft,
+  FileText
 } from "lucide-react";
 
 // Types
@@ -71,6 +75,14 @@ export function StorageOrganizerModule() {
   const [syncStatus, setSyncStatus] = useState<"loading" | "cloud" | "local" | "error">("loading");
   const [isSaving, setIsSaving] = useState(false);
 
+  // Responsive mobile view tab state
+  const [viewTab, setViewTab] = useState<"shelf" | "detail">("shelf");
+
+  // Accordion toggle states to save space and avoid scrolling
+  const [isStackExpanded, setIsStackExpanded] = useState(true);
+  const [isFormExpanded, setIsFormExpanded] = useState(true);
+  const [isStatsExpanded, setIsStatsExpanded] = useState(false); // Collapsed by default on mobile to save space!
+
   // UI State
   const [selectedShelfId, setSelectedShelfId] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
@@ -114,9 +126,6 @@ export function StorageOrganizerModule() {
     contentsInput: "",
   });
 
-  // State to handle moving boxes manually
-  const [movingItem, setMovingItem] = useState<StorageItem | null>(null);
-
   // Fetch initial data
   useEffect(() => {
     async function loadData() {
@@ -128,7 +137,6 @@ export function StorageOrganizerModule() {
           loadFromLocalStorage();
         } else if (response.ok && resData.shelves) {
           setShelves(resData.shelves);
-          // Migrate old data if any item has missing stackIndex
           const loadedItems = (resData.items || []).map((it: any, idx: number) => ({
             ...it,
             stackIndex: typeof it.stackIndex === "number" ? it.stackIndex : 0,
@@ -305,6 +313,11 @@ export function StorageOrganizerModule() {
         contentsInput: "",
       });
     }
+
+    // Auto navigate to the detail tab on mobile so user instantly sees what's inside or can add!
+    if (window.innerWidth < 1024) {
+      setViewTab("detail");
+    }
   }
 
   // Action: Select another specific item in the same stack (from the stack details list)
@@ -386,6 +399,11 @@ export function StorageOrganizerModule() {
       tagsInput: newItem.tags.join(", "),
       contentsInput: newItem.contents.join(", "),
     });
+
+    // Auto navigate back to shelf tab on mobile so user sees the newly placed item in the grid!
+    if (window.innerWidth < 1024) {
+      setViewTab("shelf");
+    }
   }
 
   // Action: Delete/Remove Item
@@ -665,7 +683,7 @@ export function StorageOrganizerModule() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Title Header with Sync Status */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card border border-border/80 p-4 rounded-2xl shadow-xs">
         <div>
@@ -673,7 +691,7 @@ export function StorageOrganizerModule() {
             <Boxes className="text-primary" size={24} /> Organizador de Trastero
           </h1>
           <p className="text-xs text-muted-foreground">
-            Gestión visual y realista. Organiza cajas en pilas con Drag & Drop o cambia su orden manualmente.
+            Gestión visual y ultra compacta. Arrastra y apila cajas minimizando el scroll.
           </p>
         </div>
 
@@ -710,11 +728,40 @@ export function StorageOrganizerModule() {
         </div>
       </div>
 
+      {/* MOBILE/TABLET ONLY LATERAL NAVIGATION TABS (Hidden on lg breakpoint and above) */}
+      <div className="lg:hidden flex bg-muted p-1 rounded-xl border border-border/80 shadow-inner">
+        <button
+          onClick={() => setViewTab("shelf")}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition ${
+            viewTab === "shelf"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <AlignLeft size={14} />
+          <span>Ver Estantería (Plano)</span>
+        </button>
+        <button
+          onClick={() => setViewTab("detail")}
+          className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition relative ${
+            viewTab === "detail"
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileText size={14} />
+          <span>Detalle / Colocar</span>
+          {activeSlot && (
+            <span className="absolute top-1 right-2 w-2 h-2 bg-rose-500 rounded-full animate-pulse" />
+          )}
+        </button>
+      </div>
+
       {/* Workspace Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
 
-        {/* Left Column (Shelf Visualizer & Config) */}
-        <div className="lg:col-span-8 space-y-4">
+        {/* Left Column: Shelf Visualizer (Visible on desktop OR when viewTab === 'shelf' on mobile) */}
+        <div className={`lg:col-span-8 space-y-4 ${viewTab === "shelf" ? "block" : "hidden lg:block"}`}>
 
           {/* Controls: Select, Search, Config */}
           <div className="bg-card border border-border/80 p-3 rounded-2xl shadow-xs space-y-3">
@@ -1053,7 +1100,6 @@ export function StorageOrganizerModule() {
                                     const colorStyle = opt ? opt.class : "bg-indigo-500 text-white border-indigo-700";
 
                                     // Visual 3D-like stacking style
-                                    // Higher stack items get smaller margins and progressive perspective scaling
                                     const stackOffsetStyle = {
                                       transform: `translateY(${-stackIdx * 1}px) scale(${1 - (stackList.length - 1 - stackIdx) * 0.02})`,
                                       zIndex: stackIdx,
@@ -1122,12 +1168,14 @@ export function StorageOrganizerModule() {
           )}
         </div>
 
-        {/* Right Column (Details, Manual Stack Ordering, Form Editor) */}
-        <div className="lg:col-span-4 space-y-4">
+        {/* Right Column: Details, Manual Stack Ordering, Form Editor (Visible on desktop OR when viewTab === 'detail' on mobile) */}
+        <div className={`lg:col-span-4 space-y-4 ${viewTab === "detail" ? "block" : "hidden lg:block"}`}>
 
-          {/* Active Slot Details & Stack Ordering */}
+          {/* Active Slot Panel with Accordions */}
           {activeSlot ? (
-            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-3 relative">
+            <div className="bg-card border border-border rounded-2xl p-4 shadow-sm space-y-4 relative">
+
+              {/* Header Box */}
               <div className="flex justify-between items-center border-b border-border/60 pb-2">
                 <div>
                   <span className="text-[10px] font-black uppercase text-primary tracking-wider">
@@ -1138,84 +1186,100 @@ export function StorageOrganizerModule() {
                   </p>
                 </div>
                 <button
-                  onClick={() => setActiveSlot(null)}
-                  className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg"
+                  onClick={() => {
+                    setActiveSlot(null);
+                    // On mobile, auto return to the shelf view if closing details!
+                    if (window.innerWidth < 1024) {
+                      setViewTab("shelf");
+                    }
+                  }}
+                  className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg cursor-pointer"
                 >
                   <X size={14} />
                 </button>
               </div>
 
-              {/* Stack List showing physical stack bottom to top */}
+              {/* Accordion 1: Pila de Cajas (Stack structure) */}
               {slotItems.length > 0 && (
-                <div className="space-y-1.5 bg-muted/30 p-2 rounded-xl border border-border/60">
-                  <span className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
-                    <Layers size={11} /> Estructura de Apilado (Pila de Cajas):
-                  </span>
+                <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setIsStackExpanded(!isStackExpanded)}
+                    className="w-full bg-muted/40 hover:bg-muted/75 p-2.5 flex justify-between items-center text-left cursor-pointer transition"
+                  >
+                    <span className="text-[10px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
+                      <Layers size={11} className="text-primary" /> Estructura de Apilado ({slotItems.length})
+                    </span>
+                    {isStackExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
 
-                  <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {[...slotItems].reverse().map((item, idx) => {
-                      const listIdx = slotItems.length - 1 - idx;
-                      const isSelected = activeSlot.itemId === item.id;
-                      const opt = COLOR_OPTIONS.find((c) => c.name === item.color);
-                      const colorClass = opt ? opt.class.split(" ")[0] : "bg-indigo-500";
+                  {isStackExpanded && (
+                    <div className="p-2 bg-card space-y-1.5 border-t border-border/50">
+                      <div className="space-y-1 max-h-40 overflow-y-auto">
+                        {[...slotItems].reverse().map((item, idx) => {
+                          const listIdx = slotItems.length - 1 - idx;
+                          const isSelected = activeSlot.itemId === item.id;
+                          const opt = COLOR_OPTIONS.find((c) => c.name === item.color);
+                          const colorClass = opt ? opt.class.split(" ")[0] : "bg-indigo-500";
 
-                      return (
-                        <div
-                          key={item.id}
-                          className={`flex items-center justify-between p-1.5 rounded-lg border text-xs gap-2 transition ${
-                            isSelected
-                              ? "bg-card border-primary/80 ring-1 ring-primary/40 shadow-xs"
-                              : "bg-muted/50 border-border hover:bg-muted"
-                          }`}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => handleSelectSpecificItem(item.id)}
-                            className="flex-1 text-left min-w-0 font-bold truncate flex items-center gap-1.5"
-                          >
-                            <span className={`w-2 h-2 rounded-full ${colorClass}`} />
-                            <span className="truncate">{item.name}</span>
-                          </button>
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex items-center justify-between p-1.5 rounded-lg border text-xs gap-2 transition ${
+                                isSelected
+                                  ? "bg-primary/5 border-primary/50 ring-1 ring-primary/25 font-bold"
+                                  : "bg-muted/30 border-border hover:bg-muted"
+                              }`}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => handleSelectSpecificItem(item.id)}
+                                className="flex-1 text-left min-w-0 font-bold truncate flex items-center gap-1.5 cursor-pointer"
+                              >
+                                <span className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
+                                <span className="truncate">{item.name}</span>
+                              </button>
 
-                          {/* Up & Down arrows to easily re-order stack */}
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => handleMoveStackIndex(item.id, "up")}
-                              disabled={listIdx === slotItems.length - 1}
-                              className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-35 rounded-md"
-                              title="Subir de la pila (colocar encima)"
-                            >
-                              <ArrowUp size={11} className="stroke-[3]" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleMoveStackIndex(item.id, "down")}
-                              disabled={listIdx === 0}
-                              className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-35 rounded-md"
-                              title="Bajar de la pila (colocar debajo)"
-                            >
-                              <ArrowDown size={11} className="stroke-[3]" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveItem(item.id)}
-                              className="p-1 hover:bg-rose-500/10 text-rose-500 rounded-md"
-                              title="Retirar artículo"
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                              <div className="flex items-center gap-0.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveStackIndex(item.id, "up")}
+                                  disabled={listIdx === slotItems.length - 1}
+                                  className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-35 rounded-md"
+                                  title="Subir de la pila"
+                                >
+                                  <ArrowUp size={11} className="stroke-[3]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMoveStackIndex(item.id, "down")}
+                                  disabled={listIdx === 0}
+                                  className="p-1 hover:bg-muted text-muted-foreground hover:text-foreground disabled:opacity-35 rounded-md"
+                                  title="Bajar de la pila"
+                                >
+                                  <ArrowDown size={11} className="stroke-[3]" />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveItem(item.id)}
+                                  className="p-1 hover:bg-rose-500/10 text-rose-500 rounded-md"
+                                  title="Retirar"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Selected Item Details */}
-              {selectedSlotItem ? (
-                <div className="space-y-3 text-xs border-b border-border/40 pb-3">
+              {/* Selected Item Details (Static/Collapsible view) */}
+              {selectedSlotItem && (
+                <div className="space-y-3 text-xs border border-border/80 p-3 rounded-xl bg-muted/20">
                   <div>
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black text-white ${
@@ -1270,13 +1334,9 @@ export function StorageOrganizerModule() {
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="text-xs text-muted-foreground italic py-2">
-                  No hay cajas colocadas en este hueco. Puedes añadir una abajo.
-                </div>
               )}
 
-              {/* Quick Stack Trigger button if slot has items */}
+              {/* Stacking Reset Option */}
               {slotItems.length > 0 && (
                 <div className="flex justify-between items-center bg-primary/10 border border-primary/20 p-2 rounded-xl">
                   <span className="text-[10px] font-bold text-primary">¿Quieres apilar otra caja aquí?</span>
@@ -1302,123 +1362,132 @@ export function StorageOrganizerModule() {
                 </div>
               )}
 
-              {/* Form Editor for placing or editing */}
-              <form onSubmit={handleSaveItem} className="space-y-2.5 pt-1.5">
-                <div className="flex items-center gap-1">
-                  <Edit3 size={12} className="text-primary" />
-                  <span className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">
-                    {selectedSlotItem ? "Editar Información" : "Apilar Caja / Objeto aquí"}
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre de Caja u Objeto</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Caja de Herramientas, Ropa de Invierno"
-                      value={itemForm.name}
-                      onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
-                      required
-                      className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary font-bold"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setItemForm({ ...itemForm, type: "caja" })}
-                      className={`h-7 rounded-md text-[10px] font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
-                        itemForm.type === "caja"
-                          ? "bg-primary/10 text-primary border-primary/40"
-                          : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"
-                      }`}
-                    >
-                      <Package size={11} />
-                      <span>Caja (Contiene cosas)</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setItemForm({ ...itemForm, type: "suelto" })}
-                      className={`h-7 rounded-md text-[10px] font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
-                        itemForm.type === "suelto"
-                          ? "bg-primary/10 text-primary border-primary/40"
-                          : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"
-                      }`}
-                    >
-                      <Tag size={11} />
-                      <span>Artículo suelto</span>
-                    </button>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Código de Color Visual</label>
-                    <div className="flex flex-wrap gap-1">
-                      {COLOR_OPTIONS.map((c) => (
-                        <button
-                          key={c.name}
-                          type="button"
-                          onClick={() => setItemForm({ ...itemForm, color: c.name })}
-                          className={`w-5 h-5 rounded-full cursor-pointer transition flex items-center justify-center ${
-                            c.class.split(" ")[0]
-                          } ${
-                            itemForm.color === c.name
-                              ? "ring-2 ring-primary ring-offset-2 scale-110"
-                              : "hover:scale-105 border border-white/20"
-                          }`}
-                          title={c.name}
-                        >
-                          {itemForm.color === c.name && <Check size={10} className="text-white" />}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Breve Descripción</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Herramientas pesadas de bricolaje"
-                      value={itemForm.description}
-                      onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
-                      className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden"
-                    />
-                  </div>
-
-                  {itemForm.type === "caja" && (
-                    <div className="space-y-0.5 bg-primary/5 p-2 rounded-lg border border-primary/10">
-                      <label className="text-[9px] font-extrabold uppercase text-primary flex items-center gap-1">
-                        <FolderOpen size={11} /> Artículos dentro (Separados por coma)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ej. Taladro, Martillo, Destornilladores, Cinta"
-                        value={itemForm.contentsInput}
-                        onChange={(e) => setItemForm({ ...itemForm, contentsInput: e.target.value })}
-                        className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden text-[11px]"
-                      />
-                    </div>
-                  )}
-
-                  <div className="space-y-0.5">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Etiquetas (Separadas por coma)</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. herramientas, metal, pesado"
-                      value={itemForm.tagsInput}
-                      onChange={(e) => setItemForm({ ...itemForm, tagsInput: e.target.value })}
-                      className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden text-[11px]"
-                    />
-                  </div>
-                </div>
-
+              {/* Accordion 2: Formulario (Add/Edit Form) */}
+              <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
                 <button
-                  type="submit"
-                  className="w-full h-7 bg-primary text-primary-foreground text-xs font-bold rounded-md hover:bg-primary/95 cursor-pointer transition shadow-xs"
+                  type="button"
+                  onClick={() => setIsFormExpanded(!isFormExpanded)}
+                  className="w-full bg-muted/40 hover:bg-muted/75 p-2.5 flex justify-between items-center text-left cursor-pointer transition"
                 >
-                  {selectedSlotItem ? "Guardar Cambios" : "Apilar en este hueco"}
+                  <span className="text-[10px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
+                    <Edit3 size={11} className="text-primary" /> {selectedSlotItem ? "Editar Información" : "Apilar Caja / Objeto"}
+                  </span>
+                  {isFormExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
-              </form>
+
+                {isFormExpanded && (
+                  <form onSubmit={handleSaveItem} className="p-3 bg-card space-y-2.5 border-t border-border/50">
+                    <div className="space-y-2">
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre de Caja u Objeto</label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Caja de Herramientas, Ropa de Invierno"
+                          value={itemForm.name}
+                          onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+                          required
+                          className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary font-bold"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setItemForm({ ...itemForm, type: "caja" })}
+                          className={`h-7 rounded-md text-[10px] font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                            itemForm.type === "caja"
+                              ? "bg-primary/10 text-primary border-primary/40"
+                              : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"
+                          }`}
+                        >
+                          <Package size={11} />
+                          <span>Caja</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setItemForm({ ...itemForm, type: "suelto" })}
+                          className={`h-7 rounded-md text-[10px] font-bold border transition flex items-center justify-center gap-1 cursor-pointer ${
+                            itemForm.type === "suelto"
+                              ? "bg-primary/10 text-primary border-primary/40"
+                              : "bg-muted/30 text-muted-foreground border-border hover:bg-muted"
+                          }`}
+                        >
+                          <Tag size={11} />
+                          <span>Objeto</span>
+                        </button>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Código de Color Visual</label>
+                        <div className="flex flex-wrap gap-1">
+                          {COLOR_OPTIONS.map((c) => (
+                            <button
+                              key={c.name}
+                              type="button"
+                              onClick={() => setItemForm({ ...itemForm, color: c.name })}
+                              className={`w-5 h-5 rounded-full cursor-pointer transition flex items-center justify-center ${
+                                c.class.split(" ")[0]
+                              } ${
+                                itemForm.color === c.name
+                                  ? "ring-2 ring-primary ring-offset-2 scale-110"
+                                  : "hover:scale-105 border border-white/20"
+                              }`}
+                              title={c.name}
+                            >
+                              {itemForm.color === c.name && <Check size={10} className="text-white" />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Breve Descripción</label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Herramientas pesadas de bricolaje"
+                          value={itemForm.description}
+                          onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
+                          className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden"
+                        />
+                      </div>
+
+                      {itemForm.type === "caja" && (
+                        <div className="space-y-0.5 bg-primary/5 p-2 rounded-lg border border-primary/10">
+                          <label className="text-[9px] font-extrabold uppercase text-primary flex items-center gap-1">
+                            <FolderOpen size={11} /> Artículos dentro (Separados por coma)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Ej. Taladro, Martillo, Destornilladores, Cinta"
+                            value={itemForm.contentsInput}
+                            onChange={(e) => setItemForm({ ...itemForm, contentsInput: e.target.value })}
+                            className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden text-[11px]"
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-0.5">
+                        <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Etiquetas (Separadas por coma)</label>
+                        <input
+                          type="text"
+                          placeholder="Ej. herramientas, metal, pesado"
+                          value={itemForm.tagsInput}
+                          onChange={(e) => setItemForm({ ...itemForm, tagsInput: e.target.value })}
+                          className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden text-[11px]"
+                        />
+                      </div>
+                    </div>
+
+                    <button
+                      type="submit"
+                      className="w-full h-7 bg-primary text-primary-foreground text-xs font-bold rounded-md hover:bg-primary/95 cursor-pointer transition shadow-xs"
+                    >
+                      {selectedSlotItem ? "Guardar Cambios" : "Apilar en este hueco"}
+                    </button>
+                  </form>
+                )}
+              </div>
+
             </div>
           ) : (
             <div className="bg-card border border-border rounded-2xl p-4 text-center py-8 text-muted-foreground shadow-xs">
@@ -1432,24 +1501,35 @@ export function StorageOrganizerModule() {
             </div>
           )}
 
-          {/* Quick Stats Summary Card */}
-          <div className="bg-card border border-border rounded-2xl p-3.5 shadow-xs space-y-2">
-            <h4 className="text-xs font-bold text-foreground">Resumen de tu Trastero</h4>
-            <div className="grid grid-cols-2 gap-2 text-center">
-              <div className="bg-muted/50 p-2 rounded-xl">
-                <span className="text-[10px] text-muted-foreground font-semibold">Total Cajas</span>
-                <p className="text-lg font-black text-primary">
-                  {items.filter((it) => it.type === "caja").length}
-                </p>
+          {/* Collapsible Stats Summary Card */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+            <button
+              type="button"
+              onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+              className="w-full p-3.5 flex justify-between items-center text-left font-bold text-xs cursor-pointer transition bg-muted/10 hover:bg-muted/30"
+            >
+              <span className="text-foreground">Resumen de tu Trastero</span>
+              {isStatsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </button>
+
+            {isStatsExpanded && (
+              <div className="p-3.5 bg-card border-t border-border/50 grid grid-cols-2 gap-2 text-center">
+                <div className="bg-muted/50 p-2 rounded-xl">
+                  <span className="text-[10px] text-muted-foreground font-semibold">Total Cajas</span>
+                  <p className="text-lg font-black text-primary">
+                    {items.filter((it) => it.type === "caja").length}
+                  </p>
+                </div>
+                <div className="bg-muted/50 p-2 rounded-xl">
+                  <span className="text-[10px] text-muted-foreground font-semibold">Art. Sueltos</span>
+                  <p className="text-lg font-black text-foreground">
+                    {items.filter((it) => it.type === "suelto").length}
+                  </p>
+                </div>
               </div>
-              <div className="bg-muted/50 p-2 rounded-xl">
-                <span className="text-[10px] text-muted-foreground font-semibold">Art. Sueltos</span>
-                <p className="text-lg font-black text-foreground">
-                  {items.filter((it) => it.type === "suelto").length}
-                </p>
-              </div>
-            </div>
+            )}
           </div>
+
         </div>
 
       </div>
