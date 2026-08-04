@@ -83,6 +83,7 @@ export function BabyWeightTrackerModule() {
   // Accordion Expand/Collapse States (for vertical space saving on mobile)
   const [isDetailExpanded, setIsDetailExpanded] = useState<boolean>(true);
   const [isTrendsExpanded, setIsTrendsExpanded] = useState<boolean>(false);
+  const [isMetricsExpanded, setIsMetricsExpanded] = useState<boolean>(true);
 
   // Local helper date initializers
   const getTodayDateString = () => {
@@ -849,66 +850,81 @@ export function BabyWeightTrackerModule() {
         </div>
       </div>
 
-      {/* Metrics Section */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-        {/* Metric 1 */}
-        <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
-          <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Último Peso Bruto</span>
-          <div className="my-1 md:my-2 flex items-baseline gap-1">
-            <span className="text-xl md:text-3xl font-black text-foreground">
-              {metrics.lastWeight > 0 ? metrics.lastWeight.toFixed(3) : "—"}
-            </span>
-            <span className="text-sm md:text-base font-extrabold text-muted-foreground">kg</span>
+      {/* Metrics Section Accordion */}
+      <div className="bg-card border border-border/60 rounded-3xl overflow-hidden shadow-xs">
+        <button
+          onClick={() => setIsMetricsExpanded(!isMetricsExpanded)}
+          className="w-full px-5 py-3.5 flex items-center justify-between text-xs font-extrabold uppercase tracking-widest text-card-foreground hover:bg-muted/30 transition select-none cursor-pointer"
+        >
+          <div className="flex items-center gap-2">
+            <TrendingUp size={15} className="text-primary" />
+            <span>Métricas de Crecimiento</span>
           </div>
-          <span className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-            <Info size={11} className="text-primary shrink-0" />
-            Ropa: {(metrics.lastMargin * 1000).toFixed(0)}g | Manta: {(metrics.lastBlanketMargin * 1000).toFixed(0)}g
-          </span>
-        </div>
+          {isMetricsExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        </button>
 
-        {/* Metric 2 */}
-        <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
-          <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Crecimiento Neto</span>
-          <div className="my-1 md:my-2 flex items-baseline gap-1">
-            <span className="text-xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">
-              {metrics.totalGain >= 0 ? "+" : ""}
-              {metrics.lastWeight > 0 ? metrics.totalGain.toFixed(3) : "—"}
-            </span>
-            <span className="text-sm md:text-base font-extrabold text-emerald-600 dark:text-emerald-400">kg</span>
-          </div>
-          <span className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
-            <TrendingUp size={11} className="text-emerald-500 shrink-0" />
-            Desde primer registro (Neto)
-          </span>
-        </div>
+        {isMetricsExpanded && (
+          <div className="px-5 pb-5 pt-1 grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 border-t border-border/40 animate-fade-in">
+            {/* Metric 1 */}
+            <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Último Peso Bruto</span>
+              <div className="my-1 md:my-2 flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-foreground">
+                  {metrics.lastWeight > 0 ? metrics.lastWeight.toFixed(3) : "—"}
+                </span>
+                <span className="text-sm md:text-base font-extrabold text-muted-foreground">kg</span>
+              </div>
+              <span className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                <Info size={11} className="text-primary shrink-0" />
+                Ropa: {(metrics.lastMargin * 1000).toFixed(0)}g | Manta: {(metrics.lastBlanketMargin * 1000).toFixed(0)}g
+              </span>
+            </div>
 
-        {/* Metric 3 */}
-        <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
-          <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Peso Promedio Neto</span>
-          <div className="my-1 md:my-2 flex items-baseline gap-1">
-            <span className="text-xl md:text-3xl font-black text-foreground">
-              {metrics.average > 0 ? metrics.average.toFixed(3) : "—"}
-            </span>
-            <span className="text-sm md:text-base font-extrabold text-muted-foreground">kg</span>
-          </div>
-          <span className="text-[10px] md:text-xs text-muted-foreground">
-            Promedio neto real descontado
-          </span>
-        </div>
+            {/* Metric 2 */}
+            <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Crecimiento Neto</span>
+              <div className="my-1 md:my-2 flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400">
+                  {metrics.totalGain >= 0 ? "+" : ""}
+                  {metrics.lastWeight > 0 ? metrics.totalGain.toFixed(3) : "—"}
+                </span>
+                <span className="text-sm md:text-base font-extrabold text-emerald-600 dark:text-emerald-400">kg</span>
+              </div>
+              <span className="text-[10px] md:text-xs text-muted-foreground flex items-center gap-1">
+                <TrendingUp size={11} className="text-emerald-500 shrink-0" />
+                Desde primer registro (Neto)
+              </span>
+            </div>
 
-        {/* Metric 4 */}
-        <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
-          <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Registros Activos</span>
-          <div className="my-1 md:my-2 flex items-baseline gap-1">
-            <span className="text-xl md:text-3xl font-black text-foreground">
-              {metrics.count}
-            </span>
-            <span className="text-sm md:text-base font-extrabold text-muted-foreground">pesos</span>
+            {/* Metric 3 */}
+            <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Peso Promedio Neto</span>
+              <div className="my-1 md:my-2 flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-foreground">
+                  {metrics.average > 0 ? metrics.average.toFixed(3) : "—"}
+                </span>
+                <span className="text-sm md:text-base font-extrabold text-muted-foreground">kg</span>
+              </div>
+              <span className="text-[10px] md:text-xs text-muted-foreground">
+                Promedio neto real descontado
+              </span>
+            </div>
+
+            {/* Metric 4 */}
+            <div className="bg-card hover:bg-muted/10 p-3 md:p-5 rounded-3xl border border-border/60 transition shadow-xs flex flex-col justify-between">
+              <span className="text-[10px] md:text-xs font-bold text-muted-foreground uppercase tracking-wider">Registros Activos</span>
+              <div className="my-1 md:my-2 flex items-baseline gap-1">
+                <span className="text-xl md:text-3xl font-black text-foreground">
+                  {metrics.count}
+                </span>
+                <span className="text-sm md:text-base font-extrabold text-muted-foreground">pesos</span>
+              </div>
+              <span className="text-[10px] md:text-xs text-muted-foreground">
+                Filtrados de {records.length} totales
+              </span>
+            </div>
           </div>
-          <span className="text-[10px] md:text-xs text-muted-foreground">
-            Filtrados de {records.length} totales
-          </span>
-        </div>
+        )}
       </div>
 
       {/* Weighing Scale Filters (Fixed Categories) */}
