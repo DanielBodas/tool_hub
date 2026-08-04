@@ -101,12 +101,20 @@ export function StorageOrganizerModule() {
   } | null>(null);
 
   // Compact Form states
-  const [isAddingShelf, setIsAddingShelf] = useState(false);
   const [newShelfName, setNewShelfName] = useState("");
   const [newShelfBaldasCount, setNewShelfBaldasCount] = useState(4);
   const [newShelfHuecosDefault, setNewShelfHuecosDefault] = useState(3);
 
   const [isConfiguringShelves, setIsConfiguringShelves] = useState(false);
+
+  // Nested collapsible section states inside configuration
+  const [configSection, setConfigSection] = useState<"edit" | "baldas" | "create" | null>(null);
+
+  // Track expanded state for individual baldas in personalization list to minimize scroll space
+  const [expandedBaldaIds, setExpandedBaldaIds] = useState<Record<string, boolean>>({});
+
+  // Additional sidebar collapsible state
+  const [isDetailCardExpanded, setIsDetailCardExpanded] = useState(true);
 
   // Form states for adding/editing box or item
   const [itemForm, setItemForm] = useState<{
@@ -540,6 +548,14 @@ export function StorageOrganizerModule() {
     });
   }
 
+  // Toggle individual balda accordion in customization
+  function toggleBaldaAccordion(baldaId: string) {
+    setExpandedBaldaIds((prev) => ({
+      ...prev,
+      [baldaId]: !prev[baldaId],
+    }));
+  }
+
   // Manual Shelf Creation
   function handleAddShelf(e: React.FormEvent) {
     e.preventDefault();
@@ -562,8 +578,8 @@ export function StorageOrganizerModule() {
 
     setShelves([...shelves, newShelf]);
     setSelectedShelfId(newShelf.id);
-    setIsAddingShelf(false);
     setNewShelfName("");
+    setConfigSection("baldas"); // Swtich to baldas of the new shelf to customize!
   }
 
   // Actions for modifying shelves
@@ -768,8 +784,8 @@ export function StorageOrganizerModule() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
 
               <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                <span className="text-xs font-bold text-muted-foreground shrink-0 hidden sm:inline">
-                  Estantería:
+                <span className="text-xs font-black text-muted-foreground shrink-0 hidden sm:inline">
+                  Estantería activa:
                 </span>
                 <div className="relative flex-1 min-w-0">
                   <select
@@ -778,7 +794,7 @@ export function StorageOrganizerModule() {
                       setSelectedShelfId(e.target.value);
                       setActiveSlot(null);
                     }}
-                    className="w-full h-8 pl-2 pr-8 bg-muted hover:bg-muted/80 text-xs font-bold rounded-lg border border-border cursor-pointer appearance-none focus:outline-hidden focus:ring-1 focus:ring-primary truncate"
+                    className="w-full h-8 pl-2.5 pr-8 bg-muted hover:bg-muted/80 text-xs font-extrabold rounded-lg border border-border cursor-pointer appearance-none focus:outline-hidden focus:ring-1 focus:ring-primary truncate text-primary"
                   >
                     {shelves.map((sh) => (
                       <option key={sh.id} value={sh.id}>
@@ -792,85 +808,244 @@ export function StorageOrganizerModule() {
 
               <div className="flex items-center gap-1.5 shrink-0 justify-end">
                 <button
-                  onClick={() => setIsAddingShelf(!isAddingShelf)}
-                  className={`h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
-                    isAddingShelf
-                      ? "bg-rose-500 hover:bg-rose-600 text-white"
-                      : "bg-primary/15 text-primary hover:bg-primary/20"
-                  }`}
-                >
-                  <PlusCircle size={14} />
-                  <span className="hidden xs:inline">Nueva Estantería</span>
-                </button>
-                <button
-                  onClick={() => setIsConfiguringShelves(!isConfiguringShelves)}
-                  className={`h-8 px-2.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition ${
+                  onClick={() => {
+                    setIsConfiguringShelves(!isConfiguringShelves);
+                    if (!isConfiguringShelves) {
+                      setConfigSection("baldas"); // Default to Baldas management for high visual control
+                    }
+                  }}
+                  className={`h-8 px-3 rounded-xl text-xs font-black flex items-center gap-1.5 transition cursor-pointer ${
                     isConfiguringShelves
-                      ? "bg-slate-700 text-white"
-                      : "bg-secondary text-secondary-foreground hover:bg-muted border border-border"
+                      ? "bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                      : "bg-secondary hover:bg-muted border border-border text-secondary-foreground"
                   }`}
                 >
-                  <Settings size={14} />
-                  <span>Personalizar</span>
+                  <Settings size={14} className={isConfiguringShelves ? "animate-spin" : ""} />
+                  <span>⚙️ Gestión del Trastero</span>
                 </button>
               </div>
             </div>
 
-            {/* Add Shelf Sub-Form */}
-            {isAddingShelf && (
-              <form onSubmit={handleAddShelf} className="p-3 bg-muted/50 border border-border/80 rounded-xl space-y-2.5">
-                <div className="flex justify-between items-center border-b border-border/50 pb-1.5">
-                  <h4 className="text-xs font-bold text-foreground">Crear Nueva Estantería</h4>
-                  <button type="button" onClick={() => setIsAddingShelf(false)}>
-                    <X size={14} className="text-muted-foreground hover:text-foreground" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre</label>
-                    <input
-                      type="text"
-                      placeholder="Ej. Estantería Rinconera"
-                      value={newShelfName}
-                      onChange={(e) => setNewShelfName(e.target.value)}
-                      required
-                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nº Baldas</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={12}
-                      value={newShelfBaldasCount}
-                      onChange={(e) => setNewShelfBaldasCount(parseInt(e.target.value) || 4)}
-                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Huecos por balda</label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={newShelfHuecosDefault}
-                      onChange={(e) => setNewShelfHuecosDefault(parseInt(e.target.value) || 3)}
-                      className="w-full h-7 px-2 bg-card text-xs rounded-md border border-border focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end pt-1">
+            {/* UNIFIED GESTIÓN DEL TRASTERO ACCORDION SYSTEM */}
+            {isConfiguringShelves && currentShelf && (
+              <div className="bg-card border-2 border-dashed border-amber-500/35 p-3 rounded-2xl shadow-xs space-y-2.5">
+                <div className="flex justify-between items-center border-b border-border/60 pb-1.5">
+                  <span className="text-[10px] font-black uppercase text-amber-600 tracking-wider">
+                    Panel de Configuración del Trastero
+                  </span>
                   <button
-                    type="submit"
-                    className="h-7 px-4 bg-primary text-primary-foreground text-xs font-bold rounded-lg hover:bg-primary/95 transition"
+                    onClick={() => setIsConfiguringShelves(false)}
+                    className="text-[9px] font-extrabold text-muted-foreground hover:text-foreground bg-muted px-2 py-0.5 rounded"
                   >
-                    Crear Estantería
+                    Ocultar
                   </button>
                 </div>
-              </form>
+
+                {/* Sub-Accordion 1: EDITAR ESTANTERÍA ACTIVA */}
+                <div className="border border-border/80 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setConfigSection(configSection === "edit" ? null : "edit")}
+                    className="w-full bg-muted/40 hover:bg-muted/70 p-2 flex justify-between items-center text-left text-[11px] font-bold cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Edit3 size={12} className="text-amber-500" /> 🏗️ Cambiar Nombre o Eliminar Estantería
+                    </span>
+                    {configSection === "edit" ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+
+                  {configSection === "edit" && (
+                    <div className="p-2.5 bg-card border-t border-border/50 space-y-2">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre de la Estantería</label>
+                        <input
+                          type="text"
+                          value={currentShelf.name}
+                          onChange={(e) => handleRenameShelf(currentShelf.id, e.target.value)}
+                          className="w-full h-7 px-2 bg-muted/60 text-xs font-bold rounded-md border border-border focus:outline-hidden focus:ring-1 focus:ring-primary"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleDeleteShelf(currentShelf.id)}
+                        className="w-full h-7 bg-rose-500/10 hover:bg-rose-500 hover:text-white text-rose-500 text-[10px] font-bold rounded-md flex items-center justify-center gap-1 transition cursor-pointer"
+                      >
+                        <Trash2 size={12} />
+                        <span>Eliminar {currentShelf.name} permanentemente</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub-Accordion 2: BALDAS Y COMPARTIMENTOS (Nested accordions inside!) */}
+                <div className="border border-border/80 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setConfigSection(configSection === "baldas" ? null : "baldas")}
+                    className="w-full bg-muted/40 hover:bg-muted/70 p-2 flex justify-between items-center text-left text-[11px] font-bold cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Layers size={12} className="text-amber-500" /> 🪵 Baldas y Compartimentos ({currentShelf.baldas.length})
+                    </span>
+                    {configSection === "baldas" ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+
+                  {configSection === "baldas" && (
+                    <div className="p-2 bg-card border-t border-border/50 space-y-2">
+                      <p className="text-[8px] font-black text-muted-foreground uppercase tracking-wider mb-1">
+                        Toca cada balda para ajustar su nombre o número de huecos:
+                      </p>
+
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        {currentShelf.baldas.map((balda, idx) => {
+                          const isExpanded = !!expandedBaldaIds[balda.id];
+                          return (
+                            <div key={balda.id} className="border border-border/75 rounded-lg overflow-hidden bg-muted/10">
+
+                              {/* Balda nested accordion header toggle */}
+                              <button
+                                type="button"
+                                onClick={() => toggleBaldaAccordion(balda.id)}
+                                className={`w-full p-1.5 px-2.5 flex justify-between items-center text-left cursor-pointer transition ${
+                                  isExpanded ? "bg-amber-500/5 font-bold" : "hover:bg-muted/30"
+                                }`}
+                              >
+                                <span className="text-[11px] flex items-center gap-1.5 truncate">
+                                  <span className="text-[10px] bg-amber-500/10 border border-amber-500/20 text-amber-700 px-1.5 py-0.2 rounded-sm font-black">
+                                    Balda #{idx + 1}
+                                  </span>
+                                  <span className="truncate">{balda.name}</span>
+                                  <span className="text-[9px] text-muted-foreground font-medium">({balda.huecoCount} huecos)</span>
+                                </span>
+                                {isExpanded ? <ChevronUp size={11} className="text-amber-500" /> : <ChevronDown size={11} />}
+                              </button>
+
+                              {/* Balda content view if expanded */}
+                              {isExpanded && (
+                                <div className="p-2 bg-card border-t border-border/50 space-y-2 text-xs">
+                                  <div className="space-y-0.5">
+                                    <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre del Estante</label>
+                                    <input
+                                      type="text"
+                                      value={balda.name}
+                                      onChange={(e) => handleRenameBalda(currentShelf.id, balda.id, e.target.value)}
+                                      className="w-full h-7 px-2 bg-muted/60 text-[11px] font-semibold rounded-md border border-border"
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center justify-between pt-1">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-[10px] text-muted-foreground mr-1">Huecos:</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateBaldaHuecos(currentShelf.id, balda.id, false)}
+                                        disabled={balda.huecoCount <= 1}
+                                        className="w-6 h-6 bg-muted hover:bg-muted/80 disabled:opacity-40 text-xs font-black rounded-md border border-border flex items-center justify-center"
+                                      >
+                                        -
+                                      </button>
+                                      <span className="w-6 text-center font-bold text-xs">{balda.huecoCount}</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleUpdateBaldaHuecos(currentShelf.id, balda.id, true)}
+                                        className="w-6 h-6 bg-muted hover:bg-muted/80 text-xs font-black rounded-md border border-border flex items-center justify-center"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveBaldaFromShelf(currentShelf.id, balda.id)}
+                                      className="h-6 px-2 text-rose-500 bg-rose-500/10 hover:bg-rose-500 hover:text-white rounded-md text-[10px] font-semibold flex items-center gap-1 transition"
+                                      title="Borrar Balda"
+                                    >
+                                      <Trash2 size={11} /> Borrar Balda
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleAddBaldaToShelf(currentShelf.id)}
+                        className="w-full h-7 border border-dashed border-primary/40 text-primary hover:bg-primary/5 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1 transition cursor-pointer"
+                      >
+                        <Plus size={12} />
+                        <span>Añadir Balda Inferior</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Sub-Accordion 3: CREAR NUEVA ESTANTERÍA */}
+                <div className="border border-border/80 rounded-xl overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setConfigSection(configSection === "create" ? null : "create")}
+                    className="w-full bg-muted/40 hover:bg-muted/70 p-2 flex justify-between items-center text-left text-[11px] font-bold cursor-pointer"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <PlusCircle size={12} className="text-emerald-500" /> ➕ Crear Nueva Estantería
+                    </span>
+                    {configSection === "create" ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
+
+                  {configSection === "create" && (
+                    <form onSubmit={handleAddShelf} className="p-2.5 bg-card border-t border-border/50 space-y-2">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre</label>
+                        <input
+                          type="text"
+                          placeholder="Ej. Estantería Rinconera"
+                          value={newShelfName}
+                          onChange={(e) => setNewShelfName(e.target.value)}
+                          required
+                          className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        <div className="space-y-0.5">
+                          <label className="text-[8px] font-extrabold uppercase text-muted-foreground">Nº Baldas</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={12}
+                            value={newShelfBaldasCount}
+                            onChange={(e) => setNewShelfBaldasCount(parseInt(e.target.value) || 4)}
+                            className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden"
+                          />
+                        </div>
+                        <div className="space-y-0.5">
+                          <label className="text-[8px] font-extrabold uppercase text-muted-foreground">Huecos por balda</label>
+                          <input
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={newShelfHuecosDefault}
+                            onChange={(e) => setNewShelfHuecosDefault(parseInt(e.target.value) || 3)}
+                            className="w-full h-7 px-2 bg-muted/60 text-xs rounded-md border border-border focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-1">
+                        <button
+                          type="submit"
+                          className="w-full h-7 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-md transition cursor-pointer"
+                        >
+                          Crear Estantería
+                        </button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+
+              </div>
             )}
 
             {/* Smart Live Search */}
@@ -878,7 +1053,7 @@ export function StorageOrganizerModule() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" size={14} />
               <input
                 type="text"
-                placeholder="Búsqueda instantánea de cajas, objetos, etiquetas o contenido..."
+                placeholder="Búsqueda rápida de cajas, objetos, etiquetas..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full h-8 pl-8 pr-8 bg-muted text-xs rounded-lg border border-border focus:outline-hidden focus:ring-1 focus:ring-primary"
@@ -893,108 +1068,6 @@ export function StorageOrganizerModule() {
               )}
             </div>
           </div>
-
-          {/* Configuration/Personalization Panel */}
-          {isConfiguringShelves && currentShelf && (
-            <div className="bg-card border-2 border-dashed border-primary/25 p-4 rounded-2xl shadow-xs space-y-3">
-              <div className="flex justify-between items-center border-b border-border/60 pb-2">
-                <div className="flex items-center gap-1.5">
-                  <Settings size={16} className="text-primary" />
-                  <h3 className="text-sm font-black text-foreground">
-                    Personalizar: {currentShelf.name}
-                  </h3>
-                </div>
-                <button
-                  onClick={() => setIsConfiguringShelves(false)}
-                  className="text-xs font-bold text-muted-foreground hover:text-foreground bg-muted px-2 py-1 rounded-md"
-                >
-                  Cerrar
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 bg-muted/40 p-2 rounded-xl">
-                <span className="text-xs font-bold text-muted-foreground shrink-0">Nombre de Estantería:</span>
-                <input
-                  type="text"
-                  value={currentShelf.name}
-                  onChange={(e) => handleRenameShelf(currentShelf.id, e.target.value)}
-                  className="h-7 px-2 bg-card text-xs font-bold rounded-md border border-border flex-1"
-                />
-                <button
-                  onClick={() => handleDeleteShelf(currentShelf.id)}
-                  className="h-7 px-3.5 bg-rose-500/15 text-rose-500 text-xs font-bold rounded-md hover:bg-rose-500 hover:text-white flex items-center justify-center gap-1 transition"
-                >
-                  <Trash2 size={13} />
-                  <span>Eliminar Estantería</span>
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[10px] font-extrabold uppercase text-muted-foreground tracking-wider">
-                  Configuración individual de baldas y huecos (de arriba a abajo):
-                </p>
-
-                <div className="divide-y divide-border/60 max-h-60 overflow-y-auto pr-1">
-                  {currentShelf.baldas.map((balda, idx) => (
-                    <div key={balda.id} className="py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-muted-foreground shrink-0 bg-muted px-1.5 py-0.5 rounded-md">
-                          #{idx + 1}
-                        </span>
-                        <input
-                          type="text"
-                          value={balda.name}
-                          onChange={(e) => handleRenameBalda(currentShelf.id, balda.id, e.target.value)}
-                          placeholder="Nombre Balda"
-                          className="h-7 px-2 bg-muted/40 hover:bg-muted text-xs font-semibold rounded-md border border-border/80 flex-1 min-w-0"
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-muted-foreground mr-1.5">Huecos:</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateBaldaHuecos(currentShelf.id, balda.id, false)}
-                            disabled={balda.huecoCount <= 1}
-                            className="w-6 h-6 bg-muted hover:bg-muted/80 disabled:opacity-40 text-xs font-black rounded-md border border-border flex items-center justify-center"
-                          >
-                            -
-                          </button>
-                          <span className="w-8 text-center text-xs font-bold">{balda.huecoCount}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleUpdateBaldaHuecos(currentShelf.id, balda.id, true)}
-                            className="w-6 h-6 bg-muted hover:bg-muted/80 text-xs font-black rounded-md border border-border flex items-center justify-center"
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveBaldaFromShelf(currentShelf.id, balda.id)}
-                          className="p-1 text-rose-500 hover:bg-rose-500/10 rounded-md transition"
-                          title="Eliminar Balda"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => handleAddBaldaToShelf(currentShelf.id)}
-                  className="w-full h-8 border border-dashed border-primary/40 text-primary hover:bg-primary/5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition"
-                >
-                  <Plus size={14} />
-                  <span>Añadir Balda Inferior</span>
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Highly Visual Real Shelf Renderer */}
           {currentShelf ? (
@@ -1277,59 +1350,74 @@ export function StorageOrganizerModule() {
                 </div>
               )}
 
-              {/* Selected Item Details (Static/Collapsible view) */}
+              {/* Selected Item Details (Static/Collapsible view) wrapped inside an accordion to minimize vertical space */}
               {selectedSlotItem && (
-                <div className="space-y-3 text-xs border border-border/80 p-3 rounded-xl bg-muted/20">
-                  <div>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black text-white ${
-                        COLOR_OPTIONS.find((c) => c.name === selectedSlotItem.color)?.class.split(" ")[0] || "bg-indigo-500"
-                      }`}>
-                        {selectedSlotItem.type === "caja" ? "📦 Caja" : "🏷️ Suelto"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-semibold">
-                        Posición #{selectedSlotItem.stackIndex + 1} de la pila
-                      </span>
-                    </div>
-                    <h3 className="text-sm font-black text-foreground">
-                      {selectedSlotItem.name}
-                    </h3>
-                  </div>
+                <div className="border border-border/85 rounded-xl overflow-hidden shadow-xs">
+                  <button
+                    type="button"
+                    onClick={() => setIsDetailCardExpanded(!isDetailCardExpanded)}
+                    className="w-full bg-muted/30 hover:bg-muted/65 p-2 flex justify-between items-center text-left cursor-pointer transition text-xs"
+                  >
+                    <span className="text-[10px] font-extrabold uppercase text-muted-foreground flex items-center gap-1.5">
+                      <FileText size={12} className="text-primary" /> 📋 Ficha de Detalles y Contenido
+                    </span>
+                    {isDetailCardExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  </button>
 
-                  {selectedSlotItem.description && (
-                    <p className="text-muted-foreground bg-muted/45 p-2 rounded-lg italic text-[11px] leading-relaxed">
-                      {selectedSlotItem.description}
-                    </p>
-                  )}
-
-                  {selectedSlotItem.tags.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[9px] font-extrabold uppercase text-muted-foreground">Etiquetas</p>
-                      <div className="flex flex-wrap gap-1">
-                        {selectedSlotItem.tags.map((tag, i) => (
-                          <span key={i} className="bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-sm text-[9px] font-semibold border border-border">
-                            {tag}
+                  {isDetailCardExpanded && (
+                    <div className="p-3 bg-card space-y-3 text-xs border-t border-border/50">
+                      <div>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black text-white ${
+                            COLOR_OPTIONS.find((c) => c.name === selectedSlotItem.color)?.class.split(" ")[0] || "bg-indigo-500"
+                          }`}>
+                            {selectedSlotItem.type === "caja" ? "📦 Caja" : "🏷️ Suelto"}
                           </span>
-                        ))}
+                          <span className="text-[10px] text-muted-foreground font-semibold">
+                            Posición #{selectedSlotItem.stackIndex + 1} de la pila
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-black text-foreground">
+                          {selectedSlotItem.name}
+                        </h3>
                       </div>
-                    </div>
-                  )}
 
-                  {selectedSlotItem.type === "caja" && (
-                    <div className="space-y-1 bg-muted/30 p-2.5 rounded-xl border border-border/50">
-                      <p className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
-                        <FolderOpen size={11} /> Artículos dentro de la caja:
-                      </p>
-                      {selectedSlotItem.contents.length === 0 ? (
-                        <p className="text-[10px] text-muted-foreground italic">La caja está vacía.</p>
-                      ) : (
-                        <ul className="space-y-1">
-                          {selectedSlotItem.contents.map((content, i) => (
-                            <li key={i} className="flex items-center gap-1 text-[11px] text-foreground font-medium pl-1">
-                              <span className="text-primary">•</span> {content}
-                            </li>
-                          ))}
-                        </ul>
+                      {selectedSlotItem.description && (
+                        <p className="text-muted-foreground bg-muted/45 p-2 rounded-lg italic text-[11px] leading-relaxed">
+                          {selectedSlotItem.description}
+                        </p>
+                      )}
+
+                      {selectedSlotItem.tags.length > 0 && (
+                        <div className="space-y-1">
+                          <p className="text-[9px] font-extrabold uppercase text-muted-foreground">Etiquetas</p>
+                          <div className="flex flex-wrap gap-1">
+                            {selectedSlotItem.tags.map((tag, i) => (
+                              <span key={i} className="bg-secondary text-secondary-foreground px-1.5 py-0.5 rounded-sm text-[9px] font-semibold border border-border">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedSlotItem.type === "caja" && (
+                        <div className="space-y-1 bg-muted/30 p-2.5 rounded-xl border border-border/50">
+                          <p className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
+                            <FolderOpen size={11} /> Artículos dentro de la caja:
+                          </p>
+                          {selectedSlotItem.contents.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground italic">La caja está vacía.</p>
+                          ) : (
+                            <ul className="space-y-1">
+                              {selectedSlotItem.contents.map((content, i) => (
+                                <li key={i} className="flex items-center gap-1 text-[11px] text-foreground font-medium pl-1">
+                                  <span className="text-primary">•</span> {content}
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       )}
                     </div>
                   )}
