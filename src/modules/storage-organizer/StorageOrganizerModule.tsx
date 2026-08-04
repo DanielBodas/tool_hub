@@ -1336,10 +1336,20 @@ export function StorageOrganizerModule() {
                 </div>
               )}
 
-              {/* Stacking Reset Option */}
-              {slotItems.length > 0 && (
-                <div className="flex justify-between items-center bg-primary/10 border border-primary/20 p-2 rounded-xl">
-                  <span className="text-[10px] font-bold text-primary">¿Quieres apilar otra caja aquí?</span>
+              {/* Special visual callout if editing an existing box, to make creating a new one completely clear */}
+              {selectedSlotItem && (
+                <div className="bg-amber-500/10 border-2 border-dashed border-amber-500/30 p-3 rounded-xl space-y-2">
+                  <div className="flex gap-2">
+                    <Info size={16} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-bold text-amber-800 dark:text-amber-300">
+                        Estás viendo/editando una caja existente.
+                      </p>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        Si en lugar de modificarla, lo que quieres es **añadir o generar una NUEVA caja** en este mismo hueco (apilándola arriba), pulsa el siguiente botón:
+                      </p>
+                    </div>
+                  </div>
                   <button
                     type="button"
                     onClick={() => {
@@ -1355,28 +1365,87 @@ export function StorageOrganizerModule() {
                         setActiveSlot({ ...activeSlot, itemId: undefined });
                       }
                     }}
-                    className="px-2.5 py-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-lg hover:bg-primary/95 transition cursor-pointer"
+                    className="w-full py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-black rounded-lg transition shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
                   >
-                    + Apilar nueva
+                    <PlusCircle size={13} />
+                    <span>➕ GENERAR / APILAR NUEVA CAJA AQUÍ</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Stacking Reset Option (fallback clear visual box state helper) */}
+              {!selectedSlotItem && slotItems.length > 0 && (
+                <div className="flex justify-between items-center bg-emerald-500/10 border border-emerald-500/20 p-2 rounded-xl">
+                  <span className="text-[10px] font-bold text-emerald-800 dark:text-emerald-400 flex items-center gap-1">
+                    <Check size={12} /> Listo para apilar una nueva caja
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setItemForm({
+                        name: "",
+                        type: "caja",
+                        color: "Indigo",
+                        description: "",
+                        tagsInput: "",
+                        contentsInput: "",
+                      });
+                      if (activeSlot) {
+                        setActiveSlot({ ...activeSlot, itemId: undefined });
+                      }
+                    }}
+                    className="px-2.5 py-1 bg-emerald-600 text-white text-[10px] font-bold rounded-lg hover:bg-emerald-700 transition cursor-pointer"
+                  >
+                    Limpiar campos
                   </button>
                 </div>
               )}
 
               {/* Accordion 2: Formulario (Add/Edit Form) */}
-              <div className="border border-border/80 rounded-xl overflow-hidden shadow-xs">
+              <div className={`border rounded-xl overflow-hidden shadow-xs transition-colors duration-200 ${
+                selectedSlotItem
+                  ? "border-amber-500/30"
+                  : "border-emerald-500/30"
+              }`}>
                 <button
                   type="button"
                   onClick={() => setIsFormExpanded(!isFormExpanded)}
-                  className="w-full bg-muted/40 hover:bg-muted/75 p-2.5 flex justify-between items-center text-left cursor-pointer transition"
+                  className={`w-full p-2.5 flex justify-between items-center text-left cursor-pointer transition-colors duration-200 ${
+                    selectedSlotItem
+                      ? "bg-amber-500/5 hover:bg-amber-500/10"
+                      : "bg-emerald-500/5 hover:bg-emerald-500/10"
+                  }`}
                 >
-                  <span className="text-[10px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
-                    <Edit3 size={11} className="text-primary" /> {selectedSlotItem ? "Editar Información" : "Apilar Caja / Objeto"}
+                  <span className="text-[10px] font-extrabold uppercase flex items-center gap-1.5">
+                    {selectedSlotItem ? (
+                      <>
+                        <Edit3 size={12} className="text-amber-500 animate-pulse" />
+                        <span className="text-amber-800 dark:text-amber-400">✏️ EDITANDO: {selectedSlotItem.name}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Plus size={12} className="text-emerald-500" />
+                        <span className="text-emerald-800 dark:text-emerald-400">➕ CREANDO NUEVA CAJA O ARTÍCULO</span>
+                      </>
+                    )}
                   </span>
                   {isFormExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
                 </button>
 
                 {isFormExpanded && (
                   <form onSubmit={handleSaveItem} className="p-3 bg-card space-y-2.5 border-t border-border/50">
+                    {/* Visual Mode Ribbon inside form */}
+                    <div className={`px-2 py-1 rounded text-[9px] font-black uppercase tracking-wider text-center ${
+                      selectedSlotItem
+                        ? "bg-amber-500/10 text-amber-800 dark:text-amber-400 border border-amber-500/20"
+                        : "bg-emerald-500/10 text-emerald-800 dark:text-emerald-400 border border-emerald-500/20"
+                    }`}>
+                      {selectedSlotItem
+                        ? "Modo: Editando detalles de la caja seleccionada"
+                        : "Modo: Creando nueva caja para apilar en el hueco"
+                      }
+                    </div>
+
                     <div className="space-y-2">
                       <div className="space-y-0.5">
                         <label className="text-[9px] font-extrabold uppercase text-muted-foreground">Nombre de Caja u Objeto</label>
@@ -1480,9 +1549,23 @@ export function StorageOrganizerModule() {
 
                     <button
                       type="submit"
-                      className="w-full h-7 bg-primary text-primary-foreground text-xs font-bold rounded-md hover:bg-primary/95 cursor-pointer transition shadow-xs"
+                      className={`w-full h-8 text-xs font-black rounded-md cursor-pointer transition shadow-xs flex items-center justify-center gap-1.5 ${
+                        selectedSlotItem
+                          ? "bg-amber-500 hover:bg-amber-600 text-white"
+                          : "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      }`}
                     >
-                      {selectedSlotItem ? "Guardar Cambios" : "Apilar en este hueco"}
+                      {selectedSlotItem ? (
+                        <>
+                          <Check size={13} />
+                          <span>Guardar Cambios de Caja</span>
+                        </>
+                      ) : (
+                        <>
+                          <PlusCircle size={13} />
+                          <span>¡CREAR Y APILAR NUEVA CAJA!</span>
+                        </>
+                      )}
                     </button>
                   </form>
                 )}
