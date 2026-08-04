@@ -42,7 +42,7 @@ class MockCollection {
     fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf-8");
   }
 
-  async find(query: any = {}) {
+  find(query: any = {}) {
     const data = this._read();
     const filtered = data.filter((item: any) => {
       for (const key in query) {
