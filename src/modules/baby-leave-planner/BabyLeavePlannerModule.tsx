@@ -5,7 +5,6 @@ import {
   RefreshCw,
   Settings,
   X,
-  Info,
   Trash2,
   Edit2,
   Plus,
@@ -1261,17 +1260,19 @@ export function BabyLeavePlannerModule() {
           transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           z-index: 2000;
           display: flex;
-          gap: 10px;
-          background: white;
-          padding: 6px;
-          border-radius: 50px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-          border: 1px solid #e2e8f0;
+          align-items: center;
+          gap: 12px;
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(12px);
+          padding: 8px 12px 8px 18px;
+          border-radius: 9999px;
+          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
+          border: 1px solid rgba(226, 232, 240, 0.8);
         }
         .dark #floating-wrapper {
-          background: #1e293b;
-          border-color: #334155;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+          background: rgba(30, 41, 59, 0.85);
+          border-color: rgba(51, 65, 85, 0.8);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
 
         #floating-wrapper.visible {
@@ -1279,37 +1280,52 @@ export function BabyLeavePlannerModule() {
         }
 
         .btn-float-action {
-          background: #4f46e5;
+          background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
           color: white;
           border: none;
-          padding: 12px 24px;
-          border-radius: 50px;
+          padding: 10px 20px;
+          border-radius: 9999px;
           font-weight: 800;
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 10px;
-          box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+          gap: 8px;
+          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
+          transition: all 0.2s ease;
+        }
+        .btn-float-action:hover {
+          transform: scale(1.02);
+          box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
         }
 
         .btn-float-close {
-          width: 44px;
-          height: 44px;
+          width: 32px;
+          height: 32px;
           border-radius: 50%;
           border: none;
-          background: #f1f5f9;
+          background: rgba(241, 245, 249, 0.8);
           color: #64748b;
           font-weight: bold;
           cursor: pointer;
-          font-size: 1.1rem;
+          font-size: 0.9rem;
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: all 0.2s ease;
+        }
+        .btn-float-close:hover {
+          background: #e2e8f0;
+          color: #0f172a;
+          transform: scale(1.05);
         }
         .dark .btn-float-close {
-          background: #334155;
+          background: rgba(51, 65, 85, 0.8);
           color: #cbd5e1;
+        }
+        .dark .btn-float-close:hover {
+          background: #475569;
+          color: white;
         }
 
         /* --- KPIs SIDEBARS STYLE --- */
@@ -1559,17 +1575,6 @@ export function BabyLeavePlannerModule() {
           </div>
         </div>
 
-        {/* Informative Banner for Shift + Click */}
-        {globalData.birthDate && isLoaded && (
-          <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl flex items-start gap-3 text-xs text-indigo-700 dark:text-indigo-300">
-            <Info size={18} className="shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
-            <div>
-              <span className="font-bold text-sm block mb-0.5">💡 Truco de selección rápida:</span>
-              Haz clic en un día del calendario, mantén pulsada la tecla <kbd className="bg-white dark:bg-slate-800 border dark:border-slate-700 px-1.5 py-0.5 rounded shadow-xs font-mono font-black text-[10px]">Shift</kbd> y haz clic en otro día para seleccionar un rango completo automáticamente. Haz doble clic en cualquier celda para abrir el selector al instante.
-            </div>
-          </div>
-        )}
-
         {/* Initial Setup Screen (if no birthDate is set) */}
         {!globalData.birthDate && isLoaded && (
           <div id="setup-screen" className="max-w-md mx-auto text-center bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md border border-slate-100 dark:border-slate-700/80 my-12 animate-in fade-in zoom-in-95">
@@ -1759,16 +1764,24 @@ export function BabyLeavePlannerModule() {
         )}
       </div>
 
-      {/* Floating Range Selection Bar (from calendar.html) */}
-      <div id="floating-wrapper" className={selectedDates.length > 0 ? "visible" : ""}>
-        <button className="btn-float-close cursor-pointer" onClick={clearAllSelections}>
-          <X size={16} />
+      {/* Floating Range Selection Bar (from calendar.html) - Beautiful Modern Bubble */}
+      <div id="floating-wrapper" className={`${selectedDates.length > 0 ? "visible" : ""} flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-800/80 backdrop-blur-xl px-4 py-2.5 rounded-full shadow-2xl`}>
+        <button
+          className="btn-float-close cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 p-1 rounded-full transition-all"
+          onClick={clearAllSelections}
+          title="Limpiar selección"
+        >
+          <X size={14} className="text-slate-500 dark:text-slate-400" />
         </button>
-        <button className="btn-float-action cursor-pointer" onClick={() => openModalForSelection()}>
-          <span className="bg-white/25 px-2 py-0.5 rounded-full text-xs font-black">
+        <span className="h-4 w-px bg-slate-200 dark:bg-slate-700/80" />
+        <button
+          className="btn-float-action cursor-pointer flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-extrabold text-xs px-4 py-2 rounded-full shadow-md shadow-indigo-600/10 transition-all hover:scale-105 active:scale-95"
+          onClick={() => openModalForSelection()}
+        >
+          <span className="bg-white/20 dark:bg-black/20 text-white px-2 py-0.5 rounded-full text-[10px] font-black leading-none flex items-center justify-center">
             {selectedDates.length}
           </span>
-          Configurar Días
+          <span>Configurar Días</span>
         </button>
       </div>
 
