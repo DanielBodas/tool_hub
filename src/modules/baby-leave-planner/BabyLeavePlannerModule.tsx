@@ -7,6 +7,8 @@ import {
   X,
   Info,
   Trash2,
+  Edit2,
+  Plus,
 } from "lucide-react";
 
 // Define TypeScript interfaces for our data structure
@@ -152,25 +154,31 @@ export function BabyLeavePlannerModule() {
   // Day Management Preferences
   const [skipNonWorkDays, setSkipNonWorkDays] = useState(true);
 
+  // Holiday Mode Toggle
+  const [holidayMode, setHolidayMode] = useState(false);
+
+  // Sidebar Inline Balance Editing States
+  const [editingBalanceKey, setEditingBalanceKey] = useState<string | null>(null); // "person-type"
+  const [editTypeVal, setEditTypeVal] = useState("");
+  const [editTotalVal, setEditTotalVal] = useState("");
+  const [editFreqVal, setEditFreqVal] = useState<"Diario" | "Semanal">("Diario");
+
+  // State to manage inline balance creation form in each sidebar
+  const [showAddFormMom, setShowAddFormMom] = useState(false);
+  const [showAddFormDad, setShowAddFormDad] = useState(false);
+  const [sidebarAddType, setSidebarAddType] = useState("");
+  const [sidebarAddTotal, setSidebarAddTotal] = useState("");
+  const [sidebarAddFreq, setSidebarAddFreq] = useState<"Diario" | "Semanal">("Diario");
+
   // Modal States
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [selectedPerson, setSelectedPerson] = useState<string>("Madre");
+  const [selectedPerson, setSelectedPerson] = useState<string>("Madre"); // "Madre" | "Padre" | "Festivo"
   const [selectedType, setSelectedType] = useState<string>("");
+  const [holidayNameVal, setHolidayNameVal] = useState("Festivo");
 
-  // Configuration Modal States
+  // Configuration Modal States (only contains birthDate now)
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configBirthDate, setConfigBirthDate] = useState("");
-  const [configTab, setConfigTab] = useState<"birth" | "balances" | "festivos">("birth");
-
-  // New Balance Form State
-  const [newBalPerson, setNewBalPerson] = useState<string>("Madre");
-  const [newBalType, setNewBalType] = useState("");
-  const [newBalTotal, setNewBalTotal] = useState("");
-  const [newBalFreq, setNewBalFreq] = useState<"Diario" | "Semanal">("Diario");
-
-  // New Holiday Form State
-  const [newFestDate, setNewFestDate] = useState("");
-  const [newFestNombre, setNewFestNombre] = useState("");
 
   // Migration and Data Loading
   useEffect(() => {
@@ -265,6 +273,12 @@ export function BabyLeavePlannerModule() {
 
   // Double Click / Selection handlers
   const handleDateClick = (e: React.MouseEvent, dateStr: string) => {
+    // If Holiday mode is active, clicking immediately toggles the holiday on that date
+    if (holidayMode) {
+      toggleHolidayDirectly(dateStr);
+      return;
+    }
+
     const isShift = e.shiftKey;
 
     if (isShift && lastClickedDate) {
@@ -302,6 +316,9 @@ export function BabyLeavePlannerModule() {
   };
 
   const handleDateDoubleClick = (dateStr: string) => {
+    // Disable double click configure modal if in holiday mode
+    if (holidayMode) return;
+
     setSelectedDates((prev) => {
       if (!prev.includes(dateStr)) {
         return [...prev, dateStr];
@@ -309,18 +326,46 @@ export function BabyLeavePlannerModule() {
       return prev;
     });
 
-    // Step 5: Prefill assignment modal with existing event if present
-    const existing = globalData.events.find((e) => e.date === dateStr);
-    if (existing) {
-      setSelectedPerson(existing.person);
-      setSelectedType(existing.type);
+    // Detect if there's an existing holiday on that day
+    const existingHoliday = globalData.festivos.find((f) => f.date === dateStr);
+    if (existingHoliday) {
+      setSelectedPerson("Festivo");
+      setHolidayNameVal(existingHoliday.nombre);
     } else {
-      setSelectedPerson("Madre");
-      const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
-      setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+      // Detect if there's an existing event on that day
+      const existing = globalData.events.find((e) => e.date === dateStr);
+      if (existing) {
+        setSelectedPerson(existing.person);
+        setSelectedType(existing.type);
+      } else {
+        setSelectedPerson("Madre");
+        const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
+        setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+      }
     }
 
     setShowAssignModal(true);
+  };
+
+  const toggleHolidayDirectly = (dateStr: string) => {
+    setGlobalData((prev) => {
+      const exists = prev.festivos.some((f) => f.date === dateStr);
+      if (exists) {
+        return {
+          ...prev,
+          festivos: prev.festivos.filter((f) => f.date !== dateStr),
+        };
+      } else {
+        const newFest: FestivoItem = {
+          date: dateStr,
+          nombre: "Festivo",
+        };
+        return {
+          ...prev,
+          festivos: [...prev.festivos, newFest].sort((a, b) => a.date.localeCompare(b.date)),
+        };
+      }
+    });
   };
 
   const clearAllSelections = () => {
@@ -335,6 +380,7 @@ export function BabyLeavePlannerModule() {
     setSelectedPerson("Madre");
     const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
     setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+    setHolidayNameVal("Festivo");
 
     setShowAssignModal(true);
   };
@@ -346,66 +392,84 @@ export function BabyLeavePlannerModule() {
 
   // Save/Delete Event implementation matching AppScript "saveMultipleEvents" logic
   const handleSaveEvents = () => {
-    if (!selectedType) {
-      alert("Selecciona un tipo de permiso");
-      return;
-    }
-
     const datesToProcess = selectedDates.length > 0 ? selectedDates : (lastClickedDate ? [lastClickedDate] : []);
     if (datesToProcess.length === 0) return;
 
-    // Check frequency of this permit
-    const targetBalance = globalData.balances.find(
-      (b) => b.person === selectedPerson && b.type === selectedType
-    );
-    const isSemanal = targetBalance?.frecuencia === "Semanal";
+    if (selectedPerson === "Festivo") {
+      // Save Holidays (Festivos)
+      setGlobalData((prev) => {
+        let festivosList = [...prev.festivos];
+        datesToProcess.forEach((dateStr) => {
+          festivosList = festivosList.filter((f) => f.date !== dateStr);
+          festivosList.push({
+            date: dateStr,
+            nombre: holidayNameVal.trim() || "Festivo",
+          });
+        });
+        return {
+          ...prev,
+          festivos: festivosList.sort((a, b) => a.date.localeCompare(b.date)),
+        };
+      });
+    } else {
+      // Save Permits
+      if (!selectedType) {
+        alert("Selecciona un tipo de permiso");
+        return;
+      }
 
-    setGlobalData((prev) => {
-      let eventsList = [...prev.events];
+      // Check frequency of this permit
+      const targetBalance = globalData.balances.find(
+        (b) => b.person === selectedPerson && b.type === selectedType
+      );
+      const isSemanal = targetBalance?.frecuencia === "Semanal";
 
-      datesToProcess.forEach((dateStr) => {
-        if (isSemanal) {
-          const startDate = new Date(dateStr);
-          for (let i = 0; i < 7; i++) {
-            const d = new Date(startDate);
-            d.setDate(startDate.getDate() + i);
-            const dStr = formatDateStr(d);
+      setGlobalData((prev) => {
+        let eventsList = [...prev.events];
+
+        datesToProcess.forEach((dateStr) => {
+          if (isSemanal) {
+            const startDate = new Date(dateStr);
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(startDate);
+              d.setDate(startDate.getDate() + i);
+              const dStr = formatDateStr(d);
+
+              // Clean whatever existed on that day
+              eventsList = eventsList.filter((e) => e.date !== dStr);
+              eventsList.push({
+                date: dStr,
+                person: selectedPerson,
+                type: selectedType,
+              });
+            }
+          } else {
+            const dObj = new Date(dateStr);
+            const dayOfWeek = dObj.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isHoliday = prev.festivos.some((f) => f.date === dateStr);
+
+            // Skip weekends and holidays logic
+            if (skipNonWorkDays && (isWeekend || isHoliday)) {
+              return;
+            }
 
             // Clean whatever existed on that day
-            eventsList = eventsList.filter((e) => e.date !== dStr);
+            eventsList = eventsList.filter((e) => e.date !== dateStr);
             eventsList.push({
-              date: dStr,
+              date: dateStr,
               person: selectedPerson,
               type: selectedType,
             });
           }
-        } else {
-          const dObj = new Date(dateStr);
-          const dayOfWeek = dObj.getDay();
-          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-          const isHoliday = prev.festivos.some((f) => f.date === dateStr);
+        });
 
-          // Step 3: Skip weekends and holidays logic
-          if (skipNonWorkDays && (isWeekend || isHoliday)) {
-            // Simply omit saving daily leaves on weekends/holidays
-            return;
-          }
-
-          // Clean whatever existed on that day
-          eventsList = eventsList.filter((e) => e.date !== dateStr);
-          eventsList.push({
-            date: dateStr,
-            person: selectedPerson,
-            type: selectedType,
-          });
-        }
+        return {
+          ...prev,
+          events: eventsList,
+        };
       });
-
-      return {
-        ...prev,
-        events: eventsList,
-      };
-    });
+    }
 
     setSelectedDates([]);
     setShowAssignModal(false);
@@ -415,45 +479,53 @@ export function BabyLeavePlannerModule() {
     const datesToProcess = selectedDates.length > 0 ? selectedDates : (lastClickedDate ? [lastClickedDate] : []);
     if (datesToProcess.length === 0) return;
 
-    if (!confirm(`¿Borrar permisos de ${datesToProcess.length} día(s)?`)) return;
+    if (!confirm(`¿Borrar elementos de ${datesToProcess.length} día(s)?`)) return;
 
-    setGlobalData((prev) => {
-      let eventsList = [...prev.events];
+    if (selectedPerson === "Festivo") {
+      // Delete Holidays
+      setGlobalData((prev) => ({
+        ...prev,
+        festivos: prev.festivos.filter((f) => !datesToProcess.includes(f.date)),
+      }));
+    } else {
+      // Delete Permits
+      setGlobalData((prev) => {
+        let eventsList = [...prev.events];
 
-      datesToProcess.forEach((dateStr) => {
-        // Find if an event exists on that day
-        const existing = eventsList.find((e) => e.date === dateStr);
-        if (existing) {
-          const targetBalance = prev.balances.find(
-            (b) => b.person === existing.person && b.type === existing.type
-          );
-          const isSemanal = targetBalance?.frecuencia === "Semanal";
+        datesToProcess.forEach((dateStr) => {
+          // Find if an event exists on that day
+          const existing = eventsList.find((e) => e.date === dateStr);
+          if (existing) {
+            const targetBalance = prev.balances.find(
+              (b) => b.person === existing.person && b.type === existing.type
+            );
+            const isSemanal = targetBalance?.frecuencia === "Semanal";
 
-          if (isSemanal) {
-            const startDate = new Date(dateStr);
-            for (let i = 0; i < 7; i++) {
-              const d = new Date(startDate);
-              d.setDate(startDate.getDate() + i);
-              const dStr = formatDateStr(d);
+            if (isSemanal) {
+              const startDate = new Date(dateStr);
+              for (let i = 0; i < 7; i++) {
+                const d = new Date(startDate);
+                d.setDate(startDate.getDate() + i);
+                const dStr = formatDateStr(d);
 
-              eventsList = eventsList.filter(
-                (e) => !(e.date === dStr && e.person === existing.person && e.type === existing.type)
-              );
+                eventsList = eventsList.filter(
+                  (e) => !(e.date === dStr && e.person === existing.person && e.type === existing.type)
+                );
+              }
+            } else {
+              eventsList = eventsList.filter((e) => e.date !== dateStr);
             }
           } else {
             eventsList = eventsList.filter((e) => e.date !== dateStr);
           }
-        } else {
-          // If no custom event but selected, let's filter out anyway
-          eventsList = eventsList.filter((e) => e.date !== dateStr);
-        }
-      });
+        });
 
-      return {
-        ...prev,
-        events: eventsList,
-      };
-    });
+        return {
+          ...prev,
+          events: eventsList,
+        };
+      });
+    }
 
     setSelectedDates([]);
     setShowAssignModal(false);
@@ -470,28 +542,40 @@ export function BabyLeavePlannerModule() {
     setShowConfigModal(false);
   };
 
-  const handleAddBalance = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newBalType || !newBalTotal) return;
+  const saveInitialConfig = () => {
+    if (configBirthDate) {
+      setGlobalData((prev) => ({
+        ...prev,
+        birthDate: configBirthDate,
+      }));
+    }
+  };
 
-    const parsedTotal = parseFloat(newBalTotal);
-    if (isNaN(parsedTotal) || parsedTotal <= 0) return;
+  // Sidebar Inline Balance Editor Handlers (Step 1)
+  const handleAddBalanceSidebar = (person: "Madre" | "Padre") => {
+    const type = sidebarAddType.trim();
+    const total = parseFloat(sidebarAddTotal);
+
+    if (!type || isNaN(total) || total <= 0) {
+      alert("Por favor, introduce un nombre válido y un número de días/semanas mayor que cero.");
+      return;
+    }
 
     // Check for duplicate
     const exists = globalData.balances.some(
-      (b) => b.person === newBalPerson && b.type.toLowerCase() === newBalType.toLowerCase()
+      (b) => b.person === person && b.type.toLowerCase() === type.toLowerCase()
     );
 
     if (exists) {
-      alert("Ya existe un saldo con el mismo nombre para esta persona.");
+      alert("Ya existe un saldo con ese nombre para esta persona.");
       return;
     }
 
     const newBalance: BalanceItem = {
-      person: newBalPerson,
-      type: newBalType.trim(),
-      total: parsedTotal,
-      frecuencia: newBalFreq,
+      person,
+      type,
+      total,
+      frecuencia: sidebarAddFreq,
     };
 
     setGlobalData((prev) => ({
@@ -499,8 +583,75 @@ export function BabyLeavePlannerModule() {
       balances: [...prev.balances, newBalance],
     }));
 
-    setNewBalType("");
-    setNewBalTotal("");
+    // Reset Form
+    setSidebarAddType("");
+    setSidebarAddTotal("");
+    if (person === "Madre") setShowAddFormMom(false);
+    else setShowAddFormDad(false);
+  };
+
+  const startEditingBalance = (person: string, type: string) => {
+    const bal = globalData.balances.find((b) => b.person === person && b.type === type);
+    if (!bal) return;
+
+    setEditingBalanceKey(`${person}-${type}`);
+    setEditTypeVal(bal.type);
+    setEditTotalVal(String(bal.total));
+    setEditFreqVal(bal.frecuencia);
+  };
+
+  const handleUpdateBalance = (person: string, originalType: string) => {
+    const newType = editTypeVal.trim();
+    const newTotal = parseFloat(editTotalVal);
+
+    if (!newType || isNaN(newTotal) || newTotal <= 0) {
+      alert("Por favor, introduce un nombre válido y un número de días/semanas mayor que cero.");
+      return;
+    }
+
+    // Check for duplicate if name is being changed
+    if (newType.toLowerCase() !== originalType.toLowerCase()) {
+      const exists = globalData.balances.some(
+        (b) => b.person === person && b.type.toLowerCase() === newType.toLowerCase()
+      );
+      if (exists) {
+        alert("Ya existe un saldo con ese nombre para esta persona.");
+        return;
+      }
+    }
+
+    setGlobalData((prev) => {
+      const updatedBalances = prev.balances.map((b) => {
+        if (b.person === person && b.type === originalType) {
+          return {
+            ...b,
+            type: newType,
+            total: newTotal,
+            frecuencia: editFreqVal,
+          };
+        }
+        return b;
+      });
+
+      // Update associated events
+      const updatedEvents = prev.events.map((e) => {
+        if (e.person === person && e.type === originalType) {
+          return {
+            ...e,
+            type: newType,
+          };
+        }
+        return e;
+      });
+
+      return {
+        ...prev,
+        balances: updatedBalances,
+        events: updatedEvents,
+      };
+    });
+
+    setEditingBalanceKey(null);
   };
 
   const handleDeleteBalance = (person: string, type: string) => {
@@ -509,49 +660,10 @@ export function BabyLeavePlannerModule() {
     setGlobalData((prev) => ({
       ...prev,
       balances: prev.balances.filter((b) => !(b.person === person && b.type === type)),
-      // Clean up orphaned events
       events: prev.events.filter((e) => !(e.person === person && e.type === type)),
     }));
-  };
 
-  const handleAddHoliday = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newFestDate || !newFestNombre) return;
-
-    const exists = globalData.festivos.some((f) => f.date === newFestDate);
-    if (exists) {
-      alert("Ya existe un festivo configurado para esta fecha.");
-      return;
-    }
-
-    const newFestivo: FestivoItem = {
-      date: newFestDate,
-      nombre: newFestNombre.trim(),
-    };
-
-    setGlobalData((prev) => ({
-      ...prev,
-      festivos: [...prev.festivos, newFestivo].sort((a, b) => a.date.localeCompare(b.date)),
-    }));
-
-    setNewFestDate("");
-    setNewFestNombre("");
-  };
-
-  const handleDeleteHoliday = (date: string) => {
-    setGlobalData((prev) => ({
-      ...prev,
-      festivos: prev.festivos.filter((f) => f.date !== date),
-    }));
-  };
-
-  const saveInitialConfig = () => {
-    if (configBirthDate) {
-      setGlobalData((prev) => ({
-        ...prev,
-        birthDate: configBirthDate,
-      }));
-    }
+    setEditingBalanceKey(null);
   };
 
   // Sync / Refresh handler
@@ -569,77 +681,226 @@ export function BabyLeavePlannerModule() {
       });
   };
 
-  // KPI Render Logic (same logic and design as kpi.html)
+  // Sidebar KPI & Balance Editing Render Logic (Step 1)
   const renderKPIs = (person: "Madre" | "Padre") => {
     const personBalances = globalData.balances.filter((b) => b.person === person);
-
-    if (personBalances.length === 0) {
-      return (
-        <div className="flex flex-col h-full justify-center items-center text-center p-8">
-          <p className="text-sm font-semibold text-slate-400">No hay saldos configurados.</p>
-        </div>
-      );
-    }
+    const isMom = person === "Madre";
+    const showAddForm = isMom ? showAddFormMom : showAddFormDad;
+    const setShowAddForm = isMom ? setShowAddFormMom : setShowAddFormDad;
 
     return (
       <div className="space-y-4">
-        {personBalances.map((bal, idx) => {
-          // Calculate used days counting from globalData.events
-          const usedDays = globalData.events.filter(
-            (e) => e.person === bal.person && e.type === bal.type
-          ).length;
+        <div className="sidebar-section-title flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2 mb-4">
+          <span className="text-slate-800 dark:text-slate-100 font-extrabold flex items-center gap-2">
+            {isMom ? "👩 Madre" : "👨 Padre"}
+          </span>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
+            title="Añadir saldo de días"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
 
-          const total = Number(bal.total);
-          let used = 0;
-          let remaining = 0;
-          let unit = "";
-
-          if (bal.frecuencia === "Semanal") {
-            used = parseFloat((usedDays / 7).toFixed(1));
-            remaining = parseFloat((total - used).toFixed(1));
-            unit = "SEM";
-          } else {
-            used = usedDays;
-            remaining = total - used;
-            unit = "DÍAS";
-          }
-
-          const percent = Math.min(100, (used / total) * 100);
-          const isMom = bal.person === "Madre";
-          const barClass = isMom ? "bar-mom" : "bar-dad";
-          const isLow = (remaining <= 2 && bal.frecuencia !== "Semanal") || remaining <= 0;
-
-          return (
-            <div key={idx} className={`kpi-card-sidebar ${isLow ? "bg-danger-light" : ""}`}>
-              <div className="kpi-card-header">
-                <span className="kpi-card-label truncate max-w-[150px]" title={bal.type}>
-                  {bal.type}
-                </span>
-                <div className="kpi-card-remaining shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                  <span className={`remaining-value ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
-                    {remaining}
-                  </span>
-                  <span className="remaining-unit">{unit} LIBRES</span>
-                </div>
+        {/* Inline form to create a new balance */}
+        {showAddForm && (
+          <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 mb-4 animate-in slide-in-from-top-4 duration-200">
+            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                <select
+                  value={sidebarAddFreq}
+                  onChange={(e) => setSidebarAddFreq(e.target.value as "Diario" | "Semanal")}
+                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                >
+                  <option value="Diario">Diario</option>
+                  <option value="Semanal">Semanal</option>
+                </select>
               </div>
-
-              <div className="kpi-progress-wrapper">
-                <div className={`kpi-progress-bar ${barClass}`} style={{ width: `${percent}%` }} />
-              </div>
-
-              <div className="kpi-card-footer">
-                <div className="footer-stat text-left">
-                  <span>{used} {unit}</span>
-                  <span>USADOS</span>
-                </div>
-                <div className="footer-stat text-right">
-                  <span>{total} {unit}</span>
-                  <span>TOTAL</span>
-                </div>
+              <div>
+                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Días/Semanas</label>
+                <input
+                  type="number"
+                  placeholder="Ej. 15"
+                  value={sidebarAddTotal}
+                  onChange={(e) => setSidebarAddTotal(e.target.value)}
+                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                  required
+                />
               </div>
             </div>
-          );
-        })}
+            <div>
+              <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre del Permiso</label>
+              <input
+                type="text"
+                placeholder="Ej. Lactancia"
+                value={sidebarAddType}
+                onChange={(e) => setSidebarAddType(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 outline-none"
+                required
+              />
+            </div>
+            <div className="flex gap-2 text-xs">
+              <button
+                type="button"
+                className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold"
+                onClick={() => setShowAddForm(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="flex-1 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+                onClick={() => handleAddBalanceSidebar(person)}
+              >
+                Añadir
+              </button>
+            </div>
+          </div>
+        )}
+
+        {personBalances.length === 0 && !showAddForm && (
+          <div className="flex flex-col h-full justify-center items-center text-center p-8">
+            <p className="text-sm font-semibold text-slate-400">No hay saldos configurados.</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {personBalances.map((bal, idx) => {
+            const isEditing = editingBalanceKey === `${person}-${bal.type}`;
+
+            // Calculate used days counting from globalData.events
+            const usedDays = globalData.events.filter(
+              (e) => e.person === bal.person && e.type === bal.type
+            ).length;
+
+            const total = Number(bal.total);
+            let used = 0;
+            let remaining = 0;
+            let unit = "";
+
+            if (bal.frecuencia === "Semanal") {
+              used = parseFloat((usedDays / 7).toFixed(1));
+              remaining = parseFloat((total - used).toFixed(1));
+              unit = "SEM";
+            } else {
+              used = usedDays;
+              remaining = total - used;
+              unit = "DÍAS";
+            }
+
+            const percent = Math.min(100, (used / total) * 100);
+            const barClass = isMom ? "bar-mom" : "bar-dad";
+            const isLow = (remaining <= 2 && bal.frecuencia !== "Semanal") || remaining <= 0;
+
+            if (isEditing) {
+              return (
+                <div key={idx} className="p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 animate-in fade-in duration-150">
+                  <div className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Editar Permiso</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                      <select
+                        value={editFreqVal}
+                        onChange={(e) => setEditFreqVal(e.target.value as "Diario" | "Semanal")}
+                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                      >
+                        <option value="Diario">Diario</option>
+                        <option value="Semanal">Semanal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Cantidad</label>
+                      <input
+                        type="number"
+                        value={editTotalVal}
+                        onChange={(e) => setEditTotalVal(e.target.value)}
+                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Nombre</label>
+                    <input
+                      type="text"
+                      value={editTypeVal}
+                      onChange={(e) => setEditTypeVal(e.target.value)}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center gap-2 text-xs pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBalance(person, bal.type)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition"
+                      title="Eliminar saldo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold"
+                        onClick={() => setEditingBalanceKey(null)}
+                      >
+                        Atrás
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+                        onClick={() => handleUpdateBalance(person, bal.type)}
+                      >
+                        OK
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div key={idx} className={`kpi-card-sidebar relative group ${isLow ? "bg-danger-light" : ""}`}>
+                {/* Hover inline edit trigger */}
+                <button
+                  onClick={() => startEditingBalance(person, bal.type)}
+                  className="absolute top-2 right-2 p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-400 group-hover:opacity-100 opacity-0 transition-opacity duration-150 cursor-pointer"
+                  title="Editar este saldo"
+                >
+                  <Edit2 size={12} />
+                </button>
+
+                <div className="kpi-card-header pr-6">
+                  <span className="kpi-card-label truncate max-w-[130px]" title={bal.type}>
+                    {bal.type}
+                  </span>
+                  <div className="kpi-card-remaining shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <span className={`remaining-value ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
+                      {remaining}
+                    </span>
+                    <span className="remaining-unit">{unit} LIBRES</span>
+                  </div>
+                </div>
+
+                <div className="kpi-progress-wrapper">
+                  <div className={`kpi-progress-bar ${barClass}`} style={{ width: `${percent}%` }} />
+                </div>
+
+                <div className="kpi-card-footer">
+                  <div className="footer-stat text-left">
+                    <span>{used} {unit}</span>
+                    <span>USADOS</span>
+                  </div>
+                  <div className="footer-stat text-right">
+                    <span>{total} {unit}</span>
+                    <span>TOTAL</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     );
   };
@@ -1266,6 +1527,19 @@ export function BabyLeavePlannerModule() {
 
           {/* Actions */}
           <div className="flex gap-2 shrink-0">
+            {/* Interactive Holiday Mode Toggle (Step 2) */}
+            <button
+              onClick={() => setHolidayMode(!holidayMode)}
+              className={`px-4 py-2 text-xs font-black rounded-xl border transition flex items-center justify-center gap-2 cursor-pointer ${
+                holidayMode
+                  ? "bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-900/50 dark:text-amber-400"
+                  : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+              }`}
+              title="Activar para configurar festivos haciendo clic directamente en el calendario"
+            >
+              🚩 MODO FESTIVOS: {holidayMode ? "ON" : "OFF"}
+            </button>
+
             <button
               className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition cursor-pointer text-slate-600 dark:text-slate-300"
               onClick={handleRefresh}
@@ -1276,7 +1550,6 @@ export function BabyLeavePlannerModule() {
             <button
               className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition cursor-pointer text-slate-600 dark:text-slate-300"
               onClick={() => {
-                setConfigTab("birth");
                 setShowConfigModal(true);
               }}
               title="Ajustes"
@@ -1506,7 +1779,7 @@ export function BabyLeavePlannerModule() {
             <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
               <div>
                 <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">
-                  Configurar Permiso
+                  Configurar Días
                 </h3>
                 <p className="text-xs text-slate-400 mt-1">
                   Se configurarán {selectedDates.length} día(s)
@@ -1543,63 +1816,84 @@ export function BabyLeavePlannerModule() {
             <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Persona
+                  Asignar A
                 </label>
                 <select
                   value={selectedPerson}
                   onChange={(e) => {
-                    const newPerson = e.target.value;
-                    setSelectedPerson(newPerson);
-                    const permits = globalData.balances.filter((b) => b.person === newPerson);
-                    if (permits.length > 0) {
-                      setSelectedType(permits[0].type);
-                    } else {
-                      setSelectedType("");
+                    const val = e.target.value;
+                    setSelectedPerson(val);
+                    if (val !== "Festivo") {
+                      const permits = globalData.balances.filter((b) => b.person === val);
+                      if (permits.length > 0) {
+                        setSelectedType(permits[0].type);
+                      } else {
+                        setSelectedType("");
+                      }
                     }
                   }}
-                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
                 >
                   <option value="Madre">Madre 👩</option>
                   <option value="Padre">Padre 👨</option>
+                  <option value="Festivo">Festivo 🚩</option>
                 </select>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                  Tipo de Permiso
-                </label>
-                <select
-                  value={selectedType}
-                  onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
-                >
-                  {currentPersonPermits.map((p, idx) => (
-                    <option key={idx} value={p.type}>
-                      {p.type} {p.frecuencia === "Semanal" ? "(Semana)" : ""}
-                    </option>
-                  ))}
-                  {currentPersonPermits.length === 0 && (
-                    <option value="">No hay tipos de permisos configurados</option>
-                  )}
-                </select>
-              </div>
+              {selectedPerson === "Festivo" ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    Nombre del Festivo
+                  </label>
+                  <input
+                    type="text"
+                    value={holidayNameVal}
+                    onChange={(e) => setHolidayNameVal(e.target.value)}
+                    placeholder="Ej. Año Nuevo"
+                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                    required
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    Tipo de Permiso
+                  </label>
+                  <select
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                  >
+                    {currentPersonPermits.map((p, idx) => (
+                      <option key={idx} value={p.type}>
+                        {p.type} {p.frecuencia === "Semanal" ? "(Semana)" : ""}
+                      </option>
+                    ))}
+                    {currentPersonPermits.length === 0 && (
+                      <option value="">No hay tipos de permisos configurados</option>
+                    )}
+                  </select>
+                </div>
+              )}
 
-              {/* Omit non-working days logic checkbox */}
-              <div className="flex items-center gap-2 pt-1.5">
-                <input
-                  type="checkbox"
-                  id="skipNonWorkDays"
-                  checked={skipNonWorkDays}
-                  onChange={(e) => setSkipNonWorkDays(e.target.checked)}
-                  className="w-4 h-4 rounded-sm border-slate-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-                />
-                <label
-                  htmlFor="skipNonWorkDays"
-                  className="text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer select-none"
-                >
-                  Omitir fines de semana y festivos al guardar
-                </label>
-              </div>
+              {selectedPerson !== "Festivo" && (
+                /* Omit non-working days logic checkbox */
+                <div className="flex items-center gap-2 pt-1.5">
+                  <input
+                    type="checkbox"
+                    id="skipNonWorkDays"
+                    checked={skipNonWorkDays}
+                    onChange={(e) => setSkipNonWorkDays(e.target.checked)}
+                    className="w-4 h-4 rounded-sm border-slate-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                  />
+                  <label
+                    htmlFor="skipNonWorkDays"
+                    className="text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer select-none"
+                  >
+                    Omitir fines de semana y festivos al guardar
+                  </label>
+                </div>
+              )}
             </div>
 
             <div className="flex justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
@@ -1631,11 +1925,11 @@ export function BabyLeavePlannerModule() {
       {/* --- SETTINGS / CONFIGURATION MODAL (Tailwind Overhaul) --- */}
       {showConfigModal && (
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
             <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
               <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
                 <Settings size={20} className="text-slate-500 dark:text-slate-400" />
-                Configuración
+                Ajustes Generales
               </h3>
               <button
                 onClick={() => setShowConfigModal(false)}
@@ -1645,231 +1939,37 @@ export function BabyLeavePlannerModule() {
               </button>
             </div>
 
-            {/* Modal Tabs Header */}
-            <div className="flex border-b border-slate-100 dark:border-slate-700 text-xs font-bold text-slate-400">
-              <button
-                onClick={() => setConfigTab("birth")}
-                className={`pb-2 px-3 border-b-2 transition cursor-pointer ${configTab === "birth" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-black" : "border-transparent"}`}
-              >
-                👶 Fecha Nacimiento
-              </button>
-              <button
-                onClick={() => setConfigTab("balances")}
-                className={`pb-2 px-3 border-b-2 transition cursor-pointer ${configTab === "balances" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-black" : "border-transparent"}`}
-              >
-                📊 Configurar Saldos
-              </button>
-              <button
-                onClick={() => setConfigTab("festivos")}
-                className={`pb-2 px-3 border-b-2 transition cursor-pointer ${configTab === "festivos" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-black" : "border-transparent"}`}
-              >
-                🚩 Festivos
-              </button>
-            </div>
-
             {/* Tab: Birth Date */}
-            {configTab === "birth" && (
-              <div className="space-y-4 pt-1">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
-                    Fecha de nacimiento
-                  </label>
-                  <input
-                    type="date"
-                    value={configBirthDate}
-                    onChange={(e) => setConfigBirthDate(e.target.value)}
-                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
-                  />
-                  <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-                    * Al cambiar esta fecha, el calendario de 15 meses se recalculará automáticamente a partir del mes de nacimiento.
-                  </p>
-                </div>
-                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
-                  <button
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
-                    onClick={() => setShowConfigModal(false)}
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
-                    onClick={handleConfigSubmit}
-                  >
-                    Actualizar
-                  </button>
-                </div>
+            <div className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                  Fecha de nacimiento
+                </label>
+                <input
+                  type="date"
+                  value={configBirthDate}
+                  onChange={(e) => setConfigBirthDate(e.target.value)}
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                  * Al cambiar esta fecha, el calendario de 15 meses se recalculará automáticamente a partir del mes de nacimiento.
+                </p>
               </div>
-            )}
-
-            {/* Tab: Configurar Saldos */}
-            {configTab === "balances" && (
-              <div className="space-y-4 pt-1">
-                {/* Form to add a new balance */}
-                <form onSubmit={handleAddBalance} className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Persona</label>
-                      <select
-                        value={newBalPerson}
-                        onChange={(e) => setNewBalPerson(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white"
-                      >
-                        <option value="Madre">Madre</option>
-                        <option value="Padre">Padre</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
-                      <select
-                        value={newBalFreq}
-                        onChange={(e) => setNewBalFreq(e.target.value as "Diario" | "Semanal")}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white"
-                      >
-                        <option value="Diario">Diario</option>
-                        <option value="Semanal">Semanal</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div className="col-span-2">
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre Permiso</label>
-                      <input
-                        type="text"
-                        placeholder="Ej. Lactancia"
-                        value={newBalType}
-                        onChange={(e) => setNewBalType(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white outline-none"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Cantidad</label>
-                      <input
-                        type="number"
-                        placeholder="Ej. 15"
-                        value={newBalTotal}
-                        onChange={(e) => setNewBalTotal(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg text-center bg-white outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs"
-                  >
-                    ➕ Añadir Saldo
-                  </button>
-                </form>
-
-                {/* List of existing balances */}
-                <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-                  {globalData.balances.map((b, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
-                      <div>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
-                          {b.person === "Madre" ? "👩" : "👨"} {b.type}
-                        </span>
-                        <div className="text-[10px] text-slate-400">
-                          Total: {b.total} {b.frecuencia === "Semanal" ? "Semanas" : "Días"}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteBalance(b.person, b.type)}
-                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition cursor-pointer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-700">
-                  <button
-                    className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm cursor-pointer"
-                    onClick={() => setShowConfigModal(false)}
-                  >
-                    Cerrar
-                  </button>
-                </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
+                  onClick={() => setShowConfigModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
+                  onClick={handleConfigSubmit}
+                >
+                  Actualizar
+                </button>
               </div>
-            )}
-
-            {/* Tab: Festivos */}
-            {configTab === "festivos" && (
-              <div className="space-y-4 pt-1">
-                {/* Form to add a holiday */}
-                <form onSubmit={handleAddHoliday} className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
-                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Festivo</span>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Fecha</label>
-                      <input
-                        type="date"
-                        value={newFestDate}
-                        onChange={(e) => setNewFestDate(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre Festivo</label>
-                      <input
-                        type="text"
-                        placeholder="Ej. Año Nuevo"
-                        value={newFestNombre}
-                        onChange={(e) => setNewFestNombre(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white outline-none"
-                        required
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="submit"
-                    className="w-full p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs"
-                  >
-                    ➕ Añadir Festivo
-                  </button>
-                </form>
-
-                {/* List of existing holidays */}
-                <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
-                  {globalData.festivos.map((f, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
-                      <div>
-                        <span className="font-bold text-slate-700 dark:text-slate-300 font-semibold">
-                          🚩 {f.nombre}
-                        </span>
-                        <div className="text-[10px] text-slate-400">
-                          {f.date.split("-").reverse().join("/")}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteHoliday(f.date)}
-                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition cursor-pointer"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  ))}
-                  {globalData.festivos.length === 0 && (
-                    <p className="text-center text-[11px] text-slate-400 py-4">No hay festivos configurados.</p>
-                  )}
-                </div>
-
-                <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-700">
-                  <button
-                    className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm cursor-pointer"
-                    onClick={() => setShowConfigModal(false)}
-                  >
-                    Cerrar
-                  </button>
-                </div>
-              </div>
-            )}
+            </div>
           </div>
         </div>
       )}
