@@ -44,8 +44,8 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex-grow flex items-center justify-center p-3 sm:p-4 bg-background">
-      <div className="max-w-md w-full bg-card p-4 sm:p-6 rounded-2xl shadow-xl border border-border animate-fade-in">
+    <div className="flex-grow flex items-center justify-center p-3 sm:p-4 bg-background overflow-hidden h-[calc(100vh-4rem)] max-h-[calc(100dvh-4rem)]">
+      <div className="max-w-md w-full bg-card p-4 sm:p-5 rounded-2xl shadow-xl border border-border animate-fade-in my-auto max-h-full overflow-y-auto">
         <div className="text-center mb-4">
           <div className="flex justify-center mb-3">
             <BrandLogo className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-lg" />
