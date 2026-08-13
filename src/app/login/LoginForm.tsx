@@ -1,7 +1,7 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BrandLogo } from "@/components/BrandLogo";
 
@@ -11,6 +11,29 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [showAdminPin, setShowAdminPin] = useState(false);
   const router = useRouter();
+
+  // Lock document root level scroll when login is active
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+
+    const originalHtmlOverflow = html.style.overflow;
+    const originalHtmlHeight = html.style.height;
+    const originalBodyOverflow = body.style.overflow;
+    const originalBodyHeight = body.style.height;
+
+    html.style.overflow = "hidden";
+    html.style.height = "100%";
+    body.style.overflow = "hidden";
+    body.style.height = "100%";
+
+    return () => {
+      html.style.overflow = originalHtmlOverflow;
+      html.style.height = originalHtmlHeight;
+      body.style.overflow = originalBodyOverflow;
+      body.style.height = originalBodyHeight;
+    };
+  }, []);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,8 +67,8 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex-grow flex items-center justify-center p-3 sm:p-4 bg-background overflow-hidden h-[calc(100vh-4rem)] max-h-[calc(100dvh-4rem)]">
-      <div className="max-w-md w-full bg-card p-4 sm:p-5 rounded-2xl shadow-xl border border-border animate-fade-in my-auto max-h-full overflow-y-auto">
+    <div className="flex-grow flex items-center justify-center p-3 sm:p-4 bg-background overflow-hidden h-[calc(100vh-2.5rem)] max-h-[calc(100dvh-2.5rem)]">
+      <div className="max-w-md w-full bg-card p-4 sm:p-5 rounded-2xl shadow-xl border border-border animate-fade-in my-auto max-h-full overflow-y-auto max-h-[82vh] sm:max-h-[88vh]">
         <div className="text-center mb-4">
           <div className="flex justify-center mb-3">
             <BrandLogo className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-lg" />
