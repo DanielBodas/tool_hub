@@ -67,8 +67,8 @@ export function LoginForm() {
   };
 
   return (
-    <div className="flex-grow flex items-center justify-center p-3 sm:p-4 bg-background overflow-hidden h-[calc(100vh-2.5rem)] max-h-[calc(100dvh-2.5rem)]">
-      <div className="max-w-md w-full bg-card p-4 sm:p-5 rounded-2xl shadow-xl border border-border animate-fade-in my-auto max-h-full overflow-y-auto max-h-[82vh] sm:max-h-[88vh]">
+    <div className="flex-grow flex items-start justify-center p-3 sm:p-4 pt-12 sm:pt-20 bg-background overflow-hidden h-[calc(100vh-2.5rem)] max-h-[calc(100dvh-2.5rem)]">
+      <div className="max-w-md w-full bg-card p-4 sm:p-5 rounded-2xl shadow-xl border border-border animate-fade-in max-h-full overflow-y-auto max-h-[82vh] sm:max-h-[88vh]">
         <div className="text-center mb-4">
           <div className="flex justify-center mb-3">
             <BrandLogo className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl shadow-lg" />
@@ -167,6 +167,11 @@ export function LoginForm() {
             </button>
           </form>
         )}
+
+        {/* General Disclaimer Message */}
+        <div className="mt-5 pt-3 border-t border-border/50 text-[10px] sm:text-[11px] text-muted-foreground/80 text-center leading-normal">
+          <strong>Aviso Legal:</strong> Esta plataforma es de uso privado y restringido. Todo acceso o intento de acceso no autorizado queda registrado para seguridad del sistema.
+        </div>
       </div>
     </div>
   );
