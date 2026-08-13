@@ -4,11 +4,18 @@ import Link from "next/link";
 import { useSecurity } from "./SecurityProvider";
 import { ShieldCheck, ShieldAlert, LogOut, LogIn } from "lucide-react";
 import { useSession } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
 export function HeaderNav() {
   const { isToolUnlocked, lock } = useSecurity();
   const { data: session } = useSession();
+  const pathname = usePathname();
   const isUnlocked = isToolUnlocked("dashboard");
+
+  // Completely hide header navigation items on the login screen
+  if (pathname === "/login") {
+    return null;
+  }
 
   const handleLogout = async () => {
     await lock();
