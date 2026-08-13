@@ -1221,15 +1221,27 @@ export function BabyLeavePlannerModule() {
           background-color: var(--color-mom) !important;
           color: var(--text-mom) !important;
         }
+        .dark .bg-mom {
+          background-color: #831843 !important;
+          color: #fce7f3 !important;
+        }
 
         .bg-dad {
           background-color: var(--color-dad) !important;
           color: var(--text-dad) !important;
         }
+        .dark .bg-dad {
+          background-color: #0c4a6e !important;
+          color: #e0f2fe !important;
+        }
 
         .bg-joint {
           background-color: var(--color-joint) !important;
           color: var(--text-joint) !important;
+        }
+        .dark .bg-joint {
+          background-color: #581c87 !important;
+          color: #f3e8ff !important;
         }
 
         .bg-holiday {
@@ -1257,22 +1269,23 @@ export function BabyLeavePlannerModule() {
           bottom: 30px;
           left: 50%;
           transform: translateX(-50%) translateY(150px);
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
           z-index: 2000;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 16px;
           background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(12px);
-          padding: 8px 12px 8px 18px;
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          padding: 8px 10px 8px 18px;
           border-radius: 9999px;
-          box-shadow: 0 20px 40px rgba(15, 23, 42, 0.12);
-          border: 1px solid rgba(226, 232, 240, 0.8);
+          box-shadow: 0 10px 30px -5px rgba(79, 70, 229, 0.15), 0 20px 40px -15px rgba(15, 23, 42, 0.2);
+          border: 1px solid rgba(79, 70, 229, 0.15);
         }
         .dark #floating-wrapper {
-          background: rgba(30, 41, 59, 0.85);
-          border-color: rgba(51, 65, 85, 0.8);
-          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+          background: rgba(15, 23, 42, 0.8);
+          border-color: rgba(99, 102, 241, 0.25);
+          box-shadow: 0 10px 35px -5px rgba(99, 102, 241, 0.25), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
         }
 
         #floating-wrapper.visible {
@@ -1283,20 +1296,24 @@ export function BabyLeavePlannerModule() {
           background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
           color: white;
           border: none;
-          padding: 10px 20px;
+          padding: 10px 22px;
           border-radius: 9999px;
           font-weight: 800;
           font-size: 0.85rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 8px;
-          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.3);
-          transition: all 0.2s ease;
+          gap: 10px;
+          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .btn-float-action:hover {
-          transform: scale(1.02);
-          box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
+          transform: translateY(-2px) scale(1.03);
+          box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
+          background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+        }
+        .btn-float-action:active {
+          transform: translateY(0) scale(0.97);
         }
 
         .btn-float-close {
@@ -1304,7 +1321,7 @@ export function BabyLeavePlannerModule() {
           height: 32px;
           border-radius: 50%;
           border: none;
-          background: rgba(241, 245, 249, 0.8);
+          background: rgba(241, 245, 249, 0.9);
           color: #64748b;
           font-weight: bold;
           cursor: pointer;
@@ -1312,20 +1329,21 @@ export function BabyLeavePlannerModule() {
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.2s ease;
+          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .btn-float-close:hover {
-          background: #e2e8f0;
-          color: #0f172a;
-          transform: scale(1.05);
+          background: #fee2e2;
+          color: #ef4444;
+          transform: scale(1.1);
         }
         .dark .btn-float-close {
-          background: rgba(51, 65, 85, 0.8);
-          color: #cbd5e1;
+          background: rgba(30, 41, 59, 0.9);
+          color: #94a3b8;
         }
         .dark .btn-float-close:hover {
-          background: #475569;
-          color: white;
+          background: rgba(220, 38, 38, 0.2);
+          color: #fca5a5;
+          transform: scale(1.1);
         }
 
         /* --- KPIs SIDEBARS STYLE --- */
@@ -1471,6 +1489,110 @@ export function BabyLeavePlannerModule() {
         .dark .bg-danger-light {
           background: #450a0a !important;
           border-color: #7f1d1d !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .sidebar-fixed {
+            background: #0f172a;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+          }
+          #sidebar-mom {
+            border-right: 1px solid #1e293b;
+          }
+          #sidebar-dad {
+            border-left: 1px solid #1e293b;
+          }
+          .sidebar-inner {
+            background: #0b0f19;
+          }
+          .filter-pill-group {
+            background: #1e293b;
+            border-color: #334155;
+          }
+          .btn-filter {
+            color: #94a3b8;
+          }
+          .btn-filter:hover {
+            background: #334155;
+          }
+          .month-card {
+            background: #1e293b;
+            border-color: #334155;
+          }
+          .month-header {
+            background: #0f172a;
+            color: #f1f5f9;
+            border-bottom-color: #334155;
+          }
+          .days-names-row {
+            background: #1e293b;
+            border-bottom-color: #334155;
+          }
+          .day-cell-fixed {
+            border-right-color: #334155;
+            border-bottom-color: #334155;
+          }
+          .day-cell-fixed.selected {
+            background-color: #1e1b4b !important;
+            box-shadow: inset 0 0 0 2px #6366f1;
+          }
+          .weekend {
+            background-color: #111827;
+          }
+          .empty-cell {
+            background: #1e293b;
+          }
+          .d-num {
+            color: #475569;
+          }
+          .bg-mom {
+            background-color: #831843 !important;
+            color: #fce7f3 !important;
+          }
+          .bg-dad {
+            background-color: #0c4a6e !important;
+            color: #e0f2fe !important;
+          }
+          .bg-joint {
+            background-color: #581c87 !important;
+            color: #f3e8ff !important;
+          }
+          .bg-holiday {
+            background-color: #7f1d1d !important;
+            color: #fca5a5 !important;
+          }
+          #floating-wrapper {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(99, 102, 241, 0.25);
+            box-shadow: 0 10px 35px -5px rgba(99, 102, 241, 0.25), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .btn-float-close {
+            background: rgba(30, 41, 59, 0.9);
+            color: #94a3b8;
+          }
+          .btn-float-close:hover {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+            transform: scale(1.1);
+          }
+          .sidebar-section-title {
+            color: #f1f5f9;
+            border-bottom-color: #1e293b;
+          }
+          .kpi-card-sidebar {
+            background: #1e293b;
+            border-color: #334155;
+          }
+          .kpi-card-label {
+            color: #94a3b8;
+          }
+          .kpi-progress-wrapper {
+            background: #0f172a;
+          }
+          .bg-danger-light {
+            background: #7f1d1d !important;
+            border-color: #991b1b !important;
+          }
         }
       `}</style>
 
@@ -1671,9 +1793,13 @@ export function BabyLeavePlannerModule() {
                   const festivo = globalData.festivos.find((f) => f.date === dateStr);
 
                   const checkTime = dateObj.getTime();
-                  const birthTime = new Date(globalData.birthDate!).getTime();
-                  const mandEnd = mandatoryEndStr ? new Date(mandatoryEndStr) : null;
-                  const mandEndTime = mandEnd ? mandEnd.getTime() : 0;
+                  const [by, bm, bd] = globalData.birthDate!.split("-").map(Number);
+                  const birthTime = new Date(by, bm - 1, bd).getTime();
+                  let mandEndTime = 0;
+                  if (mandatoryEndStr) {
+                    const [mey, mem, med] = mandatoryEndStr.split("-").map(Number);
+                    mandEndTime = new Date(mey, mem - 1, med).getTime();
+                  }
                   const isMandatory = checkTime >= birthTime && checkTime <= mandEndTime;
 
                   let cssClass = "";
@@ -1765,20 +1891,20 @@ export function BabyLeavePlannerModule() {
       </div>
 
       {/* Floating Range Selection Bar (from calendar.html) - Beautiful Modern Bubble */}
-      <div id="floating-wrapper" className={`${selectedDates.length > 0 ? "visible" : ""} flex items-center gap-3 bg-white/90 dark:bg-slate-900/90 border border-slate-200/60 dark:border-slate-800/80 backdrop-blur-xl px-4 py-2.5 rounded-full shadow-2xl`}>
+      <div id="floating-wrapper" className={`${selectedDates.length > 0 ? "visible" : ""} flex items-center gap-3 bg-white/95 dark:bg-slate-900/95 border border-indigo-100/80 dark:border-indigo-900/40 backdrop-blur-xl px-4 py-2.5 rounded-full shadow-2xl transition-all duration-300`}>
         <button
-          className="btn-float-close cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 p-1 rounded-full transition-all"
+          className="btn-float-close cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 p-2 rounded-full transition-all active:scale-95 flex items-center justify-center"
           onClick={clearAllSelections}
           title="Limpiar selección"
         >
-          <X size={14} className="text-slate-500 dark:text-slate-400" />
+          <X size={15} />
         </button>
-        <span className="h-4 w-px bg-slate-200 dark:bg-slate-700/80" />
+        <span className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
         <button
-          className="btn-float-action cursor-pointer flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600 text-white font-extrabold text-xs px-4 py-2 rounded-full shadow-md shadow-indigo-600/10 transition-all hover:scale-105 active:scale-95"
+          className="btn-float-action cursor-pointer flex items-center gap-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white font-black text-xs px-5 py-2.5 rounded-full shadow-lg shadow-indigo-600/25 transition-all hover:scale-105 active:scale-95"
           onClick={() => openModalForSelection()}
         >
-          <span className="bg-white/20 dark:bg-black/20 text-white px-2 py-0.5 rounded-full text-[10px] font-black leading-none flex items-center justify-center">
+          <span className="bg-white text-indigo-600 dark:bg-slate-900 dark:text-indigo-400 px-2.5 py-0.5 rounded-full text-[11px] font-black leading-none flex items-center justify-center shadow-xs">
             {selectedDates.length}
           </span>
           <span>Configurar Días</span>
