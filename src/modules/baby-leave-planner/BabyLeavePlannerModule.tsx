@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import {
+  RefreshCw,
+  Settings,
+  X,
+  Info,
+  Trash2,
+} from "lucide-react";
 
 // Define TypeScript interfaces for our data structure
 interface EventItem {
@@ -141,6 +148,9 @@ export function BabyLeavePlannerModule() {
   const [lastClickedDate, setLastClickedDate] = useState<string | null>(null);
   const [currentFilter, setCurrentFilter] = useState<"all" | "Madre" | "Padre">("all");
   const [openSidebar, setOpenSidebar] = useState<"mom" | "dad" | null>(null);
+
+  // Day Management Preferences
+  const [skipNonWorkDays, setSkipNonWorkDays] = useState(true);
 
   // Modal States
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -298,7 +308,19 @@ export function BabyLeavePlannerModule() {
       }
       return prev;
     });
-    openModalForSelection(dateStr);
+
+    // Step 5: Prefill assignment modal with existing event if present
+    const existing = globalData.events.find((e) => e.date === dateStr);
+    if (existing) {
+      setSelectedPerson(existing.person);
+      setSelectedType(existing.type);
+    } else {
+      setSelectedPerson("Madre");
+      const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
+      setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+    }
+
+    setShowAssignModal(true);
   };
 
   const clearAllSelections = () => {
@@ -358,6 +380,17 @@ export function BabyLeavePlannerModule() {
             });
           }
         } else {
+          const dObj = new Date(dateStr);
+          const dayOfWeek = dObj.getDay();
+          const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+          const isHoliday = prev.festivos.some((f) => f.date === dateStr);
+
+          // Step 3: Skip weekends and holidays logic
+          if (skipNonWorkDays && (isWeekend || isHoliday)) {
+            // Simply omit saving daily leaves on weekends/holidays
+            return;
+          }
+
           // Clean whatever existed on that day
           eventsList = eventsList.filter((e) => e.date !== dateStr);
           eventsList.push({
@@ -1200,9 +1233,9 @@ export function BabyLeavePlannerModule() {
       )}
 
       {/* Main Container Layout */}
-      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 space-y-6">
         {/* Header Section (from Index.html) */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 gap-4 mb-6">
+        <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 gap-4">
           {/* Brand */}
           <div className="flex items-center gap-3">
             <span className="text-2xl">👶</span>
@@ -1234,24 +1267,35 @@ export function BabyLeavePlannerModule() {
           {/* Actions */}
           <div className="flex gap-2 shrink-0">
             <button
-              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition"
+              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition cursor-pointer text-slate-600 dark:text-slate-300"
               onClick={handleRefresh}
               title="Sincronizar"
             >
-              🔄
+              <RefreshCw size={16} />
             </button>
             <button
-              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition"
+              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition cursor-pointer text-slate-600 dark:text-slate-300"
               onClick={() => {
                 setConfigTab("birth");
                 setShowConfigModal(true);
               }}
               title="Ajustes"
             >
-              ⚙️
+              <Settings size={16} />
             </button>
           </div>
         </div>
+
+        {/* Informative Banner for Shift + Click */}
+        {globalData.birthDate && isLoaded && (
+          <div className="bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-2xl flex items-start gap-3 text-xs text-indigo-700 dark:text-indigo-300">
+            <Info size={18} className="shrink-0 mt-0.5 text-indigo-600 dark:text-indigo-400" />
+            <div>
+              <span className="font-bold text-sm block mb-0.5">💡 Truco de selección rápida:</span>
+              Haz clic en un día del calendario, mantén pulsada la tecla <kbd className="bg-white dark:bg-slate-800 border dark:border-slate-700 px-1.5 py-0.5 rounded shadow-xs font-mono font-black text-[10px]">Shift</kbd> y haz clic en otro día para seleccionar un rango completo automáticamente. Haz doble clic en cualquier celda para abrir el selector al instante.
+            </div>
+          </div>
+        )}
 
         {/* Initial Setup Screen (if no birthDate is set) */}
         {!globalData.birthDate && isLoaded && (
@@ -1444,10 +1488,10 @@ export function BabyLeavePlannerModule() {
 
       {/* Floating Range Selection Bar (from calendar.html) */}
       <div id="floating-wrapper" className={selectedDates.length > 0 ? "visible" : ""}>
-        <button className="btn-float-close" onClick={clearAllSelections}>
-          ✕
+        <button className="btn-float-close cursor-pointer" onClick={clearAllSelections}>
+          <X size={16} />
         </button>
-        <button className="btn-float-action" onClick={() => openModalForSelection()}>
+        <button className="btn-float-action cursor-pointer" onClick={() => openModalForSelection()}>
           <span className="bg-white/25 px-2 py-0.5 rounded-full text-xs font-black">
             {selectedDates.length}
           </span>
@@ -1455,15 +1499,48 @@ export function BabyLeavePlannerModule() {
         </button>
       </div>
 
-      {/* --- ASSIGN PERMIT MODAL --- */}
+      {/* --- ASSIGN PERMIT MODAL (Tailwind Glassmorphic Overhaul) --- */}
       {showAssignModal && (
-        <div className="modal-overlay" style={{ display: "flex" }}>
-          <div className="modal bg-white dark:bg-slate-800 p-6 rounded-2xl w-full max-w-sm mx-4 shadow-xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95">
-            <h3 className="text-lg font-black mb-4 text-slate-800 dark:text-slate-100">
-              {selectedDates.length} días seleccionados
-            </h3>
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">
+                  Configurar Permiso
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Se configurarán {selectedDates.length} día(s)
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-            <div className="space-y-4">
+            {/* List/Summary of selected dates */}
+            <div className="space-y-1">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Días Seleccionados
+              </label>
+              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                {selectedDates.map((dStr) => {
+                  const formatted = dStr.split("-").reverse().slice(0, 2).join("/");
+                  return (
+                    <span
+                      key={dStr}
+                      className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-md border border-indigo-100/50 dark:border-indigo-900/50"
+                    >
+                      {formatted}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3">
               <div>
                 <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                   Persona
@@ -1480,7 +1557,7 @@ export function BabyLeavePlannerModule() {
                       setSelectedType("");
                     }
                   }}
-                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                 >
                   <option value="Madre">Madre 👩</option>
                   <option value="Padre">Padre 👨</option>
@@ -1494,7 +1571,7 @@ export function BabyLeavePlannerModule() {
                 <select
                   value={selectedType}
                   onChange={(e) => setSelectedType(e.target.value)}
-                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
                 >
                   {currentPersonPermits.map((p, idx) => (
                     <option key={idx} value={p.type}>
@@ -1506,24 +1583,41 @@ export function BabyLeavePlannerModule() {
                   )}
                 </select>
               </div>
+
+              {/* Omit non-working days logic checkbox */}
+              <div className="flex items-center gap-2 pt-1.5">
+                <input
+                  type="checkbox"
+                  id="skipNonWorkDays"
+                  checked={skipNonWorkDays}
+                  onChange={(e) => setSkipNonWorkDays(e.target.checked)}
+                  className="w-4 h-4 rounded-sm border-slate-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                />
+                <label
+                  htmlFor="skipNonWorkDays"
+                  className="text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer select-none"
+                >
+                  Omitir fines de semana y festivos al guardar
+                </label>
+              </div>
             </div>
 
-            <div className="flex justify-between gap-2 mt-6">
+            <div className="flex justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
               <button
-                className="px-4 py-2 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-red-500 font-bold transition text-sm"
+                className="px-4 py-2 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-red-500 font-bold transition text-sm cursor-pointer"
                 onClick={handleDeleteEvents}
               >
                 Borrar
               </button>
               <div className="flex gap-2">
                 <button
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm"
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
                   onClick={() => setShowAssignModal(false)}
                 >
                   Cerrar
                 </button>
                 <button
-                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs"
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
                   onClick={handleSaveEvents}
                 >
                   Guardar
@@ -1534,31 +1628,40 @@ export function BabyLeavePlannerModule() {
         </div>
       )}
 
-      {/* --- SETTINGS / CONFIGURATION MODAL --- */}
+      {/* --- SETTINGS / CONFIGURATION MODAL (Tailwind Overhaul) --- */}
       {showConfigModal && (
-        <div className="modal-overlay" style={{ display: "flex" }}>
-          <div className="modal bg-white dark:bg-slate-800 p-6 rounded-2xl w-full max-w-md mx-4 shadow-xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95">
-            <h3 className="text-xl font-extrabold mb-4 text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              ⚙️ Configuración
-            </h3>
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Settings size={20} className="text-slate-500 dark:text-slate-400" />
+                Configuración
+              </h3>
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
             {/* Modal Tabs Header */}
-            <div className="flex border-b border-slate-100 dark:border-slate-700 mb-4 text-xs font-bold text-slate-400">
+            <div className="flex border-b border-slate-100 dark:border-slate-700 text-xs font-bold text-slate-400">
               <button
                 onClick={() => setConfigTab("birth")}
-                className={`pb-2 px-3 border-b-2 transition ${configTab === "birth" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400" : "border-transparent"}`}
+                className={`pb-2 px-3 border-b-2 transition cursor-pointer ${configTab === "birth" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-black" : "border-transparent"}`}
               >
                 👶 Fecha Nacimiento
               </button>
               <button
                 onClick={() => setConfigTab("balances")}
-                className={`pb-2 px-3 border-b-2 transition ${configTab === "balances" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400" : "border-transparent"}`}
+                className={`pb-2 px-3 border-b-2 transition cursor-pointer ${configTab === "balances" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-black" : "border-transparent"}`}
               >
                 📊 Configurar Saldos
               </button>
               <button
                 onClick={() => setConfigTab("festivos")}
-                className={`pb-2 px-3 border-b-2 transition ${configTab === "festivos" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400" : "border-transparent"}`}
+                className={`pb-2 px-3 border-b-2 transition cursor-pointer ${configTab === "festivos" ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-black" : "border-transparent"}`}
               >
                 🚩 Festivos
               </button>
@@ -1566,7 +1669,7 @@ export function BabyLeavePlannerModule() {
 
             {/* Tab: Birth Date */}
             {configTab === "birth" && (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-1">
                 <div>
                   <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
                     Fecha de nacimiento
@@ -1575,21 +1678,21 @@ export function BabyLeavePlannerModule() {
                     type="date"
                     value={configBirthDate}
                     onChange={(e) => setConfigBirthDate(e.target.value)}
-                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500"
+                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
                   />
                   <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-                    * Al cambiar esta fecha, el calendario de 15 meses se recalculará a partir de este mes de nacimiento.
+                    * Al cambiar esta fecha, el calendario de 15 meses se recalculará automáticamente a partir del mes de nacimiento.
                   </p>
                 </div>
-                <div className="flex justify-end gap-2 pt-4">
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
                   <button
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm"
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
                     onClick={() => setShowConfigModal(false)}
                   >
                     Cancelar
                   </button>
                   <button
-                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs"
+                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
                     onClick={handleConfigSubmit}
                   >
                     Actualizar
@@ -1600,17 +1703,17 @@ export function BabyLeavePlannerModule() {
 
             {/* Tab: Configurar Saldos */}
             {configTab === "balances" && (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-1">
                 {/* Form to add a new balance */}
                 <form onSubmit={handleAddBalance} className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
-                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Persona</label>
                       <select
                         value={newBalPerson}
                         onChange={(e) => setNewBalPerson(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg"
+                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white"
                       >
                         <option value="Madre">Madre</option>
                         <option value="Padre">Padre</option>
@@ -1621,7 +1724,7 @@ export function BabyLeavePlannerModule() {
                       <select
                         value={newBalFreq}
                         onChange={(e) => setNewBalFreq(e.target.value as "Diario" | "Semanal")}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg"
+                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white"
                       >
                         <option value="Diario">Diario</option>
                         <option value="Semanal">Semanal</option>
@@ -1636,25 +1739,25 @@ export function BabyLeavePlannerModule() {
                         placeholder="Ej. Lactancia"
                         value={newBalType}
                         onChange={(e) => setNewBalType(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg"
+                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white outline-none"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Días/Semanas</label>
+                      <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Cantidad</label>
                       <input
                         type="number"
                         placeholder="Ej. 15"
                         value={newBalTotal}
                         onChange={(e) => setNewBalTotal(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg text-center"
+                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg text-center bg-white outline-none"
                         required
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
-                    className="w-full p-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
+                    className="w-full p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs"
                   >
                     ➕ Añadir Saldo
                   </button>
@@ -1663,7 +1766,7 @@ export function BabyLeavePlannerModule() {
                 {/* List of existing balances */}
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                   {globalData.balances.map((b, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
+                    <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
                       <div>
                         <span className="font-bold text-slate-700 dark:text-slate-300">
                           {b.person === "Madre" ? "👩" : "👨"} {b.type}
@@ -1673,18 +1776,19 @@ export function BabyLeavePlannerModule() {
                         </div>
                       </div>
                       <button
+                        type="button"
                         onClick={() => handleDeleteBalance(b.person, b.type)}
-                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition"
+                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition cursor-pointer"
                       >
-                        🗑️
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   ))}
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-700">
                   <button
-                    className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm"
+                    className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm cursor-pointer"
                     onClick={() => setShowConfigModal(false)}
                   >
                     Cerrar
@@ -1695,10 +1799,10 @@ export function BabyLeavePlannerModule() {
 
             {/* Tab: Festivos */}
             {configTab === "festivos" && (
-              <div className="space-y-4">
+              <div className="space-y-4 pt-1">
                 {/* Form to add a holiday */}
                 <form onSubmit={handleAddHoliday} className="bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl border border-slate-100 dark:border-slate-800 space-y-3">
-                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400 uppercase">Añadir Festivo</span>
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Festivo</span>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
                       <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Fecha</label>
@@ -1706,7 +1810,7 @@ export function BabyLeavePlannerModule() {
                         type="date"
                         value={newFestDate}
                         onChange={(e) => setNewFestDate(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg"
+                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white"
                         required
                       />
                     </div>
@@ -1717,25 +1821,25 @@ export function BabyLeavePlannerModule() {
                         placeholder="Ej. Año Nuevo"
                         value={newFestNombre}
                         onChange={(e) => setNewFestNombre(e.target.value)}
-                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg"
+                        className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-lg bg-white outline-none"
                         required
                       />
                     </div>
                   </div>
                   <button
                     type="submit"
-                    className="w-full p-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-lg text-xs"
+                    className="w-full p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs cursor-pointer shadow-xs"
                   >
-                    🚩 Añadir Festivo
+                    ➕ Añadir Festivo
                   </button>
                 </form>
 
                 {/* List of existing holidays */}
                 <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
                   {globalData.festivos.map((f, idx) => (
-                    <div key={idx} className="flex justify-between items-center bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800 text-xs">
+                    <div key={idx} className="flex justify-between items-center bg-slate-50 dark:bg-slate-900 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800 text-xs">
                       <div>
-                        <span className="font-bold text-slate-700 dark:text-slate-300">
+                        <span className="font-bold text-slate-700 dark:text-slate-300 font-semibold">
                           🚩 {f.nombre}
                         </span>
                         <div className="text-[10px] text-slate-400">
@@ -1743,10 +1847,11 @@ export function BabyLeavePlannerModule() {
                         </div>
                       </div>
                       <button
+                        type="button"
                         onClick={() => handleDeleteHoliday(f.date)}
-                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition"
+                        className="p-1.5 hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 rounded-lg transition cursor-pointer"
                       >
-                        🗑️
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   ))}
@@ -1755,9 +1860,9 @@ export function BabyLeavePlannerModule() {
                   )}
                 </div>
 
-                <div className="flex justify-end pt-4">
+                <div className="flex justify-end pt-3 border-t border-slate-100 dark:border-slate-700">
                   <button
-                    className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm"
+                    className="px-5 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 rounded-xl font-bold text-sm cursor-pointer"
                     onClick={() => setShowConfigModal(false)}
                   >
                     Cerrar
