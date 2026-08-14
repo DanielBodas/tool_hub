@@ -8,7 +8,9 @@ import {
   Trash2,
   Edit2,
   Plus,
+  Download,
 } from "lucide-react";
+import { INITIAL_LEAVE_DATA } from "./initialData";
 
 // Define TypeScript interfaces for our data structure
 interface EventItem {
@@ -736,6 +738,23 @@ export function BabyLeavePlannerModule() {
         console.error("Error reloading data:", err);
         setIsLoaded(true);
       });
+  };
+
+  // Load Initial Pre-seeded Dates and Permits (143 events)
+  const handleLoadInitialData = () => {
+    setGlobalData(INITIAL_LEAVE_DATA);
+    if (INITIAL_LEAVE_DATA.birthDate) {
+      setConfigBirthDate(INITIAL_LEAVE_DATA.birthDate);
+    }
+    fetch("/api/baby-leave-planner", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(INITIAL_LEAVE_DATA),
+    });
+    showAlert(
+      "Datos Cargados",
+      `Se han cargado correctamente los ${INITIAL_LEAVE_DATA.events.length} días de permiso y saldos configurados.`
+    );
   };
 
   // Sidebar KPI & Balance Editing Render Logic (Step 1)
@@ -1731,6 +1750,14 @@ export function BabyLeavePlannerModule() {
           {/* Header Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0 order-2 md:order-3">
             <button
+              className="h-8 px-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50/90 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+              onClick={handleLoadInitialData}
+              title="Cargar fechas y permisos existentes (143 días)"
+            >
+              <Download size={14} />
+              <span className="hidden sm:inline">Cargar Datos</span>
+            </button>
+            <button
               className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
               onClick={handleRefresh}
               title="Sincronizar"
@@ -2174,6 +2201,22 @@ export function BabyLeavePlannerModule() {
                   * Al cambiar esta fecha, el calendario de 15 meses se recalculará automáticamente a partir del mes de nacimiento.
                 </p>
               </div>
+
+              {/* Seed Data Button */}
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleLoadInitialData();
+                    setShowConfigModal(false);
+                  }}
+                  className="w-full py-2.5 px-3 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900/80 border border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer"
+                >
+                  <Download size={15} />
+                  Cargar Fechas Predefinidas (143 Días)
+                </button>
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
                 <button
                   className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
