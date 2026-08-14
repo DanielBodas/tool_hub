@@ -1,5 +1,4 @@
 import { getTools } from "@/config/tools";
-import { Sparkles } from "lucide-react";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -28,24 +27,6 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex-grow flex flex-col bg-background">
-      {/* Header Banner */}
-      <div className="container mx-auto px-6 pt-10 pb-4 max-w-7xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-6">
-          <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-extrabold uppercase tracking-wider mb-3">
-              <Sparkles size={12} /> ToolHub Platform
-            </div>
-            <h1 className="text-3xl md:text-4xl font-black text-foreground tracking-tight">
-              Panel de Herramientas
-            </h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              Accede a tus espacios de trabajo dedicados de forma rápida y organizada.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Steam-style Interactive Store App */}
       <DashboardStore tools={serializedTools} />
     </div>
   );
