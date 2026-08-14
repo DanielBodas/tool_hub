@@ -1,0 +1,801 @@
+// Seed data for Baby Leave Planner database
+export interface EventItem {
+  date: string;
+  person: string;
+  type: string;
+}
+
+export interface BalanceItem {
+  person: string;
+  type: string;
+  total: number;
+  frecuencia: "Diario" | "Semanal";
+}
+
+export interface SettingsDoc {
+  id: string;
+  birthDate: string | null;
+  events: EventItem[];
+  balances: BalanceItem[];
+  festivos: Array<{ date: string; nombre: string }>;
+  updatedAt?: Date | string;
+}
+
+export const INITIAL_LEAVE_DATA: SettingsDoc = {
+  id: "default_family",
+  birthDate: "2026-08-31",
+  events: [
+    {
+        "date": "2026-08-26",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2026-08-27",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2026-08-28",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2026-08-31",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-01",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-02",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-03",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-04",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-05",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-06",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-07",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-08",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-09",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-10",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-11",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-12",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-13",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-14",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-15",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-16",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-17",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-18",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-19",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-20",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-21",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-22",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-23",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-24",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-25",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-26",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-27",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-28",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-29",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-09-30",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-01",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-02",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-03",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-04",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-05",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-06",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-07",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-08",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-09",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-10",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-11",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-13",
+        "person": "Madre",
+        "type": "Vacaciones 2025"
+    },
+    {
+        "date": "2026-10-14",
+        "person": "Madre",
+        "type": "Vacaciones 2025"
+    },
+    {
+        "date": "2026-10-15",
+        "person": "Madre",
+        "type": "Vacaciones 2025"
+    },
+    {
+        "date": "2026-10-16",
+        "person": "Madre",
+        "type": "Vacaciones 2025"
+    },
+    {
+        "date": "2026-10-19",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-20",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-21",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-22",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-23",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-24",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-25",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-26",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-27",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-28",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-29",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-30",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-10-31",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-01",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-03",
+        "person": "Madre",
+        "type": "Libre disposición 2026"
+    },
+    {
+        "date": "2026-11-04",
+        "person": "Madre",
+        "type": "Libre disposición 2026"
+    },
+    {
+        "date": "2026-11-05",
+        "person": "Madre",
+        "type": "Libre disposición 2026"
+    },
+    {
+        "date": "2026-11-06",
+        "person": "Madre",
+        "type": "Libre disposición 2026"
+    },
+    {
+        "date": "2026-11-10",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-11-11",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-11-12",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-11-13",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-11-16",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-17",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-18",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-19",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-20",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-21",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-22",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-23",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-24",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-25",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-26",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-27",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-28",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-29",
+        "person": "Madre",
+        "type": "Maternidad"
+    },
+    {
+        "date": "2026-11-30",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-01",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-02",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-03",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-04",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-05",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-06",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2026-12-09",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-10",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-11",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-14",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-15",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-16",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-17",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-18",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-21",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2026-12-22",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2027-01-07",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2027-01-08",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2027-01-11",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2027-01-12",
+        "person": "Madre",
+        "type": "Lactancia"
+    },
+    {
+        "date": "2027-01-13",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-14",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-15",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-16",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-17",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-18",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-19",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-20",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-21",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-22",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-23",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-24",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-25",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-26",
+        "person": "Madre",
+        "type": "Maternidad (rem)"
+    },
+    {
+        "date": "2027-01-27",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-01-28",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-01-29",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-02-01",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-02-02",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-02-03",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-02-04",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-02-05",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-02-11",
+        "person": "Madre",
+        "type": "BOC"
+    },
+    {
+        "date": "2027-02-12",
+        "person": "Madre",
+        "type": "BOC"
+    },
+    {
+        "date": "2027-02-15",
+        "person": "Madre",
+        "type": "BOC"
+    },
+    {
+        "date": "2027-02-16",
+        "person": "Madre",
+        "type": "BOC"
+    },
+    {
+        "date": "2027-02-17",
+        "person": "Madre",
+        "type": "BOC"
+    },
+    {
+        "date": "2027-08-02",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-03",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-04",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-05",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-06",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-09",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-10",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-11",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-12",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    },
+    {
+        "date": "2027-08-13",
+        "person": "Madre",
+        "type": "Vacaciones 2026"
+    }
+],
+  balances: [
+    {
+        "person": "Madre",
+        "type": "Maternidad",
+        "total": 10,
+        "frecuencia": "Semanal"
+    },
+    {
+        "person": "Madre",
+        "type": "Maternidad (rem)",
+        "total": 3,
+        "frecuencia": "Semanal"
+    },
+    {
+        "person": "Madre",
+        "type": "Lactancia",
+        "total": 18,
+        "frecuencia": "Diario"
+    },
+    {
+        "person": "Madre",
+        "type": "Vacaciones 2026",
+        "total": 21,
+        "frecuencia": "Diario"
+    },
+    {
+        "person": "Madre",
+        "type": "Vacaciones 2025",
+        "total": 4,
+        "frecuencia": "Diario"
+    },
+    {
+        "person": "Madre",
+        "type": "Libre disposición 2026",
+        "total": 4,
+        "frecuencia": "Diario"
+    },
+    {
+        "person": "Madre",
+        "type": "BOC",
+        "total": 5,
+        "frecuencia": "Diario"
+    },
+    {
+        "person": "Padre",
+        "type": "Permiso Nacimiento",
+        "total": 19,
+        "frecuencia": "Semanal"
+    },
+    {
+        "person": "Padre",
+        "type": "Lactancia",
+        "total": 15,
+        "frecuencia": "Diario"
+    }
+],
+  festivos: []
+};
