@@ -24,11 +24,18 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: "#2563eb",
 };
 
 export const metadata: Metadata = {
   title: "ToolHub Platform",
   description: "Plataforma modular para herramientas de desarrollo rápido",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "ToolHub",
+  },
 };
 
 export default async function RootLayout({
