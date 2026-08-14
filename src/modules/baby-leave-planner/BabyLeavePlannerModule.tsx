@@ -77,9 +77,9 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
   }
 
   const defaultBalances: BalanceItem[] = [
-    { person: "Madre", type: "Permiso Nacimiento", total: 112, frecuencia: "Diario" },
+    { person: "Madre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Madre", type: "Lactancia", total: 15, frecuencia: "Diario" },
-    { person: "Padre", type: "Permiso Nacimiento", total: 112, frecuencia: "Diario" },
+    { person: "Padre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Padre", type: "Lactancia", total: 15, frecuencia: "Diario" },
   ];
 
@@ -89,6 +89,31 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
     balances: defaultBalances,
     festivos: [],
   };
+
+  if (loadedData && Array.isArray(loadedData.events)) {
+    let loadedBalances = loadedData.balances || [];
+    if (loadedBalances.length === 0) {
+      loadedBalances = defaultBalances;
+    } else {
+      // Normalize balances: convert Permiso Nacimiento to 19 weeks Semanal if legacy 112 days
+      loadedBalances = loadedBalances.map((b) => {
+        if (b.type === "Permiso Nacimiento" && (b.total === 112 || b.frecuencia === "Diario")) {
+          return { ...b, total: 19, frecuencia: "Semanal" };
+        }
+        if (b.frecuencia === "Semanal" && b.total > 50) {
+          return { ...b, total: Math.round(b.total / 7) };
+        }
+        return b;
+      });
+    }
+
+    return {
+      birthDate: loadedData.birthDate || null,
+      events: loadedData.events,
+      balances: loadedBalances,
+      festivos: loadedData.festivos || [],
+    };
+  }
 
   if (Array.isArray(loadedData?.holidays)) {
     migrated.festivos = loadedData.holidays.map((hStr: string) => ({
@@ -654,7 +679,12 @@ export function BabyLeavePlannerModule() {
   };
 
   const handleDeleteBalance = (person: string, type: string) => {
-    if (!confirm(`¿Estás seguro de que quieres eliminar el saldo de ${type} para ${person}?`)) return;
+    if (
+      !confirm(
+        `¿Estás seguro de que quieres eliminar la sección "${type}" de ${person}? Se borrarán también todos los días asignados en el calendario.`
+      )
+    )
+      return;
 
     setGlobalData((prev) => ({
       ...prev,
@@ -861,16 +891,25 @@ export function BabyLeavePlannerModule() {
 
             return (
               <div key={idx} className={`kpi-card-sidebar relative group ${isLow ? "bg-danger-light" : ""}`}>
-                {/* Hover inline edit trigger */}
-                <button
-                  onClick={() => startEditingBalance(person, bal.type)}
-                  className="absolute top-2 right-2 p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-400 group-hover:opacity-100 opacity-0 transition-opacity duration-150 cursor-pointer"
-                  title="Editar este saldo"
-                >
-                  <Edit2 size={12} />
-                </button>
+                {/* Action buttons (Edit and Delete) visible on mobile and desktop hover */}
+                <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+                  <button
+                    onClick={() => startEditingBalance(person, bal.type)}
+                    className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
+                    title="Editar este saldo"
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBalance(person, bal.type)}
+                    className="p-1.5 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
+                    title="Eliminar esta sección y sus días"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
 
-                <div className="kpi-card-header pr-6">
+                <div className="kpi-card-header pr-16">
                   <span className="kpi-card-label truncate max-w-[130px]" title={bal.type}>
                     {bal.type}
                   </span>

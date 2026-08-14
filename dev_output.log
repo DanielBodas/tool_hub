@@ -1,0 +1,42 @@
+
+> tool-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+- Environments: .env
+✓ Ready in 602ms
+
+ GET / 307 in 766ms (next.js: 386ms, application-code: 381ms)
+ GET /login 200 in 1122ms (next.js: 1032ms, application-code: 90ms)
+ GET /tools/baby-leave-planner 200 in 270ms (next.js: 34ms, proxy.ts: 107ms, application-code: 130ms)
+ GET /api/auth/session 200 in 1715ms (next.js: 1660ms, application-code: 55ms)
+ GET /tools/baby-leave-planner 200 in 83ms (next.js: 5ms, proxy.ts: 7ms, application-code: 71ms)
+ GET /api/auth/session 200 in 35ms (next.js: 24ms, application-code: 11ms)
+ GET /tools/baby-leave-planner 200 in 103ms (next.js: 5ms, proxy.ts: 8ms, application-code: 90ms)
+ GET /api/auth/session 200 in 34ms (next.js: 22ms, application-code: 12ms)
+ GET /tools/baby-leave-planner 200 in 85ms (next.js: 5ms, proxy.ts: 9ms, application-code: 72ms)
+ GET /api/auth/session 200 in 34ms (next.js: 22ms, application-code: 12ms)
+ GET /tools/baby-leave-planner 200 in 90ms (next.js: 5ms, proxy.ts: 8ms, application-code: 77ms)
+ GET /api/auth/session 200 in 33ms (next.js: 22ms, application-code: 11ms)
+ POST /api/auth/secondary 200 in 78ms (next.js: 61ms, application-code: 17ms)
+ GET /tools/baby-leave-planner 200 in 116ms (next.js: 9ms, proxy.ts: 17ms, application-code: 89ms)
+⚠️ Local MongoDB server is not running. Falling back to Mock DB Storage...
+ GET /api/baby-leave-planner 200 in 360ms (next.js: 314ms, application-code: 46ms)
+ GET /api/baby-leave-planner 200 in 34ms (next.js: 17ms, application-code: 17ms)
+ POST /api/baby-leave-planner 200 in 19ms (next.js: 4ms, application-code: 15ms)
+ GET /tools/baby-leave-planner 200 in 195ms (next.js: 17ms, proxy.ts: 24ms, application-code: 154ms)
+ GET /api/auth/session 200 in 53ms (next.js: 34ms, application-code: 18ms)
+ POST /api/auth/secondary 200 in 16ms (next.js: 3ms, application-code: 13ms)
+ GET /tools/baby-leave-planner 200 in 70ms (next.js: 6ms, proxy.ts: 6ms, application-code: 57ms)
+ GET /api/baby-leave-planner 200 in 13ms (next.js: 4ms, application-code: 10ms)
+ GET /api/baby-leave-planner 200 in 16ms (next.js: 8ms, application-code: 8ms)
+ POST /api/baby-leave-planner 200 in 12ms (next.js: 3ms, application-code: 9ms)
+ GET /tools/baby-leave-planner 200 in 82ms (next.js: 4ms, proxy.ts: 7ms, application-code: 71ms)
+ GET /api/auth/session 200 in 38ms (next.js: 28ms, application-code: 10ms)
+ POST /api/auth/secondary 200 in 11ms (next.js: 3ms, application-code: 8ms)
+ GET /tools/baby-leave-planner 200 in 49ms (next.js: 5ms, proxy.ts: 6ms, application-code: 39ms)
+ GET /api/baby-leave-planner 200 in 12ms (next.js: 3ms, application-code: 9ms)
+ GET /api/baby-leave-planner 200 in 11ms (next.js: 2ms, application-code: 9ms)
+ POST /api/baby-leave-planner 200 in 18ms (next.js: 4ms, application-code: 14ms)
