@@ -1633,104 +1633,135 @@ export function BabyLeavePlannerModule() {
 
       {/* Main Container Layout */}
       <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 space-y-6">
-        {/* Ultra-Modern Header Section */}
-        <div className="flex flex-col lg:flex-row justify-between items-center bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 gap-3">
-          {/* Brand */}
-          <div className="flex items-center gap-2.5">
-            <span className="text-2xl">👶</span>
-            <div>
-              <h1 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest leading-none">
-                Parental
-              </h1>
-              <span className="text-indigo-600 dark:text-indigo-400 text-[11px] font-black uppercase">
-                Planner
-              </span>
+        {/* Seamless Unified Command Bar */}
+        <div className="bg-white/95 dark:bg-slate-800/95 backdrop-blur-md p-2.5 px-3.5 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700/80 flex flex-col md:flex-row items-center justify-between gap-3">
+          {/* Left Group: Brand + Sidebar Triggers */}
+          <div className="flex items-center gap-3 w-full md:w-auto justify-between md:justify-start">
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xl">👶</span>
+              <div className="flex flex-col">
+                <h1 className="text-[11px] font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest leading-tight">
+                  Parental
+                </h1>
+                <span className="text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase leading-tight">
+                  Planner
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Sidebar Drawer Buttons */}
+            <div className="flex items-center gap-1.5 pl-2 border-l border-slate-200 dark:border-slate-700">
+              <button
+                onClick={() => toggleSidebar("mom")}
+                className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                  openSidebar === "mom"
+                    ? "bg-pink-100 text-pink-700 dark:bg-pink-950/60 dark:text-pink-300"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                }`}
+                title="Ver saldos de Madre"
+              >
+                <span>👩</span>
+                <span className="hidden sm:inline text-[11px]">Madre</span>
+              </button>
+              <button
+                onClick={() => toggleSidebar("dad")}
+                className={`h-8 px-2.5 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                  openSidebar === "dad"
+                    ? "bg-sky-100 text-sky-700 dark:bg-sky-950/60 dark:text-sky-300"
+                    : "bg-slate-100 hover:bg-slate-200 dark:bg-slate-700/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
+                }`}
+                title="Ver saldos de Padre"
+              >
+                <span>👨</span>
+                <span className="hidden sm:inline text-[11px]">Padre</span>
+              </button>
             </div>
           </div>
 
-          {/* Baby Status Center */}
+          {/* Center Group: Baby Status Badge */}
           {globalData.birthDate && (
-            <div className="flex items-center bg-slate-100/80 dark:bg-slate-700/50 px-4 py-1.5 rounded-full gap-2.5 border border-slate-200/50 dark:border-slate-600/50 w-full lg:w-auto justify-center">
-              <span className="text-sm animate-pulse">✨</span>
-              <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
-                <span id="display-birth-date" className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-                  {birthDateDisplay}
-                </span>
-                <span id="baby-weeks" className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                  {babyWeeksText}
-                </span>
-              </div>
+            <div className="flex items-center h-8 bg-slate-100/90 dark:bg-slate-900/60 px-3.5 rounded-xl gap-2 border border-slate-200/70 dark:border-slate-700/60 shrink-0">
+              <span className="text-xs animate-pulse">✨</span>
+              <span id="display-birth-date" className="text-[11px] font-extrabold text-slate-700 dark:text-slate-300">
+                {birthDateDisplay}
+              </span>
+              <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
+              <span id="baby-weeks" className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
+                {babyWeeksText}
+              </span>
             </div>
           )}
 
-          {/* Integrated Filter & Action Controls */}
-          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-center lg:justify-end">
-            {/* Integrated Filter Pill Group */}
-            {globalData.birthDate && (
-              <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
-                <button
-                  className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer ${
-                    currentFilter === "all"
-                      ? "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-xs scale-[1.02]"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                  }`}
-                  onClick={() => setCurrentFilter("all")}
-                >
-                  TODO
-                </button>
-                <button
-                  className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer ${
-                    currentFilter === "Madre"
-                      ? "bg-pink-500 text-white shadow-xs scale-[1.02]"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                  }`}
-                  onClick={() => setCurrentFilter("Madre")}
-                >
-                  MAMÁ
-                </button>
-                <button
-                  className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer ${
-                    currentFilter === "Padre"
-                      ? "bg-sky-500 text-white shadow-xs scale-[1.02]"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                  }`}
-                  onClick={() => setCurrentFilter("Padre")}
-                >
-                  PAPÁ
-                </button>
-              </div>
-            )}
+          {/* Right Group: Unified Control Segment */}
+          <div className="flex items-center gap-1.5 w-full md:w-auto justify-end">
+            <div className="flex items-center p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/80 dark:border-slate-700/80 h-9">
+              {/* Filter Pills */}
+              {globalData.birthDate && (
+                <div className="flex items-center gap-0.5 pr-1 border-r border-slate-200 dark:border-slate-700">
+                  <button
+                    className={`h-7 px-2.5 text-[10px] font-black rounded-lg transition-all duration-200 cursor-pointer ${
+                      currentFilter === "all"
+                        ? "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    onClick={() => setCurrentFilter("all")}
+                  >
+                    TODO
+                  </button>
+                  <button
+                    className={`h-7 px-2.5 text-[10px] font-black rounded-lg transition-all duration-200 cursor-pointer ${
+                      currentFilter === "Madre"
+                        ? "bg-pink-500 text-white shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    onClick={() => setCurrentFilter("Madre")}
+                  >
+                    MAMÁ
+                  </button>
+                  <button
+                    className={`h-7 px-2.5 text-[10px] font-black rounded-lg transition-all duration-200 cursor-pointer ${
+                      currentFilter === "Padre"
+                        ? "bg-sky-500 text-white shadow-xs"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                    }`}
+                    onClick={() => setCurrentFilter("Padre")}
+                  >
+                    PAPÁ
+                  </button>
+                </div>
+              )}
 
-            {/* Actions */}
-            <div className="flex gap-1.5 shrink-0 items-center">
+              {/* Holiday Mode Toggle */}
               <button
                 onClick={() => setHolidayMode(!holidayMode)}
-                className={`px-3 py-1.5 text-[11px] font-black rounded-xl border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`h-7 px-2 text-[10px] font-black rounded-lg transition-all duration-200 flex items-center gap-1 cursor-pointer ${
                   holidayMode
-                    ? "bg-amber-500 text-white border-amber-600 shadow-xs"
-                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800"
                 }`}
-                title="Activar para configurar festivos haciendo clic directamente en el calendario"
+                title="Activar modo festivos para marcar festivos directamente haciendo clic en el calendario"
               >
-                🚩 {holidayMode ? "FESTIVOS: ON" : "MODO 🚩"}
+                <span>🚩</span>
+                <span className="hidden lg:inline">{holidayMode ? "FESTIVOS: ON" : "FESTIVOS"}</span>
               </button>
 
-              <button
-                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition-all cursor-pointer text-slate-600 dark:text-slate-300"
-                onClick={handleRefresh}
-                title="Sincronizar"
-              >
-                <RefreshCw size={15} />
-              </button>
-              <button
-                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition-all cursor-pointer text-slate-600 dark:text-slate-300"
-                onClick={() => {
-                  setShowConfigModal(true);
-                }}
-                title="Ajustes"
-              >
-                <Settings size={15} />
-              </button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-0.5 pl-1 border-l border-slate-200 dark:border-slate-700">
+                <button
+                  className="w-7 h-7 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+                  onClick={handleRefresh}
+                  title="Sincronizar"
+                >
+                  <RefreshCw size={13} />
+                </button>
+                <button
+                  className="w-7 h-7 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+                  onClick={() => setShowConfigModal(true)}
+                  title="Ajustes"
+                >
+                  <Settings size={13} />
+                </button>
+              </div>
             </div>
           </div>
         </div>
