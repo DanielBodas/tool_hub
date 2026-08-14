@@ -282,10 +282,6 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
           )}
         </div>
 
-        {/* Mobile Swipe Gesture Helper Banner */}
-        <p className="text-[10px] text-muted-foreground/80 italic text-center">
-          💡 En móvil: Desliza 👉 para Favorito | Desliza 👈 para Abrir
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">

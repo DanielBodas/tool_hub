@@ -124,29 +124,31 @@ export function HeaderNav() {
         )}
       </div>
 
-      {/* iOS Instructions Modal */}
+      {/* iOS Instructions Modal - Fixed for 100% viewport containment */}
       {showIosInstructions && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-xl text-left">
-            <div className="flex justify-between items-center border-b border-border/50 pb-2">
-              <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1.5">
-                <Share size={16} className="text-primary" /> Instalar en tu iPhone / iPad
-              </h3>
-              <button
-                onClick={() => setShowIosInstructions(false)}
-                className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
-              >
-                <X size={16} />
-              </button>
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
+          <div className="bg-card border border-border rounded-2xl p-4 max-w-xs sm:max-w-sm w-full space-y-3 shadow-2xl text-left my-auto max-h-[90vh] flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center border-b border-border/50 pb-2 mb-2">
+                <h3 className="font-black text-xs sm:text-sm text-foreground flex items-center gap-1.5">
+                  <Share size={15} className="text-primary shrink-0" /> Instalar en iPhone / iPad
+                </h3>
+                <button
+                  onClick={() => setShowIosInstructions(false)}
+                  className="p-1 rounded-lg hover:bg-muted text-muted-foreground transition"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <ol className="text-[11px] sm:text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
+                <li>Toca el botón <span className="font-bold text-foreground">Compartir <Share size={12} className="inline text-primary" /></span> en Safari.</li>
+                <li>Desplázate y selecciona <span className="font-bold text-foreground">&quot;Añadir a inicio&quot;</span>.</li>
+                <li>Abre ToolHub desde la pantalla principal.</li>
+              </ol>
             </div>
-            <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Toca el botón <span className="font-bold text-foreground">Compartir <Share size={12} className="inline text-primary" /></span> en Safari.</li>
-              <li>Desplázate y selecciona <span className="font-bold text-foreground">&quot;Añadir a la pantalla de inicio&quot;</span>.</li>
-              <li>Abre ToolHub como App nativa.</li>
-            </ol>
             <button
               onClick={() => setShowIosInstructions(false)}
-              className="w-full py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs"
+              className="w-full py-2 bg-primary text-primary-foreground font-extrabold rounded-xl text-xs shadow-xs active:scale-95 transition"
             >
               Entendido
             </button>
