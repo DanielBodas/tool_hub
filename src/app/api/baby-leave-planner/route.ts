@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { loadAllToolEnvs } from "@/lib/env";
+import { INITIAL_LEAVE_DATA } from "@/modules/baby-leave-planner/initialData";
 
 loadAllToolEnvs();
 
@@ -39,7 +40,24 @@ export async function GET() {
       process.env.BABY_LEAVE_PLANNER_DB_NAME || "baby-leave-planner",
     );
 
-    const data = await db.collection("settings").findOne({ id: userId });
+    let data = await db.collection("settings").findOne({ id: userId });
+
+    if (!data) {
+      if (userId !== "default_family") {
+        data = await db.collection("settings").findOne({ id: "default_family" });
+      }
+
+      if (!data) {
+        data = { ...INITIAL_LEAVE_DATA, updatedAt: new Date() };
+        await db
+          .collection("settings")
+          .updateOne(
+            { id: "default_family" },
+            { $set: data },
+            { upsert: true }
+          );
+      }
+    }
 
     return NextResponse.json(data || {});
   } catch (e) {
