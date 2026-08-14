@@ -1633,16 +1633,16 @@ export function BabyLeavePlannerModule() {
 
       {/* Main Container Layout */}
       <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 space-y-6">
-        {/* Header Section (from Index.html) */}
-        <div className="flex flex-col md:flex-row justify-between items-center bg-white dark:bg-slate-800 p-4 rounded-2xl shadow-xs border border-slate-200 dark:border-slate-700 gap-4">
+        {/* Ultra-Modern Header Section */}
+        <div className="flex flex-col lg:flex-row justify-between items-center bg-white/90 dark:bg-slate-800/90 backdrop-blur-md p-3 px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 gap-3">
           {/* Brand */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <span className="text-2xl">👶</span>
             <div>
-              <h1 className="text-sm font-extrabold text-slate-800 dark:text-slate-100 uppercase tracking-wider leading-none">
+              <h1 className="text-xs font-black text-slate-800 dark:text-slate-100 uppercase tracking-widest leading-none">
                 Parental
               </h1>
-              <span className="text-indigo-600 dark:text-indigo-400 text-xs font-black uppercase">
+              <span className="text-indigo-600 dark:text-indigo-400 text-[11px] font-black uppercase">
                 Planner
               </span>
             </div>
@@ -1650,50 +1650,88 @@ export function BabyLeavePlannerModule() {
 
           {/* Baby Status Center */}
           {globalData.birthDate && (
-            <div className="flex items-center bg-slate-100 dark:bg-slate-700/50 px-5 py-2 rounded-full gap-3 border border-slate-200/50 dark:border-slate-600/50 w-full md:w-auto justify-center">
-              <span className="text-base animate-pulse">✨</span>
-              <div className="flex flex-col items-center md:items-start text-center md:text-left">
-                <span id="display-birth-date" className="text-xs font-bold text-slate-700 dark:text-slate-300">
+            <div className="flex items-center bg-slate-100/80 dark:bg-slate-700/50 px-4 py-1.5 rounded-full gap-2.5 border border-slate-200/50 dark:border-slate-600/50 w-full lg:w-auto justify-center">
+              <span className="text-sm animate-pulse">✨</span>
+              <div className="flex flex-col items-center lg:items-start text-center lg:text-left">
+                <span id="display-birth-date" className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
                   {birthDateDisplay}
                 </span>
-                <span id="baby-weeks" className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">
+                <span id="baby-weeks" className="text-[9px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
                   {babyWeeksText}
                 </span>
               </div>
             </div>
           )}
 
-          {/* Actions */}
-          <div className="flex gap-2 shrink-0">
-            {/* Interactive Holiday Mode Toggle (Step 2) */}
-            <button
-              onClick={() => setHolidayMode(!holidayMode)}
-              className={`px-4 py-2 text-xs font-black rounded-xl border transition flex items-center justify-center gap-2 cursor-pointer ${
-                holidayMode
-                  ? "bg-amber-100 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-900/50 dark:text-amber-400"
-                  : "bg-white border-slate-200 dark:bg-slate-800 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
-              }`}
-              title="Activar para configurar festivos haciendo clic directamente en el calendario"
-            >
-              🚩 MODO FESTIVOS: {holidayMode ? "ON" : "OFF"}
-            </button>
+          {/* Integrated Filter & Action Controls */}
+          <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-center lg:justify-end">
+            {/* Integrated Filter Pill Group */}
+            {globalData.birthDate && (
+              <div className="inline-flex p-1 bg-slate-100 dark:bg-slate-900/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shadow-inner">
+                <button
+                  className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer ${
+                    currentFilter === "all"
+                      ? "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-xs scale-[1.02]"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                  onClick={() => setCurrentFilter("all")}
+                >
+                  TODO
+                </button>
+                <button
+                  className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer ${
+                    currentFilter === "Madre"
+                      ? "bg-pink-500 text-white shadow-xs scale-[1.02]"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                  onClick={() => setCurrentFilter("Madre")}
+                >
+                  MAMÁ
+                </button>
+                <button
+                  className={`px-3 py-1 text-[11px] font-extrabold rounded-lg transition-all duration-200 cursor-pointer ${
+                    currentFilter === "Padre"
+                      ? "bg-sky-500 text-white shadow-xs scale-[1.02]"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  }`}
+                  onClick={() => setCurrentFilter("Padre")}
+                >
+                  PAPÁ
+                </button>
+              </div>
+            )}
 
-            <button
-              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition cursor-pointer text-slate-600 dark:text-slate-300"
-              onClick={handleRefresh}
-              title="Sincronizar"
-            >
-              <RefreshCw size={16} />
-            </button>
-            <button
-              className="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition cursor-pointer text-slate-600 dark:text-slate-300"
-              onClick={() => {
-                setShowConfigModal(true);
-              }}
-              title="Ajustes"
-            >
-              <Settings size={16} />
-            </button>
+            {/* Actions */}
+            <div className="flex gap-1.5 shrink-0 items-center">
+              <button
+                onClick={() => setHolidayMode(!holidayMode)}
+                className={`px-3 py-1.5 text-[11px] font-black rounded-xl border transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer ${
+                  holidayMode
+                    ? "bg-amber-500 text-white border-amber-600 shadow-xs"
+                    : "bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700"
+                }`}
+                title="Activar para configurar festivos haciendo clic directamente en el calendario"
+              >
+                🚩 {holidayMode ? "FESTIVOS: ON" : "MODO 🚩"}
+              </button>
+
+              <button
+                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition-all cursor-pointer text-slate-600 dark:text-slate-300"
+                onClick={handleRefresh}
+                title="Sincronizar"
+              >
+                <RefreshCw size={15} />
+              </button>
+              <button
+                className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center transition-all cursor-pointer text-slate-600 dark:text-slate-300"
+                onClick={() => {
+                  setShowConfigModal(true);
+                }}
+                title="Ajustes"
+              >
+                <Settings size={15} />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1722,31 +1760,6 @@ export function BabyLeavePlannerModule() {
         {/* Main Application Workspace */}
         {globalData.birthDate && isLoaded && (
           <div id="app-content" className="space-y-6">
-            {/* Filter bar */}
-            <div className="filter-bar-container">
-              <div className="filter-pill-group">
-                <button
-                  className={`btn-filter ${currentFilter === "all" ? "active" : ""}`}
-                  onClick={() => setCurrentFilter("all")}
-                >
-                  TODO
-                </button>
-                <button
-                  className={`btn-filter ${currentFilter === "Madre" ? "active" : ""}`}
-                  onClick={() => setCurrentFilter("Madre")}
-                >
-                  MAMÁ
-                </button>
-                <button
-                  className={`btn-filter ${currentFilter === "Padre" ? "active" : ""}`}
-                  onClick={() => setCurrentFilter("Padre")}
-                >
-                  PAPÁ
-                </button>
-              </div>
-            </div>
-
-            {/* Calendar Grid Container */}
             <div id="calendar-grid">
               {monthsData.map((monthDate, mIdx) => {
                 const year = monthDate.getFullYear();
