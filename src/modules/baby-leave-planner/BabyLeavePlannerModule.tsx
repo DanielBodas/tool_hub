@@ -1266,26 +1266,26 @@ export function BabyLeavePlannerModule() {
         /* --- BOTÓN FLOTANTE SELECCIÓN --- */
         #floating-wrapper {
           position: fixed;
-          bottom: 30px;
+          bottom: 20px;
           left: 50%;
           transform: translateX(-50%) translateY(150px);
-          transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
           z-index: 2000;
           display: flex;
           align-items: center;
-          gap: 16px;
-          background: rgba(255, 255, 255, 0.85);
-          backdrop-filter: blur(20px);
-          -webkit-backdrop-filter: blur(20px);
-          padding: 8px 10px 8px 18px;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.88);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          padding: 4px 6px 4px 8px;
           border-radius: 9999px;
-          box-shadow: 0 10px 30px -5px rgba(79, 70, 229, 0.15), 0 20px 40px -15px rgba(15, 23, 42, 0.2);
-          border: 1px solid rgba(79, 70, 229, 0.15);
+          box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.2), 0 8px 16px -6px rgba(0, 0, 0, 0.1);
+          border: 1px solid rgba(79, 70, 229, 0.2);
         }
         .dark #floating-wrapper {
-          background: rgba(15, 23, 42, 0.8);
-          border-color: rgba(99, 102, 241, 0.25);
-          box-shadow: 0 10px 35px -5px rgba(99, 102, 241, 0.25), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          background: rgba(15, 23, 42, 0.88);
+          border-color: rgba(99, 102, 241, 0.3);
+          box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3), 0 10px 20px -8px rgba(0, 0, 0, 0.5);
         }
 
         #floating-wrapper.visible {
@@ -1296,40 +1296,39 @@ export function BabyLeavePlannerModule() {
           background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
           color: white;
           border: none;
-          padding: 10px 22px;
+          padding: 6px 14px;
           border-radius: 9999px;
           font-weight: 800;
-          font-size: 0.85rem;
+          font-size: 0.75rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 10px;
-          box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          gap: 8px;
+          box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .btn-float-action:hover {
-          transform: translateY(-2px) scale(1.03);
-          box-shadow: 0 6px 20px rgba(79, 70, 229, 0.5);
-          background: linear-gradient(135deg, #4338ca 0%, #4f46e5 100%);
+          transform: translateY(-1px) scale(1.02);
+          box-shadow: 0 5px 15px rgba(79, 70, 229, 0.45);
         }
         .btn-float-action:active {
-          transform: translateY(0) scale(0.97);
+          transform: translateY(0) scale(0.96);
         }
 
         .btn-float-close {
-          width: 32px;
-          height: 32px;
+          width: 26px;
+          height: 26px;
           border-radius: 50%;
           border: none;
           background: rgba(241, 245, 249, 0.9);
           color: #64748b;
           font-weight: bold;
           cursor: pointer;
-          font-size: 0.9rem;
+          font-size: 0.8rem;
           display: flex;
           align-items: center;
           justify-content: center;
-          transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .btn-float-close:hover {
           background: #fee2e2;
@@ -1634,9 +1633,9 @@ export function BabyLeavePlannerModule() {
       {/* Main Container Layout */}
       <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 space-y-6">
         {/* Sleek, Ultra-Modern Top Header */}
-        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-2.5 px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3">
+        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-2.5 px-3.5 sm:px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap md:flex-nowrap items-center justify-between gap-2.5">
           {/* Brand Logo */}
-          <div className="flex items-center gap-2.5 shrink-0">
+          <div className="flex items-center gap-2.5 shrink-0 order-1">
             <span className="text-2xl">👶</span>
             <div className="flex flex-col">
               <h1 className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest leading-none">
@@ -1648,22 +1647,22 @@ export function BabyLeavePlannerModule() {
             </div>
           </div>
 
-          {/* Baby Status Inline Pill */}
+          {/* Baby Status Inline Pill - Responsive centered */}
           {globalData.birthDate && (
-            <div className="flex items-center h-8 bg-slate-100/80 dark:bg-slate-900/60 px-3.5 rounded-full gap-2 border border-slate-200/60 dark:border-slate-700/60 text-xs shrink-0">
-              <span className="text-xs animate-pulse">✨</span>
-              <span id="display-birth-date" className="font-extrabold text-slate-700 dark:text-slate-300 text-[11px]">
+            <div className="order-3 md:order-2 w-full md:w-auto flex items-center justify-center h-8 bg-slate-100/80 dark:bg-slate-900/60 px-3.5 rounded-full gap-2 border border-slate-200/60 dark:border-slate-700/60 text-xs">
+              <span className="text-xs animate-pulse shrink-0">✨</span>
+              <span id="display-birth-date" className="font-extrabold text-slate-700 dark:text-slate-300 text-[11px] truncate">
                 {birthDateDisplay}
               </span>
-              <span className="text-slate-300 dark:text-slate-600 font-light">|</span>
-              <span id="baby-weeks" className="font-black text-indigo-600 dark:text-indigo-400 uppercase text-[10px] tracking-wider">
+              <span className="text-slate-300 dark:text-slate-600 font-light shrink-0">|</span>
+              <span id="baby-weeks" className="font-black text-indigo-600 dark:text-indigo-400 uppercase text-[10px] tracking-wider shrink-0">
                 {babyWeeksText}
               </span>
             </div>
           )}
 
           {/* Header Action Buttons */}
-          <div className="flex items-center gap-1.5 shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0 order-2 md:order-3">
             <button
               className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
               onClick={handleRefresh}
@@ -1904,24 +1903,24 @@ export function BabyLeavePlannerModule() {
         )}
       </div>
 
-      {/* Floating Range Selection Bar (from calendar.html) - Beautiful Modern Bubble */}
-      <div id="floating-wrapper" className={`${selectedDates.length > 0 ? "visible" : ""} flex items-center gap-3 bg-white/95 dark:bg-slate-900/95 border border-indigo-100/80 dark:border-indigo-900/40 backdrop-blur-xl px-4 py-2.5 rounded-full shadow-2xl transition-all duration-300`}>
+      {/* Floating Range Selection Bar - Compact & Modern Pill */}
+      <div id="floating-wrapper" className={selectedDates.length > 0 ? "visible" : ""}>
         <button
-          className="btn-float-close cursor-pointer hover:bg-red-50 dark:hover:bg-red-950/30 p-2 rounded-full transition-all active:scale-95 flex items-center justify-center"
+          className="btn-float-close"
           onClick={clearAllSelections}
           title="Limpiar selección"
         >
-          <X size={15} />
+          <X size={13} />
         </button>
-        <span className="h-5 w-px bg-slate-200 dark:bg-slate-800" />
+        <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
         <button
-          className="btn-float-action cursor-pointer flex items-center gap-2.5 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-700 hover:to-indigo-600 dark:from-indigo-500 dark:to-indigo-400 text-white font-black text-xs px-5 py-2.5 rounded-full shadow-lg shadow-indigo-600/25 transition-all hover:scale-105 active:scale-95"
+          className="btn-float-action"
           onClick={() => openModalForSelection()}
         >
-          <span className="bg-white text-indigo-600 dark:bg-slate-900 dark:text-indigo-400 px-2.5 py-0.5 rounded-full text-[11px] font-black leading-none flex items-center justify-center shadow-xs">
+          <span className="bg-white text-indigo-700 dark:bg-slate-950 dark:text-indigo-300 px-1.5 py-0.5 rounded-md text-[10px] font-black leading-none flex items-center justify-center min-w-[16px] shadow-xs">
             {selectedDates.length}
           </span>
-          <span>Configurar Días</span>
+          <span className="text-[11px] font-black tracking-tight">Configurar Días</span>
         </button>
       </div>
 
