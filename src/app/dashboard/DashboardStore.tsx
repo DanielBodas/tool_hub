@@ -105,6 +105,13 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   // PWA Install Prompt State
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const [isPwaDismissed, setIsPwaDismissed] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("toolhub_pwa_dismissed") === "true";
+    }
+    return false;
+  });
+
   const [isStandalone] = useState(() => {
     if (typeof window !== "undefined") {
       return (
@@ -138,6 +145,13 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
     } else {
       // Fallback for iOS / Safari
       setShowIosInstructions(true);
+    }
+  };
+
+  const handleDismissPWA = () => {
+    setIsPwaDismissed(true);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("toolhub_pwa_dismissed", "true");
     }
   };
 
@@ -267,24 +281,33 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   return (
     <div className="container mx-auto px-3 py-3 max-w-7xl">
 
-      {/* -------------------- PWA MOBILE INSTALL BANNER -------------------- */}
-      {!isStandalone && (
-        <div className="mb-3 bg-gradient-to-r from-primary/15 via-primary/10 to-indigo-500/10 border border-primary/20 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
+      {/* -------------------- DISCREET & DISMISSIBLE PWA MOBILE INSTALL BANNER -------------------- */}
+      {!isStandalone && !isPwaDismissed && (
+        <div className="mb-2 bg-card/90 border border-primary/20 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-2 shadow-2xs">
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shrink-0">
-              <Download size={14} />
+            <div className="w-6 h-6 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
+              <Download size={12} />
             </div>
-            <div className="min-w-0">
-              <p className="text-xs font-black text-foreground truncate">Instalar App ToolHub</p>
-              <p className="text-[10px] text-muted-foreground truncate">Acceso rápido desde tu pantalla de inicio</p>
-            </div>
+            <p className="text-[11px] font-bold text-foreground truncate">
+              Instalar App en inicio
+            </p>
           </div>
-          <button
-            onClick={handleInstallPWA}
-            className="px-3 py-1 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-black rounded-lg shadow-xs shrink-0 transition-all active:scale-95"
-          >
-            Instalar
-          </button>
+
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={handleInstallPWA}
+              className="px-2.5 py-0.5 bg-primary hover:bg-primary-hover text-primary-foreground text-[10px] font-black rounded-md shadow-2xs transition-all active:scale-95"
+            >
+              Instalar
+            </button>
+            <button
+              onClick={handleDismissPWA}
+              title="Cerrar aviso"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
+            >
+              <X size={12} />
+            </button>
+          </div>
         </div>
       )}
 
@@ -363,22 +386,35 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
           })}
         </div>
 
-        {/* Search input on Mobile */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
-          <input
-            type="text"
-            placeholder="Buscar herramienta..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-8 pr-4 py-1.5 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary transition-all"
-          />
-          {searchQuery && (
+        {/* Search input on Mobile with Discreet PWA trigger if dismissed */}
+        <div className="relative flex items-center gap-1.5">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
+            <input
+              type="text"
+              placeholder="Buscar herramienta..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-8 pr-4 py-1.5 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {/* Discreet PWA Icon Button when dismissed */}
+          {!isStandalone && isPwaDismissed && (
             <button
-              onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
+              onClick={handleInstallPWA}
+              title="Instalar App ToolHub"
+              className="p-1.5 bg-card border border-primary/30 text-primary rounded-xl hover:bg-primary/10 transition-all shrink-0"
             >
-              Limpiar
+              <Download size={14} />
             </button>
           )}
         </div>
