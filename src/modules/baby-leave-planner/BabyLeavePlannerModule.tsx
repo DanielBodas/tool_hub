@@ -1633,8 +1633,8 @@ export function BabyLeavePlannerModule() {
 
       {/* Main Container Layout */}
       <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 space-y-6">
-        {/* Sleek, Ultra-Modern Single-Row Header */}
-        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-2.5 px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
+        {/* Sleek, Ultra-Modern Top Header */}
+        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-2.5 px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between gap-3">
           {/* Brand Logo */}
           <div className="flex items-center gap-2.5 shrink-0">
             <span className="text-2xl">👶</span>
@@ -1662,76 +1662,79 @@ export function BabyLeavePlannerModule() {
             </div>
           )}
 
-          {/* Single Control Capsule */}
-          <div className="flex items-center p-1 bg-slate-100/90 dark:bg-slate-900/80 rounded-xl border border-slate-200/70 dark:border-slate-700/70 h-9 shrink-0 gap-1">
-            {/* Integrated Segmented Filters */}
-            {globalData.birthDate && (
-              <div className="flex items-center gap-0.5 pr-1.5 border-r border-slate-200 dark:border-slate-700">
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+              onClick={handleRefresh}
+              title="Sincronizar"
+            >
+              <RefreshCw size={14} />
+            </button>
+            <button
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+              onClick={() => setShowConfigModal(true)}
+              title="Ajustes"
+            >
+              <Settings size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Sticky Filter & Festivos Capsule Bar on Scroll */}
+        {globalData.birthDate && isLoaded && (
+          <div className="sticky top-12 z-30 flex justify-center py-1 transition-all duration-200 pointer-events-none">
+            <div className="pointer-events-auto flex items-center p-1.5 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-slate-200/90 dark:border-slate-700/90 shadow-lg shadow-slate-900/5 gap-1.5 transition-all">
+              {/* Integrated Segmented Filters */}
+              <div className="flex items-center gap-1 pr-1.5 border-r border-slate-200/80 dark:border-slate-700/80">
                 <button
-                  className={`h-7 px-3 text-[11px] font-black rounded-lg transition-all duration-200 cursor-pointer ${
+                  className={`h-7 px-3.5 text-[11px] font-black rounded-xl transition-all duration-200 cursor-pointer ${
                     currentFilter === "all"
-                      ? "bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                   }`}
                   onClick={() => setCurrentFilter("all")}
                 >
                   TODO
                 </button>
                 <button
-                  className={`h-7 px-3 text-[11px] font-black rounded-lg transition-all duration-200 cursor-pointer ${
+                  className={`h-7 px-3.5 text-[11px] font-black rounded-xl transition-all duration-200 cursor-pointer ${
                     currentFilter === "Madre"
                       ? "bg-pink-500 text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                   }`}
                   onClick={() => setCurrentFilter("Madre")}
                 >
                   MAMÁ
                 </button>
                 <button
-                  className={`h-7 px-3 text-[11px] font-black rounded-lg transition-all duration-200 cursor-pointer ${
+                  className={`h-7 px-3.5 text-[11px] font-black rounded-xl transition-all duration-200 cursor-pointer ${
                     currentFilter === "Padre"
                       ? "bg-sky-500 text-white shadow-xs"
-                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
                   }`}
                   onClick={() => setCurrentFilter("Padre")}
                 >
                   PAPÁ
                 </button>
               </div>
-            )}
 
-            {/* Holiday Mode Toggle */}
-            <button
-              onClick={() => setHolidayMode(!holidayMode)}
-              className={`h-7 px-2.5 text-[11px] font-black rounded-lg transition-all duration-200 flex items-center gap-1 cursor-pointer ${
-                holidayMode
-                  ? "bg-amber-500 text-white shadow-xs"
-                  : "text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800"
-              }`}
-              title="Activar modo festivos para marcar festivos directamente haciendo clic en el calendario"
-            >
-              <span>🚩</span>
-            </button>
-
-            {/* Actions */}
-            <div className="flex items-center gap-0.5 pl-1.5 border-l border-slate-200 dark:border-slate-700">
+              {/* Holiday Mode Toggle */}
               <button
-                className="w-7 h-7 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
-                onClick={handleRefresh}
-                title="Sincronizar"
+                onClick={() => setHolidayMode(!holidayMode)}
+                className={`h-7 px-3 text-[11px] font-black rounded-xl transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  holidayMode
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                }`}
+                title="Activar modo festivos para marcar festivos directamente haciendo clic en el calendario"
               >
-                <RefreshCw size={13} />
-              </button>
-              <button
-                className="w-7 h-7 rounded-lg hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
-                onClick={() => setShowConfigModal(true)}
-                title="Ajustes"
-              >
-                <Settings size={13} />
+                <span>🚩</span>
+                <span className="text-[10px] uppercase tracking-wider font-extrabold">{holidayMode ? "FESTIVOS: ON" : "FESTIVOS"}</span>
               </button>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Initial Setup Screen (if no birthDate is set) */}
         {!globalData.birthDate && isLoaded && (
