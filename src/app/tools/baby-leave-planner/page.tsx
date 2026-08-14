@@ -3,18 +3,20 @@ import { BabyLeavePlannerModule } from "@/modules/baby-leave-planner/BabyLeavePl
 import { ToolSecurityGate } from "@/components/ToolSecurityGate";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isToolAllowedForUser } from "@/lib/auth";
 
 export default async function BabyLeavePlannerPage() {
+  const toolId = "baby-leave-planner";
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
-  const isUnlocked =
-    cookieStore.get("auth_tool_baby-leave-planner")?.value === "true";
+  const isUnlockedByCookie =
+    cookieStore.get(`auth_tool_${toolId}`)?.value === "true";
+  const isAllowedBySession = isToolAllowedForUser(session, toolId);
 
-  if (!session && !isUnlocked) {
+  if (!isUnlockedByCookie && !isAllowedBySession) {
     return (
       <ToolSecurityGate
-        toolId="baby-leave-planner"
+        toolId={toolId}
         toolName="Permiso de Nacimiento"
       />
     );
