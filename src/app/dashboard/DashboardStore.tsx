@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -19,9 +19,6 @@ import {
   LayoutGrid,
   Layers,
   Trash2,
-  Download,
-  X,
-  Share,
 } from "lucide-react";
 
 interface SerializedTool {
@@ -45,11 +42,6 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: 
 
 function getToolIcon(id: string) {
   return ICON_MAP[id] || Package;
-}
-
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
 export default function DashboardStore({ tools }: DashboardStoreProps) {
@@ -101,59 +93,6 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   // Touch Swipe Gesture State
   const [touchStartPos, setTouchStartPos] = useState<{ id: string; x: number; y: number } | null>(null);
   const [swipeOffset, setSwipeOffset] = useState<{ id: string; x: number } | null>(null);
-
-  // PWA Install Prompt State
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showIosInstructions, setShowIosInstructions] = useState(false);
-  const [isPwaDismissed, setIsPwaDismissed] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("toolhub_pwa_dismissed") === "true";
-    }
-    return false;
-  });
-
-  const [isStandalone] = useState(() => {
-    if (typeof window !== "undefined") {
-      return (
-        window.matchMedia("(display-mode: standalone)").matches ||
-        !!(window.navigator as unknown as { standalone?: boolean }).standalone
-      );
-    }
-    return false;
-  });
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const handleBeforeInstall = (e: Event) => {
-        e.preventDefault();
-        setDeferredPrompt(e as BeforeInstallPromptEvent);
-      };
-
-      window.addEventListener("beforeinstallprompt", handleBeforeInstall);
-      return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
-    }
-  }, []);
-
-  const handleInstallPWA = () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === "accepted") {
-          setDeferredPrompt(null);
-        }
-      });
-    } else {
-      // Fallback for iOS / Safari
-      setShowIosInstructions(true);
-    }
-  };
-
-  const handleDismissPWA = () => {
-    setIsPwaDismissed(true);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("toolhub_pwa_dismissed", "true");
-    }
-  };
 
   // Sync state modifications with localStorage
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
@@ -207,7 +146,6 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
     const diffX = touch.clientX - touchStartPos.x;
     const diffY = touch.clientY - touchStartPos.y;
 
-    // Prevent scrolling interference if dragging horizontally
     if (Math.abs(diffX) > Math.abs(diffY)) {
       setSwipeOffset({ id, x: diffX });
     }
@@ -216,10 +154,8 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   const handleTouchEnd = (id: string, toolHref: string) => {
     if (swipeOffset && swipeOffset.id === id) {
       if (swipeOffset.x > 70) {
-        // Swipe Right: Toggle Favorite
         toggleFavorite(id);
       } else if (swipeOffset.x < -70) {
-        // Swipe Left: Launch Tool
         registerLaunch(id, toolHref);
       }
     }
@@ -281,66 +217,6 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   return (
     <div className="container mx-auto px-3 py-3 max-w-7xl">
 
-      {/* -------------------- DISCREET & DISMISSIBLE PWA MOBILE INSTALL BANNER -------------------- */}
-      {!isStandalone && !isPwaDismissed && (
-        <div className="mb-2 bg-card/90 border border-primary/20 rounded-xl px-2.5 py-1.5 flex items-center justify-between gap-2 shadow-2xs">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
-              <Download size={12} />
-            </div>
-            <p className="text-[11px] font-bold text-foreground truncate">
-              Instalar App en inicio
-            </p>
-          </div>
-
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={handleInstallPWA}
-              className="px-2.5 py-0.5 bg-primary hover:bg-primary-hover text-primary-foreground text-[10px] font-black rounded-md shadow-2xs transition-all active:scale-95"
-            >
-              Instalar
-            </button>
-            <button
-              onClick={handleDismissPWA}
-              title="Cerrar aviso"
-              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted"
-            >
-              <X size={12} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* iOS Instructions Modal */}
-      {showIosInstructions && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-xl">
-            <div className="flex justify-between items-center border-b border-border/50 pb-2">
-              <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1.5">
-                <Share size={16} className="text-primary" /> Instalar en tu iPhone / iPad
-              </h3>
-              <button
-                onClick={() => setShowIosInstructions(false)}
-                className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-              <li>Toca el botón <span className="font-bold text-foreground">Compartir <Share size={12} className="inline text-primary" /></span> en el navegador Safari.</li>
-              <li>Desplázate hacia abajo y selecciona <span className="font-bold text-foreground">&quot;Añadir a la pantalla de inicio&quot;</span>.</li>
-              <li>Abre ToolHub directamente como una App nativa.</li>
-            </ol>
-            <button
-              onClick={() => setShowIosInstructions(false)}
-              className="w-full py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs"
-            >
-              Entendido
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* -------------------- TOP BAR: MOBILE CATEGORY SLIDER & SEARCH -------------------- */}
       <div className="lg:hidden mb-3 space-y-2">
         <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none whitespace-nowrap">
@@ -386,35 +262,22 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
           })}
         </div>
 
-        {/* Search input on Mobile with Discreet PWA trigger if dismissed */}
-        <div className="relative flex items-center gap-1.5">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
-            <input
-              type="text"
-              placeholder="Buscar herramienta..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-8 pr-4 py-1.5 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary transition-all"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
-              >
-                Limpiar
-              </button>
-            )}
-          </div>
-
-          {/* Discreet PWA Icon Button when dismissed */}
-          {!isStandalone && isPwaDismissed && (
+        {/* Search input on Mobile */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
+          <input
+            type="text"
+            placeholder="Buscar herramienta..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-8 pr-4 py-1.5 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary transition-all"
+          />
+          {searchQuery && (
             <button
-              onClick={handleInstallPWA}
-              title="Instalar App ToolHub"
-              className="p-1.5 bg-card border border-primary/30 text-primary rounded-xl hover:bg-primary/10 transition-all shrink-0"
+              onClick={() => setSearchQuery("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-muted-foreground hover:text-foreground"
             >
-              <Download size={14} />
+              Limpiar
             </button>
           )}
         </div>
