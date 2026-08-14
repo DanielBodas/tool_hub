@@ -2,101 +2,244 @@
 
 import React, { useState, useMemo, useEffect } from "react";
 import {
-  Calendar as CalendarIcon,
-  Baby,
-  Plus,
-  Trash2,
-  User,
+  RefreshCw,
   Settings,
-  ChevronLeft,
-  ChevronRight,
+  X,
+  Trash2,
   Edit2,
-  ChevronDown,
-  ChevronUp,
+  Plus,
 } from "lucide-react";
-import {
-  LeaveBlock,
-  Allowance,
-  ConsumptionMode,
-  isSameDay,
-  formatDate,
-  calculateEndDate,
-  countEffectiveLeaveDays,
-  getDaysInMonth,
-  getLeaveStatus,
-  isHoliday,
-} from "./leaveUtils";
+
+// Define TypeScript interfaces for our data structure
+interface EventItem {
+  date: string;
+  person: string;
+  type: string;
+}
+
+interface BalanceItem {
+  person: string;
+  type: string;
+  total: number;
+  frecuencia: "Diario" | "Semanal";
+}
+
+interface FestivoItem {
+  date: string;
+  nombre: string;
+}
+
+interface GlobalData {
+  events: EventItem[];
+  balances: BalanceItem[];
+  festivos: FestivoItem[];
+  birthDate: string | null;
+}
+
+interface LegacyData {
+  birthDate?: string | null;
+  events?: EventItem[];
+  balances?: BalanceItem[];
+  festivos?: FestivoItem[];
+  holidays?: string[];
+  allowances?: Array<{
+    id: string;
+    name?: string;
+    totalDays: number | string;
+    parent: "mother" | "father";
+    consumptionMode: "weeks" | "days" | "all";
+  }>;
+  flexibleBlocks?: Array<{
+    startDate: string | Date;
+    endDate: string | Date;
+    parent: "mother" | "father";
+    allowanceId: string;
+  }>;
+}
+
+// Formatting helper
+function formatDateStr(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+// Migration Helper
+function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
+  if (loadedData && Array.isArray(loadedData.events)) {
+    return {
+      birthDate: loadedData.birthDate || null,
+      events: loadedData.events,
+      balances: loadedData.balances || [],
+      festivos: loadedData.festivos || [],
+    };
+  }
+
+  const defaultBalances: BalanceItem[] = [
+    { person: "Madre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
+    { person: "Madre", type: "Lactancia", total: 15, frecuencia: "Diario" },
+    { person: "Padre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
+    { person: "Padre", type: "Lactancia", total: 15, frecuencia: "Diario" },
+  ];
+
+  const migrated: GlobalData = {
+    birthDate: loadedData?.birthDate || null,
+    events: [],
+    balances: defaultBalances,
+    festivos: [],
+  };
+
+  if (loadedData && Array.isArray(loadedData.events)) {
+    let loadedBalances = loadedData.balances || [];
+    if (loadedBalances.length === 0) {
+      loadedBalances = defaultBalances;
+    } else {
+      // Normalize balances: convert Permiso Nacimiento to 19 weeks Semanal if legacy 112 days
+      loadedBalances = loadedBalances.map((b) => {
+        if (b.type === "Permiso Nacimiento" && (b.total === 112 || b.frecuencia === "Diario")) {
+          return { ...b, total: 19, frecuencia: "Semanal" };
+        }
+        if (b.frecuencia === "Semanal" && b.total > 50) {
+          return { ...b, total: Math.round(b.total / 7) };
+        }
+        return b;
+      });
+    }
+
+    return {
+      birthDate: loadedData.birthDate || null,
+      events: loadedData.events,
+      balances: loadedBalances,
+      festivos: loadedData.festivos || [],
+    };
+  }
+
+  if (Array.isArray(loadedData?.holidays)) {
+    migrated.festivos = loadedData.holidays.map((hStr: string) => ({
+      date: hStr,
+      nombre: "Festivo",
+    }));
+  }
+
+  if (Array.isArray(loadedData?.allowances)) {
+    migrated.balances = loadedData.allowances.map((a) => ({
+      person: a.parent === "mother" ? "Madre" : "Padre",
+      type: a.name || "Permiso",
+      total: Number(a.totalDays) || 0,
+      frecuencia: a.consumptionMode === "weeks" ? "Semanal" : "Diario",
+    }));
+  }
+
+  if (Array.isArray(loadedData?.flexibleBlocks) && loadedData.birthDate) {
+    const eventsList: EventItem[] = [];
+
+    loadedData.flexibleBlocks.forEach((block) => {
+      const start = new Date(block.startDate);
+      const end = new Date(block.endDate);
+      const person = block.parent === "mother" ? "Madre" : "Padre";
+
+      const allowance = loadedData.allowances?.find((a) => a.id === block.allowanceId);
+      const type = allowance?.name || "Permiso";
+
+      const current = new Date(start);
+      while (current <= end) {
+        const dateStr = formatDateStr(current);
+        eventsList.push({
+          date: dateStr,
+          person,
+          type,
+        });
+        current.setDate(current.getDate() + 1);
+      }
+    });
+
+    migrated.events = eventsList;
+  }
+
+  return migrated;
+}
 
 export function BabyLeavePlannerModule() {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [birthDate, setBirthDate] = useState<string>("");
-  const [holidays, setHolidays] = useState<string[]>([]);
-  const [newHoliday, setNewHoliday] = useState<string>("");
-  const [flexibleBlocks, setFlexibleBlocks] = useState<LeaveBlock[]>([]);
+  const [globalData, setGlobalData] = useState<GlobalData>({
+    events: [],
+    balances: [],
+    festivos: [],
+    birthDate: null,
+  });
 
-  const [allowances, setAllowances] = useState<Allowance[]>([
-    {
-      id: "birth-mother",
-      name: "Permiso Nacimiento",
-      totalDays: 133,
-      parent: "mother",
-      consumptionMode: "weeks",
-    },
-    {
-      id: "birth-father",
-      name: "Permiso Nacimiento",
-      totalDays: 133,
-      parent: "father",
-      consumptionMode: "weeks",
-    },
-  ]);
+  // UI States
+  const [selectedDates, setSelectedDates] = useState<string[]>([]);
+  const [lastClickedDate, setLastClickedDate] = useState<string | null>(null);
+  const [currentFilter, setCurrentFilter] = useState<"all" | "Madre" | "Padre">("all");
+  const [openSidebar, setOpenSidebar] = useState<"mom" | "dad" | null>(null);
 
-  const [editingAllowance, setEditingAllowance] = useState<string | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
+  // Day Management Preferences
+  const [skipNonWorkDays, setSkipNonWorkDays] = useState(true);
+
+  // Holiday Mode Toggle
   const [holidayMode, setHolidayMode] = useState(false);
-  const [leftDrawerOpen, setLeftDrawerOpen] = useState(false);
-  const [rightDrawerOpen, setRightDrawerOpen] = useState(false);
-  const [selectedDay, setSelectedDay] = useState<Date | null>(null);
-  const [assignmentParent, setAssignmentParent] = useState<"mother" | "father">(
-    "mother",
-  );
-  const [viewMode, setViewMode] = useState<"month" | "year">("month");
-  const [mobileTab, setMobileTab] = useState<
-    "calendar" | "mother" | "father" | "settings"
-  >("calendar");
-  const [expandedPeriods, setExpandedPeriods] = useState<
-    Record<string, boolean>
-  >({ mother: false, father: false });
 
-  const now = new Date();
-  const [viewDate, setViewDate] = useState(
-    new Date(now.getFullYear(), now.getMonth(), 1),
-  );
+  // Custom Styled Confirmation & Alert Modal State (replaces native browser alert/confirm)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
 
-  // Fetch initial data
+  const showAlert = (title: string, message: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: "Entendido",
+      cancelText: "",
+      isDanger: false,
+      onConfirm: () => setConfirmModal((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
+  // Sidebar Inline Balance Editing States
+  const [editingBalanceKey, setEditingBalanceKey] = useState<string | null>(null); // "person-type"
+  const [editTypeVal, setEditTypeVal] = useState("");
+  const [editTotalVal, setEditTotalVal] = useState("");
+  const [editFreqVal, setEditFreqVal] = useState<"Diario" | "Semanal">("Diario");
+
+  // State to manage inline balance creation form in each sidebar
+  const [showAddFormMom, setShowAddFormMom] = useState(false);
+  const [showAddFormDad, setShowAddFormDad] = useState(false);
+  const [sidebarAddType, setSidebarAddType] = useState("");
+  const [sidebarAddTotal, setSidebarAddTotal] = useState("");
+  const [sidebarAddFreq, setSidebarAddFreq] = useState<"Diario" | "Semanal">("Diario");
+
+  // Modal States
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedPerson, setSelectedPerson] = useState<string>("Madre"); // "Madre" | "Padre" | "Festivo"
+  const [selectedType, setSelectedType] = useState<string>("");
+  const [holidayNameVal, setHolidayNameVal] = useState("Festivo");
+
+  // Configuration Modal States (only contains birthDate now)
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [configBirthDate, setConfigBirthDate] = useState("");
+
+  // Migration and Data Loading
   useEffect(() => {
     fetch("/api/baby-leave-planner")
       .then((res) => res.json())
       .then((data) => {
-        if (data.birthDate) setBirthDate(data.birthDate);
-        if (data.holidays) setHolidays(data.holidays);
-        if (data.allowances) setAllowances(data.allowances);
-        if (data.flexibleBlocks) {
-          // Convert string dates back to Date objects
-          const blocks = data.flexibleBlocks.map(
-            (b: {
-              id: string;
-              allowanceId: string;
-              startDate: string;
-              endDate: string;
-              parent: "mother" | "father";
-            }) => ({
-              ...b,
-              startDate: new Date(b.startDate),
-              endDate: new Date(b.endDate),
-            }),
-          );
-          setFlexibleBlocks(blocks);
+        const migrated = migrateData(data);
+        setGlobalData(migrated);
+        if (migrated.birthDate) {
+          setConfigBirthDate(migrated.birthDate);
         }
         setIsLoaded(true);
       })
@@ -106,7 +249,7 @@ export function BabyLeavePlannerModule() {
       });
   }, []);
 
-  // Save data on change
+  // Save data automatically on globalData change
   useEffect(() => {
     if (!isLoaded) return;
 
@@ -114,183 +257,713 @@ export function BabyLeavePlannerModule() {
       fetch("/api/baby-leave-planner", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          birthDate,
-          holidays,
-          allowances,
-          flexibleBlocks,
-        }),
+        body: JSON.stringify(globalData),
       });
-    }, 1000);
+    }, 800);
 
     return () => clearTimeout(timeout);
-  }, [birthDate, holidays, allowances, flexibleBlocks, isLoaded]);
+  }, [globalData, isLoaded]);
 
-  const birthDateObj = useMemo(() => {
-    if (!birthDate) return null;
-    const [y, m, d] = birthDate.split("-").map(Number);
-    return new Date(y, m - 1, d);
-  }, [birthDate]);
+  // 15-Month Calendar Generation
+  const monthsData = useMemo(() => {
+    if (!globalData.birthDate) return [];
 
-  // Derive all blocks including mandatory ones
-  const allBlocks = useMemo(() => {
-    const blocks = [...flexibleBlocks];
-    if (birthDateObj) {
-      const motherMandatory: LeaveBlock = {
-        id: "mandatory-mother",
-        allowanceId: "birth-mother",
-        startDate: birthDateObj,
-        endDate: calculateEndDate(birthDateObj, 42),
-        parent: "mother",
-      };
-      const fatherMandatory: LeaveBlock = {
-        id: "mandatory-father",
-        allowanceId: "birth-father",
-        startDate: birthDateObj,
-        endDate: calculateEndDate(birthDateObj, 42),
-        parent: "father",
-      };
-      return [motherMandatory, fatherMandatory, ...blocks];
+    const birthDate = new Date(globalData.birthDate);
+    const months = [];
+    // Always start from the 1st of birthDate month
+    const startIterDate = new Date(birthDate.getFullYear(), birthDate.getMonth(), 1);
+
+    for (let i = 0; i < 15; i++) {
+      const currentMonth = new Date(startIterDate.getFullYear(), startIterDate.getMonth() + i, 1);
+      months.push(currentMonth);
     }
-    return blocks;
-  }, [flexibleBlocks, birthDateObj]);
+    return months;
+  }, [globalData.birthDate]);
 
-  const getUsedDays = (allowanceId: string) => {
-    return allBlocks
-      .filter((b) => b.allowanceId === allowanceId)
-      .reduce(
-        (acc, b) =>
-          acc + countEffectiveLeaveDays(b.startDate, b.endDate, holidays),
-        0,
-      );
+  // Mandatory End calculation (6 weeks / 42 days total starting from birthDate)
+  const mandatoryEndStr = useMemo(() => {
+    if (!globalData.birthDate) return null;
+    const bDate = new Date(globalData.birthDate);
+    const mEnd = new Date(bDate);
+    mEnd.setDate(bDate.getDate() + 41);
+    return formatDateStr(mEnd);
+  }, [globalData.birthDate]);
+
+  // Sidebar controls
+  const toggleSidebar = (side: "mom" | "dad") => {
+    setOpenSidebar((prev) => (prev === side ? null : side));
   };
 
-  const toggleHoliday = (day: Date) => {
-    const dateStr = formatDate(day);
-    if (holidays.includes(dateStr)) {
-      setHolidays(holidays.filter((h) => h !== dateStr));
+  // Header helpers
+  const babyWeeksText = useMemo(() => {
+    if (!globalData.birthDate) return "Calculando...";
+    const birth = new Date(globalData.birthDate);
+    const today = new Date();
+
+    const birthZero = new Date(birth.getFullYear(), birth.getMonth(), birth.getDate());
+    const todayZero = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    const diffTime = todayZero.getTime() - birthZero.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return `Faltan ${Math.abs(diffDays)} días`;
+    }
+
+    const weeks = Math.floor(diffDays / 7);
+    const remDays = diffDays % 7;
+    return `Semana ${weeks}${remDays > 0 ? " + " + remDays + "d" : ""}`;
+  }, [globalData.birthDate]);
+
+  const birthDateDisplay = useMemo(() => {
+    if (!globalData.birthDate) return "Cargando...";
+    const birth = new Date(globalData.birthDate);
+    const options: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
+    return `Nacido el ${birth.toLocaleDateString("es-ES", options)}`;
+  }, [globalData.birthDate]);
+
+  // Double Click / Selection handlers
+  const handleDateClick = (e: React.MouseEvent, dateStr: string) => {
+    // If Holiday mode is active, clicking immediately toggles the holiday on that date
+    if (holidayMode) {
+      toggleHolidayDirectly(dateStr);
+      return;
+    }
+
+    const isShift = e.shiftKey;
+
+    if (isShift && lastClickedDate) {
+      // Prevent browser text selection
+      window.getSelection()?.removeAllRanges();
+
+      const start = lastClickedDate < dateStr ? lastClickedDate : dateStr;
+      const end = lastClickedDate < dateStr ? dateStr : lastClickedDate;
+
+      const startDate = new Date(start);
+      const endDate = new Date(end);
+      const curr = new Date(startDate);
+      const newSelected = [...selectedDates];
+
+      while (curr <= endDate) {
+        const dStr = formatDateStr(curr);
+        if (!newSelected.includes(dStr)) {
+          newSelected.push(dStr);
+        }
+        curr.setDate(curr.getDate() + 1);
+      }
+      setSelectedDates(newSelected);
     } else {
-      setHolidays([...holidays, dateStr].sort());
+      setSelectedDates((prev) => {
+        const idx = prev.indexOf(dateStr);
+        if (idx > -1) {
+          return prev.filter((d) => d !== dateStr);
+        } else {
+          return [...prev, dateStr];
+        }
+      });
+    }
+
+    setLastClickedDate(dateStr);
+  };
+
+  const handleDateDoubleClick = (dateStr: string) => {
+    // Disable double click configure modal if in holiday mode
+    if (holidayMode) return;
+
+    setSelectedDates((prev) => {
+      if (!prev.includes(dateStr)) {
+        return [...prev, dateStr];
+      }
+      return prev;
+    });
+
+    // Detect if there's an existing holiday on that day
+    const existingHoliday = globalData.festivos.find((f) => f.date === dateStr);
+    if (existingHoliday) {
+      setSelectedPerson("Festivo");
+      setHolidayNameVal(existingHoliday.nombre);
+    } else {
+      // Detect if there's an existing event on that day
+      const existing = globalData.events.find((e) => e.date === dateStr);
+      if (existing) {
+        setSelectedPerson(existing.person);
+        setSelectedType(existing.type);
+      } else {
+        setSelectedPerson("Madre");
+        const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
+        setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+      }
+    }
+
+    setShowAssignModal(true);
+  };
+
+  const toggleHolidayDirectly = (dateStr: string) => {
+    setGlobalData((prev) => {
+      const exists = prev.festivos.some((f) => f.date === dateStr);
+      if (exists) {
+        return {
+          ...prev,
+          festivos: prev.festivos.filter((f) => f.date !== dateStr),
+        };
+      } else {
+        const newFest: FestivoItem = {
+          date: dateStr,
+          nombre: "Festivo",
+        };
+        return {
+          ...prev,
+          festivos: [...prev.festivos, newFest].sort((a, b) => a.date.localeCompare(b.date)),
+        };
+      }
+    });
+  };
+
+  const clearAllSelections = () => {
+    setSelectedDates([]);
+  };
+
+  const openModalForSelection = (dateStr?: string) => {
+    const count = dateStr ? 1 : selectedDates.length;
+    if (count === 0) return;
+
+    // Prefill modal dropdowns
+    setSelectedPerson("Madre");
+    const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
+    setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+    setHolidayNameVal("Festivo");
+
+    setShowAssignModal(true);
+  };
+
+  // Dynamically filter permits for selected person
+  const currentPersonPermits = useMemo(() => {
+    return globalData.balances.filter((b) => b.person === selectedPerson);
+  }, [globalData.balances, selectedPerson]);
+
+  // Save/Delete Event implementation matching AppScript "saveMultipleEvents" logic
+  const handleSaveEvents = () => {
+    const datesToProcess = selectedDates.length > 0 ? selectedDates : (lastClickedDate ? [lastClickedDate] : []);
+    if (datesToProcess.length === 0) return;
+
+    if (selectedPerson === "Festivo") {
+      // Save Holidays (Festivos)
+      setGlobalData((prev) => {
+        let festivosList = [...prev.festivos];
+        datesToProcess.forEach((dateStr) => {
+          festivosList = festivosList.filter((f) => f.date !== dateStr);
+          festivosList.push({
+            date: dateStr,
+            nombre: holidayNameVal.trim() || "Festivo",
+          });
+        });
+        return {
+          ...prev,
+          festivos: festivosList.sort((a, b) => a.date.localeCompare(b.date)),
+        };
+      });
+    } else {
+      // Save Permits
+      if (!selectedType) {
+        showAlert("Tipo de Permiso Requerido", "Por favor, selecciona un tipo de permiso.");
+        return;
+      }
+
+      // Check frequency of this permit
+      const targetBalance = globalData.balances.find(
+        (b) => b.person === selectedPerson && b.type === selectedType
+      );
+      const isSemanal = targetBalance?.frecuencia === "Semanal";
+
+      setGlobalData((prev) => {
+        let eventsList = [...prev.events];
+
+        datesToProcess.forEach((dateStr) => {
+          if (isSemanal) {
+            const startDate = new Date(dateStr);
+            for (let i = 0; i < 7; i++) {
+              const d = new Date(startDate);
+              d.setDate(startDate.getDate() + i);
+              const dStr = formatDateStr(d);
+
+              // Clean whatever existed on that day
+              eventsList = eventsList.filter((e) => e.date !== dStr);
+              eventsList.push({
+                date: dStr,
+                person: selectedPerson,
+                type: selectedType,
+              });
+            }
+          } else {
+            const dObj = new Date(dateStr);
+            const dayOfWeek = dObj.getDay();
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const isHoliday = prev.festivos.some((f) => f.date === dateStr);
+
+            // Skip weekends and holidays logic
+            if (skipNonWorkDays && (isWeekend || isHoliday)) {
+              return;
+            }
+
+            // Clean whatever existed on that day
+            eventsList = eventsList.filter((e) => e.date !== dateStr);
+            eventsList.push({
+              date: dateStr,
+              person: selectedPerson,
+              type: selectedType,
+            });
+          }
+        });
+
+        return {
+          ...prev,
+          events: eventsList,
+        };
+      });
+    }
+
+    setSelectedDates([]);
+    setShowAssignModal(false);
+  };
+
+  const handleDeleteEvents = () => {
+    const datesToProcess = selectedDates.length > 0 ? selectedDates : (lastClickedDate ? [lastClickedDate] : []);
+    if (datesToProcess.length === 0) return;
+
+    if (selectedPerson === "Festivo") {
+      // Delete Holidays
+      setGlobalData((prev) => ({
+        ...prev,
+        festivos: prev.festivos.filter((f) => !datesToProcess.includes(f.date)),
+      }));
+    } else {
+      // Delete Permits
+      setGlobalData((prev) => {
+        let eventsList = [...prev.events];
+
+        datesToProcess.forEach((dateStr) => {
+          // Find if an event exists on that day
+          const existing = eventsList.find((e) => e.date === dateStr);
+          if (existing) {
+            const targetBalance = prev.balances.find(
+              (b) => b.person === existing.person && b.type === existing.type
+            );
+            const isSemanal = targetBalance?.frecuencia === "Semanal";
+
+            if (isSemanal) {
+              const startDate = new Date(dateStr);
+              for (let i = 0; i < 7; i++) {
+                const d = new Date(startDate);
+                d.setDate(startDate.getDate() + i);
+                const dStr = formatDateStr(d);
+
+                eventsList = eventsList.filter(
+                  (e) => !(e.date === dStr && e.person === existing.person && e.type === existing.type)
+                );
+              }
+            } else {
+              eventsList = eventsList.filter((e) => e.date !== dateStr);
+            }
+          } else {
+            eventsList = eventsList.filter((e) => e.date !== dateStr);
+          }
+        });
+
+        return {
+          ...prev,
+          events: eventsList,
+        };
+      });
+    }
+
+    setSelectedDates([]);
+    setShowAssignModal(false);
+  };
+
+  // General Config Modal submit handlers
+  const handleConfigSubmit = () => {
+    if (configBirthDate) {
+      setGlobalData((prev) => ({
+        ...prev,
+        birthDate: configBirthDate,
+      }));
+    }
+    setShowConfigModal(false);
+  };
+
+  const saveInitialConfig = () => {
+    if (configBirthDate) {
+      setGlobalData((prev) => ({
+        ...prev,
+        birthDate: configBirthDate,
+      }));
     }
   };
 
-  const handleAddHoliday = () => {
-    if (newHoliday && !holidays.includes(newHoliday)) {
-      setHolidays([...holidays, newHoliday].sort());
-      setNewHoliday("");
+  // Sidebar Inline Balance Editor Handlers (Step 1)
+  const handleAddBalanceSidebar = (person: "Madre" | "Padre") => {
+    const type = sidebarAddType.trim();
+    const total = parseFloat(sidebarAddTotal);
+
+    if (!type || isNaN(total) || total <= 0) {
+      showAlert("Datos Incompletos", "Por favor, introduce un nombre válido y un número mayor que cero.");
+      return;
     }
-  };
 
-  const removeHoliday = (date: string) => {
-    setHolidays(holidays.filter((h) => h !== date));
-  };
+    // Check for duplicate
+    const exists = globalData.balances.some(
+      (b) => b.person === person && b.type.toLowerCase() === type.toLowerCase()
+    );
 
-  const addAllowance = (parent: "mother" | "father") => {
-    const newAl: Allowance = {
-      id: crypto.randomUUID(),
-      name: "Nuevo Permiso",
-      totalDays: 1,
-      parent,
-      consumptionMode: "days",
+    if (exists) {
+      showAlert("Permiso Duplicado", "Ya existe un saldo con ese nombre para esta persona.");
+      return;
+    }
+
+    const newBalance: BalanceItem = {
+      person,
+      type,
+      total,
+      frecuencia: sidebarAddFreq,
     };
-    setAllowances([...allowances, newAl]);
-    setEditingAllowance(newAl.id);
+
+    setGlobalData((prev) => ({
+      ...prev,
+      balances: [...prev.balances, newBalance],
+    }));
+
+    // Reset Form
+    setSidebarAddType("");
+    setSidebarAddTotal("");
+    if (person === "Madre") setShowAddFormMom(false);
+    else setShowAddFormDad(false);
   };
 
-  const updateAllowance = (id: string, updates: Partial<Allowance>) => {
-    setAllowances(
-      allowances.map((a) => (a.id === id ? { ...a, ...updates } : a)),
-    );
+  const startEditingBalance = (person: string, type: string) => {
+    const bal = globalData.balances.find((b) => b.person === person && b.type === type);
+    if (!bal) return;
+
+    setEditingBalanceKey(`${person}-${type}`);
+    setEditTypeVal(bal.type);
+    setEditTotalVal(String(bal.total));
+    setEditFreqVal(bal.frecuencia);
   };
 
-  const deleteAllowance = (id: string) => {
-    setAllowances(allowances.filter((a) => a.id !== id));
-    setFlexibleBlocks(flexibleBlocks.filter((b) => b.allowanceId !== id));
+  const handleUpdateBalance = (person: string, originalType: string) => {
+    const newType = editTypeVal.trim();
+    const newTotal = parseFloat(editTotalVal);
+
+    if (!newType || isNaN(newTotal) || newTotal <= 0) {
+      showAlert("Datos Incompletos", "Por favor, introduce un nombre válido y un número mayor que cero.");
+      return;
+    }
+
+    // Check for duplicate if name is being changed
+    if (newType.toLowerCase() !== originalType.toLowerCase()) {
+      const exists = globalData.balances.some(
+        (b) => b.person === person && b.type.toLowerCase() === newType.toLowerCase()
+      );
+      if (exists) {
+        showAlert("Permiso Duplicado", "Ya existe un saldo con ese nombre para esta persona.");
+        return;
+      }
+    }
+
+    setGlobalData((prev) => {
+      const updatedBalances = prev.balances.map((b) => {
+        if (b.person === person && b.type === originalType) {
+          return {
+            ...b,
+            type: newType,
+            total: newTotal,
+            frecuencia: editFreqVal,
+          };
+        }
+        return b;
+      });
+
+      // Update associated events
+      const updatedEvents = prev.events.map((e) => {
+        if (e.person === person && e.type === originalType) {
+          return {
+            ...e,
+            type: newType,
+          };
+        }
+        return e;
+      });
+
+      return {
+        ...prev,
+        balances: updatedBalances,
+        events: updatedEvents,
+      };
+    });
+
+    setEditingBalanceKey(null);
   };
 
-  const removeBlock = (id: string) => {
-    setFlexibleBlocks(flexibleBlocks.filter((b) => b.id !== id));
+  const handleDeleteBalance = (person: string, type: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: "Eliminar Permiso",
+      message: `¿Estás seguro de que quieres eliminar la sección "${type}" de ${person}? Se borrarán también todos los días asignados en el calendario.`,
+      confirmText: "Eliminar",
+      cancelText: "Cancelar",
+      isDanger: true,
+      onConfirm: () => {
+        setGlobalData((prev) => ({
+          ...prev,
+          balances: prev.balances.filter((b) => !(b.person === person && b.type === type)),
+          events: prev.events.filter((e) => !(e.person === person && e.type === type)),
+        }));
+        setEditingBalanceKey(null);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
-  const changeMonth = (offset: number) => {
-    setViewDate(
-      new Date(viewDate.getFullYear(), viewDate.getMonth() + offset, 1),
-    );
+  // Sync / Refresh handler
+  const handleRefresh = () => {
+    setIsLoaded(false);
+    fetch("/api/baby-leave-planner")
+      .then((res) => res.json())
+      .then((data) => {
+        setGlobalData(migrateData(data));
+        setIsLoaded(true);
+      })
+      .catch((err) => {
+        console.error("Error reloading data:", err);
+        setIsLoaded(true);
+      });
   };
 
-  const daysInMonth = getDaysInMonth(
-    viewDate.getFullYear(),
-    viewDate.getMonth(),
-  );
-  const firstDayWeekday = daysInMonth[0].getDay();
-  const adjustedFirstDay = (firstDayWeekday + 6) % 7;
-  const paddingDays = Array.from({ length: adjustedFirstDay });
-
-  const renderMonth = (date: Date, showHeader = true) => {
-    const days = getDaysInMonth(date.getFullYear(), date.getMonth());
-    const firstDay = (days[0].getDay() + 6) % 7;
-    const padding = Array.from({ length: firstDay });
+  // Sidebar KPI & Balance Editing Render Logic (Step 1)
+  const renderKPIs = (person: "Madre" | "Padre") => {
+    const personBalances = globalData.balances.filter((b) => b.person === person);
+    const isMom = person === "Madre";
+    const showAddForm = isMom ? showAddFormMom : showAddFormDad;
+    const setShowAddForm = isMom ? setShowAddFormMom : setShowAddFormDad;
 
     return (
-      <div
-        key={`${date.getFullYear()}-${date.getMonth()}`}
-        className="space-y-4 bg-muted/30 p-4 rounded-3xl border border-border"
-      >
-        {showHeader && (
-          <h3 className="text-center font-black capitalize text-foreground text-sm tracking-tight">
-            {date.toLocaleDateString("es-ES", { month: "long" })}
-          </h3>
-        )}
-        <div className="grid grid-cols-7 gap-1">
-          {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-            <div
-              key={d}
-              className="text-center text-[10px] font-black text-muted-foreground/80 dark:text-gray-600 uppercase py-1"
-            >
-              {d}
-            </div>
-          ))}
-          {padding.map((_, i) => (
-            <div key={`pad-${i}`} />
-          ))}
-          {days.map((day) => {
-            const status = getLeaveStatus(day, allBlocks);
-            const holiday = isHoliday(day, holidays);
-            const isBoth = status.mother && status.father;
-            const isMother = status.mother;
-            const isFather = status.father;
-            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-            const isSelected = selectedDay && isSameDay(day, selectedDay);
+      <div className="space-y-4">
+        <div className="sidebar-section-title flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2 mb-4">
+          <span className="text-slate-800 dark:text-slate-100 font-extrabold flex items-center gap-2">
+            {isMom ? "👩 Madre" : "👨 Padre"}
+          </span>
+          <button
+            onClick={() => setShowAddForm(!showAddForm)}
+            className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
+            title="Añadir saldo de días"
+          >
+            <Plus size={16} />
+          </button>
+        </div>
 
-            let bgColor =
-              "bg-card text-card-foreground text-foreground border border-border hover:border-blue-100 dark:hover:border-blue-800 transition-all cursor-pointer";
-            if (isSelected)
-              bgColor =
-                "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-500 dark:border-blue-400 ring-1 ring-blue-100 dark:ring-blue-900/50 z-10 scale-105";
-            else if (isBoth)
-              bgColor =
-                "bg-gradient-to-br from-pink-400 to-blue-400 text-white shadow-sm ring-1 ring-white/20";
-            else if (isMother)
-              bgColor = "bg-pink-500 text-white shadow-sm ring-1 ring-white/20";
-            else if (isFather)
-              bgColor = "bg-blue-500 text-white shadow-sm ring-1 ring-white/20";
-            else if (holiday)
-              bgColor =
-                "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold border-amber-200 dark:border-amber-800";
-            else if (isWeekend)
-              bgColor =
-                "bg-muted text-muted-foreground text-muted-foreground/50";
+        {/* Inline form to create a new balance */}
+        {showAddForm && (
+          <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 mb-4 animate-in slide-in-from-top-4 duration-200">
+            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                <select
+                  value={sidebarAddFreq}
+                  onChange={(e) => setSidebarAddFreq(e.target.value as "Diario" | "Semanal")}
+                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                >
+                  <option value="Diario">Diario</option>
+                  <option value="Semanal">Semanal</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Días/Semanas</label>
+                <input
+                  type="number"
+                  placeholder="Ej. 15"
+                  value={sidebarAddTotal}
+                  onChange={(e) => setSidebarAddTotal(e.target.value)}
+                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre del Permiso</label>
+              <input
+                type="text"
+                placeholder="Ej. Lactancia"
+                value={sidebarAddType}
+                onChange={(e) => setSidebarAddType(e.target.value)}
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 outline-none"
+                required
+              />
+            </div>
+            <div className="flex gap-2 text-xs">
+              <button
+                type="button"
+                className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold"
+                onClick={() => setShowAddForm(false)}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                className="flex-1 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+                onClick={() => handleAddBalanceSidebar(person)}
+              >
+                Añadir
+              </button>
+            </div>
+          </div>
+        )}
+
+        {personBalances.length === 0 && !showAddForm && (
+          <div className="flex flex-col h-full justify-center items-center text-center p-8">
+            <p className="text-sm font-semibold text-slate-400">No hay saldos configurados.</p>
+          </div>
+        )}
+
+        <div className="space-y-4">
+          {personBalances.map((bal, idx) => {
+            const isEditing = editingBalanceKey === `${person}-${bal.type}`;
+
+            // Calculate used days counting from globalData.events
+            const usedDays = globalData.events.filter(
+              (e) => e.person === bal.person && e.type === bal.type
+            ).length;
+
+            const total = Number(bal.total);
+            let used = 0;
+            let remaining = 0;
+            let unit = "";
+
+            if (bal.frecuencia === "Semanal") {
+              used = parseFloat((usedDays / 7).toFixed(1));
+              remaining = parseFloat((total - used).toFixed(1));
+              unit = "SEM";
+            } else {
+              used = usedDays;
+              remaining = total - used;
+              unit = "DÍAS";
+            }
+
+            const percent = Math.min(100, (used / total) * 100);
+            const barClass = isMom ? "bar-mom" : "bar-dad";
+            const isLow = (remaining <= 2 && bal.frecuencia !== "Semanal") || remaining <= 0;
+
+            if (isEditing) {
+              return (
+                <div key={idx} className="p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 animate-in fade-in duration-150">
+                  <div className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Editar Permiso</div>
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                      <select
+                        value={editFreqVal}
+                        onChange={(e) => setEditFreqVal(e.target.value as "Diario" | "Semanal")}
+                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                      >
+                        <option value="Diario">Diario</option>
+                        <option value="Semanal">Semanal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Cantidad</label>
+                      <input
+                        type="number"
+                        value={editTotalVal}
+                        onChange={(e) => setEditTotalVal(e.target.value)}
+                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Nombre</label>
+                    <input
+                      type="text"
+                      value={editTypeVal}
+                      onChange={(e) => setEditTypeVal(e.target.value)}
+                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                    />
+                  </div>
+                  <div className="flex justify-between items-center gap-2 text-xs pt-1.5">
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteBalance(person, bal.type)}
+                      className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 rounded-lg transition"
+                      title="Eliminar saldo"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold"
+                        onClick={() => setEditingBalanceKey(null)}
+                      >
+                        Atrás
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+                        onClick={() => handleUpdateBalance(person, bal.type)}
+                      >
+                        OK
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            }
 
             return (
-              <button
-                key={day.toISOString()}
-                onClick={() =>
-                  holidayMode ? toggleHoliday(day) : setSelectedDay(day)
-                }
-                className={`aspect-square flex items-center justify-center text-[11px] rounded-lg font-black relative group transition-all duration-200 ${bgColor}`}
-              >
-                {day.getDate()}
-              </button>
+              <div key={idx} className={`kpi-card-sidebar relative group ${isLow ? "bg-danger-light" : ""}`}>
+                {/* Action buttons (Edit and Delete) visible on mobile and desktop hover */}
+                <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
+                  <button
+                    onClick={() => startEditingBalance(person, bal.type)}
+                    className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
+                    title="Editar este saldo"
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBalance(person, bal.type)}
+                    className="p-1.5 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
+                    title="Eliminar esta sección y sus días"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+
+                <div className="kpi-card-header pr-16">
+                  <span className="kpi-card-label truncate max-w-[130px]" title={bal.type}>
+                    {bal.type}
+                  </span>
+                  <div className="kpi-card-remaining shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
+                    <span className={`remaining-value ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
+                      {remaining}
+                    </span>
+                    <span className="remaining-unit">{unit} LIBRES</span>
+                  </div>
+                </div>
+
+                <div className="kpi-progress-wrapper">
+                  <div className={`kpi-progress-bar ${barClass}`} style={{ width: `${percent}%` }} />
+                </div>
+
+                <div className="kpi-card-footer">
+                  <div className="footer-stat text-left">
+                    <span>{used} {unit}</span>
+                    <span>USADOS</span>
+                  </div>
+                  <div className="footer-stat text-right">
+                    <span>{total} {unit}</span>
+                    <span>TOTAL</span>
+                  </div>
+                </div>
+              </div>
             );
           })}
         </div>
@@ -298,846 +971,1275 @@ export function BabyLeavePlannerModule() {
     );
   };
 
-  const togglePeriods = (parent: "mother" | "father") => {
-    setExpandedPeriods((prev) => ({ ...prev, [parent]: !prev[parent] }));
-  };
-
   return (
-    <div className="relative min-h-screen pb-20 md:pb-0 bg-background text-foreground transition-colors duration-300">
-      <div className="flex justify-between items-center mb-8 px-4 md:px-0">
-        <h1 className="text-3xl md:text-4xl font-black text-foreground flex items-center gap-3">
-          <Baby className="text-blue-600" size={32} />
-          <span className="tracking-tight">Leave Planner</span>
-        </h1>
-        <div className="flex items-center gap-3">
-          {/* Top buttons for Desktop and Mobile (consistent access) */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setLeftDrawerOpen(!leftDrawerOpen)}
-              className={`p-3 rounded-2xl border transition-all active:scale-95 ${leftDrawerOpen ? "bg-pink-50 dark:bg-pink-900/20 border-pink-200 dark:border-pink-800 text-pink-600" : "bg-card text-card-foreground border-border text-muted-foreground hover:bg-muted "}`}
-              title="Gestión Madre"
-            >
-              <User size={24} className="text-pink-500" />
-            </button>
-            <button
-              onClick={() => setRightDrawerOpen(!rightDrawerOpen)}
-              className={`p-3 rounded-2xl border transition-all active:scale-95 ${rightDrawerOpen ? "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-600" : "bg-card text-card-foreground border-border text-muted-foreground hover:bg-muted "}`}
-              title="Gestión Padre"
-            >
-              <User size={24} className="text-blue-500" />
-            </button>
-          </div>
-          {/* Settings gear accessible everywhere now */}
-          <button
-            onClick={() => {
-              setShowSettings(!showSettings);
-              setHolidayMode(false);
-            }}
-            className={`p-3 rounded-2xl border transition-all active:scale-95 ${showSettings ? "bg-blue-600 text-white border-blue-600" : "bg-card text-card-foreground border-border text-muted-foreground hover:bg-muted "}`}
-            title="Configuración de Nacimiento"
-          >
-            <Settings size={24} />
-          </button>
+    <div className="relative w-full text-slate-800 dark:text-slate-200 select-none">
+      {/* Dynamic CSS Styling Inject */}
+      <style jsx global>{`
+        :root {
+          --color-mom: #fce7f3;
+          --text-mom: #be185d;
+          --stroke-mom: #db2777;
+          --color-dad: #e0f2fe;
+          --text-dad: #0369a1;
+          --stroke-dad: #0284c7;
+          --color-joint: #f3e8ff;
+          --text-joint: #7e22ce;
+        }
+
+        /* --- SIDEBARS RESPONSIVE --- */
+        .sidebar-fixed {
+          position: fixed;
+          top: 36px; /* Offset ToolBaseLayout top bar height */
+          height: calc(100vh - 36px);
+          width: 85%;
+          max-width: 320px;
+          background: white;
+          box-shadow: 0 0 40px rgba(0, 0, 0, 0.1);
+          z-index: 2000;
+          transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          display: flex;
+        }
+        .dark .sidebar-fixed {
+          background: #0f172a;
+          box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+        }
+
+        #sidebar-mom {
+          left: 0;
+          transform: translateX(-105%);
+          border-right: 1px solid #e2e8f0;
+        }
+        .dark #sidebar-mom {
+          border-right: 1px solid #1e293b;
+        }
+        #sidebar-mom.open {
+          transform: translateX(0);
+        }
+
+        #sidebar-dad {
+          right: 0;
+          transform: translateX(105%);
+          border-left: 1px solid #e2e8f0;
+          flex-direction: row-reverse;
+        }
+        .dark #sidebar-dad {
+          border-left: 1px solid #1e293b;
+        }
+        #sidebar-dad.open {
+          transform: translateX(0);
+        }
+
+        @media (min-width: 768px) {
+          .sidebar-fixed {
+            width: 320px;
+          }
+        }
+
+        .sidebar-inner {
+          flex-grow: 1;
+          padding: 30px 20px;
+          overflow-y: auto;
+          background: #f8fafc;
+        }
+        .dark .sidebar-inner {
+          background: #0b0f19;
+        }
+
+        .sidebar-handle {
+          width: 44px;
+          height: 100px;
+          position: absolute;
+          top: 50%;
+          transform: translateY(-50%);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          color: white;
+          font-size: 1.2rem;
+          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+          z-index: 2001;
+          user-select: none;
+        }
+
+        #sidebar-mom .sidebar-handle {
+          right: -44px;
+          background: #be185d;
+          border-radius: 0 12px 12px 0;
+        }
+
+        #sidebar-dad .sidebar-handle {
+          left: -44px;
+          background: #0369a1;
+          border-radius: 12px 0 0 12px;
+        }
+
+        /* --- BARRA DE FILTROS --- */
+        .filter-bar-container {
+          display: flex;
+          justify-content: center;
+          margin-bottom: 20px;
+          padding-top: 10px;
+        }
+
+        .filter-pill-group {
+          background: white;
+          padding: 5px;
+          border-radius: 50px;
+          display: flex;
+          gap: 5px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03);
+        }
+        .dark .filter-pill-group {
+          background: #1e293b;
+          border-color: #334155;
+        }
+
+        .btn-filter {
+          border: none;
+          background: transparent;
+          padding: 8px 20px;
+          border-radius: 50px;
+          font-size: 0.8rem;
+          font-weight: 700;
+          color: #64748b;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        .dark .btn-filter {
+          color: #94a3b8;
+        }
+
+        .btn-filter:hover {
+          background: #f1f5f9;
+        }
+        .dark .btn-filter:hover {
+          background: #334155;
+        }
+
+        .btn-filter.active {
+          background: #4f46e5;
+          color: white !important;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+        }
+
+        /* --- GRID DEL CALENDARIO --- */
+        #calendar-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+          gap: 20px;
+          padding-bottom: 120px;
+        }
+
+        .month-card {
+          background: white;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+        }
+        .dark .month-card {
+          background: #1e293b;
+          border-color: #334155;
+        }
+
+        .month-header {
+          background: #f8fafc;
+          padding: 12px;
+          text-align: center;
+          font-weight: 800;
+          text-transform: capitalize;
+          border-bottom: 1px solid #e2e8f0;
+          color: #334155;
+          font-size: 0.95rem;
+        }
+        .dark .month-header {
+          background: #0f172a;
+          color: #f1f5f9;
+          border-bottom-color: #334155;
+        }
+
+        .days-names-row {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          background: #fff;
+          border-bottom: 1px solid #f1f5f9;
+        }
+        .dark .days-names-row {
+          background: #1e293b;
+          border-bottom-color: #334155;
+        }
+
+        .day-name-label {
+          text-align: center;
+          font-size: 0.65rem;
+          color: #94a3b8;
+          padding: 8px 0;
+          font-weight: 700;
+        }
+
+        .days-grid {
+          display: grid;
+          grid-template-columns: repeat(7, 1fr);
+          grid-auto-rows: 1fr;
+        }
+
+        .day-cell-fixed {
+          aspect-ratio: 1/1;
+          border-right: 1px solid #f1f5f9;
+          border-bottom: 1px solid #f1f5f9;
+          position: relative;
+          cursor: pointer;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          padding-bottom: 4px;
+          overflow: hidden;
+          transition: background 0.1s;
+          user-select: none;
+          -webkit-user-select: none;
+        }
+        .dark .day-cell-fixed {
+          border-right-color: #334155;
+          border-bottom-color: #334155;
+        }
+
+        .day-cell-fixed:nth-child(7n) {
+          border-right: none;
+        }
+
+        /* ESTADOS CALENDARIO */
+        .day-cell-fixed.selected {
+          background-color: #eef2ff !important;
+          box-shadow: inset 0 0 0 2px #4f46e5;
+          z-index: 2;
+        }
+        .dark .day-cell-fixed.selected {
+          background-color: #1e1b4b !important;
+          box-shadow: inset 0 0 0 2px #6366f1;
+        }
+
+        .weekend {
+          background-color: #fcfcfc;
+        }
+        .dark .weekend {
+          background-color: #111827;
+        }
+
+        .empty-cell {
+          background: #fff;
+          cursor: default;
+        }
+        .dark .empty-cell {
+          background: #1e293b;
+        }
+
+        /* Elementos internos */
+        .cell-inner-wrapper {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: flex-end;
+          width: 100%;
+          pointer-events: none;
+        }
+
+        .d-icon {
+          font-size: 0.95rem;
+          line-height: 1;
+          height: 18px;
+          display: flex;
+          align-items: center;
+          margin-bottom: 1px;
+        }
+
+        .d-text {
+          font-size: 0.45rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          text-align: center;
+          width: 96%;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          height: 10px;
+          color: inherit;
+          opacity: 0.9;
+        }
+
+        .d-num {
+          position: absolute;
+          top: 4px;
+          left: 5px;
+          font-size: 0.65rem;
+          font-weight: 700;
+          color: #cbd5e1;
+        }
+        .dark .d-num {
+          color: #475569;
+        }
+
+        /* Colores Celdas */
+        .bg-mom {
+          background-color: var(--color-mom) !important;
+          color: var(--text-mom) !important;
+        }
+        .dark .bg-mom {
+          background-color: #831843 !important;
+          color: #fce7f3 !important;
+        }
+
+        .bg-dad {
+          background-color: var(--color-dad) !important;
+          color: var(--text-dad) !important;
+        }
+        .dark .bg-dad {
+          background-color: #0c4a6e !important;
+          color: #e0f2fe !important;
+        }
+
+        .bg-joint {
+          background-color: var(--color-joint) !important;
+          color: var(--text-joint) !important;
+        }
+        .dark .bg-joint {
+          background-color: #581c87 !important;
+          color: #f3e8ff !important;
+        }
+
+        .bg-holiday {
+          background-color: #fee2e2 !important;
+          color: #dc2626 !important;
+        }
+        .dark .bg-holiday {
+          background-color: #7f1d1d !important;
+          color: #fca5a5 !important;
+        }
+
+        .dot-festivo {
+          position: absolute;
+          bottom: 4px;
+          right: 4px;
+          width: 5px;
+          height: 5px;
+          background: #dc2626;
+          border-radius: 50%;
+        }
+
+        /* --- BOTÓN FLOTANTE SELECCIÓN --- */
+        #floating-wrapper {
+          position: fixed;
+          bottom: 20px;
+          left: 50%;
+          transform: translateX(-50%) translateY(150px);
+          transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+          z-index: 2000;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background: rgba(255, 255, 255, 0.88);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          padding: 4px 6px 4px 8px;
+          border-radius: 9999px;
+          box-shadow: 0 10px 25px -5px rgba(79, 70, 229, 0.2), 0 8px 16px -6px rgba(0, 0, 0, 0.1);
+          border: 1px solid rgba(79, 70, 229, 0.2);
+        }
+        .dark #floating-wrapper {
+          background: rgba(15, 23, 42, 0.88);
+          border-color: rgba(99, 102, 241, 0.3);
+          box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3), 0 10px 20px -8px rgba(0, 0, 0, 0.5);
+        }
+
+        #floating-wrapper.visible {
+          transform: translateX(-50%) translateY(0);
+        }
+
+        .btn-float-action {
+          background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+          color: white;
+          border: none;
+          padding: 6px 14px;
+          border-radius: 9999px;
+          font-weight: 800;
+          font-size: 0.75rem;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          box-shadow: 0 3px 10px rgba(79, 70, 229, 0.35);
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-float-action:hover {
+          transform: translateY(-1px) scale(1.02);
+          box-shadow: 0 5px 15px rgba(79, 70, 229, 0.45);
+        }
+        .btn-float-action:active {
+          transform: translateY(0) scale(0.96);
+        }
+
+        .btn-float-close {
+          width: 26px;
+          height: 26px;
+          border-radius: 50%;
+          border: none;
+          background: rgba(241, 245, 249, 0.9);
+          color: #64748b;
+          font-weight: bold;
+          cursor: pointer;
+          font-size: 0.8rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .btn-float-close:hover {
+          background: #fee2e2;
+          color: #ef4444;
+          transform: scale(1.1);
+        }
+        .dark .btn-float-close {
+          background: rgba(30, 41, 59, 0.9);
+          color: #94a3b8;
+        }
+        .dark .btn-float-close:hover {
+          background: rgba(220, 38, 38, 0.2);
+          color: #fca5a5;
+          transform: scale(1.1);
+        }
+
+        /* --- KPIs SIDEBARS STYLE --- */
+        .sidebar-section-title {
+          font-size: 1.1rem;
+          font-weight: 900;
+          color: #0f172a;
+          margin-bottom: 20px;
+          padding-bottom: 12px;
+          border-bottom: 3px solid #f1f5f9;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          letter-spacing: -0.5px;
+        }
+        .dark .sidebar-section-title {
+          color: #f1f5f9;
+          border-bottom-color: #1e293b;
+        }
+
+        .kpi-card-sidebar {
+          background: #ffffff;
+          border: 1px solid rgba(226, 232, 240, 0.8);
+          border-radius: 20px;
+          padding: 18px;
+          margin-bottom: 16px;
+          box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: hidden;
+        }
+        .dark .kpi-card-sidebar {
+          background: #1e293b;
+          border-color: #334155;
+        }
+
+        .kpi-card-sidebar:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 10px 20px rgba(0, 0, 0, 0.04);
+          border-color: #4f46e5;
+        }
+
+        .kpi-card-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 14px;
+        }
+
+        .kpi-card-label {
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: #475569;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          line-height: 1.3;
+        }
+        .dark .kpi-card-label {
+          color: #94a3b8;
+        }
+
+        .kpi-card-remaining {
+          text-align: right;
+          padding: 6px 12px;
+          border-radius: 12px;
+        }
+
+        .remaining-value {
+          display: block;
+          font-size: 1.5rem;
+          font-weight: 950;
+          line-height: 1;
+          font-variant-numeric: tabular-nums;
+        }
+
+        .remaining-unit {
+          font-size: 0.6rem;
+          font-weight: 700;
+          color: #94a3b8;
+          text-transform: uppercase;
+        }
+
+        /* Progress Bar Base */
+        .kpi-progress-wrapper {
+          height: 12px;
+          background: #f1f5f9;
+          border-radius: 20px;
+          overflow: hidden;
+          margin: 15px 0;
+          box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        .dark .kpi-progress-wrapper {
+          background: #0f172a;
+        }
+
+        .kpi-progress-bar {
+          height: 100%;
+          border-radius: 20px;
+          transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+          position: relative;
+        }
+
+        /* Glowing Gradients */
+        .bar-mom {
+          background: linear-gradient(90deg, #db2777, #f472b6);
+          box-shadow: 0 2px 8px rgba(219, 39, 119, 0.3);
+        }
+
+        .bar-dad {
+          background: linear-gradient(90deg, #0284c7, #38bdf8);
+          box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+        }
+
+        .kpi-card-footer {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #64748b;
+          margin-top: 5px;
+        }
+
+        .footer-stat {
+          display: flex;
+          flex-direction: column;
+        }
+
+        .footer-stat span:last-child {
+          color: #94a3b8;
+          font-weight: 500;
+          font-size: 0.6rem;
+        }
+
+        /* Danger states */
+        .text-danger {
+          color: #ef4444 !important;
+        }
+
+        .bg-danger-light {
+          background: #fef2f2 !important;
+          border-color: #fecaca !important;
+        }
+        .dark .bg-danger-light {
+          background: #450a0a !important;
+          border-color: #7f1d1d !important;
+        }
+
+        @media (prefers-color-scheme: dark) {
+          .sidebar-fixed {
+            background: #0f172a;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+          }
+          #sidebar-mom {
+            border-right: 1px solid #1e293b;
+          }
+          #sidebar-dad {
+            border-left: 1px solid #1e293b;
+          }
+          .sidebar-inner {
+            background: #0b0f19;
+          }
+          .filter-pill-group {
+            background: #1e293b;
+            border-color: #334155;
+          }
+          .btn-filter {
+            color: #94a3b8;
+          }
+          .btn-filter:hover {
+            background: #334155;
+          }
+          .month-card {
+            background: #1e293b;
+            border-color: #334155;
+          }
+          .month-header {
+            background: #0f172a;
+            color: #f1f5f9;
+            border-bottom-color: #334155;
+          }
+          .days-names-row {
+            background: #1e293b;
+            border-bottom-color: #334155;
+          }
+          .day-cell-fixed {
+            border-right-color: #334155;
+            border-bottom-color: #334155;
+          }
+          .day-cell-fixed.selected {
+            background-color: #1e1b4b !important;
+            box-shadow: inset 0 0 0 2px #6366f1;
+          }
+          .weekend {
+            background-color: #111827;
+          }
+          .empty-cell {
+            background: #1e293b;
+          }
+          .d-num {
+            color: #475569;
+          }
+          .bg-mom {
+            background-color: #831843 !important;
+            color: #fce7f3 !important;
+          }
+          .bg-dad {
+            background-color: #0c4a6e !important;
+            color: #e0f2fe !important;
+          }
+          .bg-joint {
+            background-color: #581c87 !important;
+            color: #f3e8ff !important;
+          }
+          .bg-holiday {
+            background-color: #7f1d1d !important;
+            color: #fca5a5 !important;
+          }
+          #floating-wrapper {
+            background: rgba(15, 23, 42, 0.8);
+            border-color: rgba(99, 102, 241, 0.25);
+            box-shadow: 0 10px 35px -5px rgba(99, 102, 241, 0.25), 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+          }
+          .btn-float-close {
+            background: rgba(30, 41, 59, 0.9);
+            color: #94a3b8;
+          }
+          .btn-float-close:hover {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+            transform: scale(1.1);
+          }
+          .sidebar-section-title {
+            color: #f1f5f9;
+            border-bottom-color: #1e293b;
+          }
+          .kpi-card-sidebar {
+            background: #1e293b;
+            border-color: #334155;
+          }
+          .kpi-card-label {
+            color: #94a3b8;
+          }
+          .kpi-progress-wrapper {
+            background: #0f172a;
+          }
+          .bg-danger-light {
+            background: #7f1d1d !important;
+            border-color: #991b1b !important;
+          }
+        }
+      `}</style>
+
+      {/* Synchronizing Loading overlay */}
+      {!isLoaded && (
+        <div id="loading" className="fixed inset-0 bg-white/90 dark:bg-slate-900/90 flex flex-col items-center justify-center z-[9999]">
+          <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
+          <p className="mt-4 font-semibold text-slate-600 dark:text-slate-300">Sincronizando datos...</p>
         </div>
-      </div>
+      )}
 
-      {/* Side Drawer Madre (Desktop & Mobile) - Always from Left */}
-      <div
-        className={`fixed inset-y-0 left-0 w-[85%] md:w-80 bg-card text-card-foreground shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-r border-border p-6 overflow-y-auto
- ${leftDrawerOpen || mobileTab === "mother" ? "translate-x-0" : "-translate-x-full"}`}
-      >
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="font-extrabold flex items-center gap-2 text-pink-600">
-            <User size={20} />
-            Gestión Madre
-          </h3>
-          <button
-            onClick={() => {
-              setLeftDrawerOpen(false);
-              if (mobileTab === "mother") setMobileTab("calendar");
-            }}
-            className="text-muted-foreground hover:text-gray-600 "
-          >
-            <ChevronLeft size={24} />
-          </button>
-        </div>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Configuración Permisos
-            </h4>
-            <button
-              onClick={() => addAllowance("mother")}
-              className="text-pink-600 hover:bg-pink-50 dark:hover:bg-pink-900/20 p-1 rounded-lg transition"
-            >
-              <Plus size={16} />
-            </button>
-          </div>
+      {/* Dual Sidebars with handles */}
+      {isLoaded && (
+        <>
+          <aside id="sidebar-mom" className={`sidebar-fixed ${openSidebar === "mom" ? "open" : ""}`}>
+            <div className="sidebar-inner">{renderKPIs("Madre")}</div>
+            <div className="sidebar-handle" onClick={() => toggleSidebar("mom")}>
+              👩
+            </div>
+          </aside>
 
-          <div className="space-y-4">
-            {allowances
-              .filter((a) => a.parent === "mother")
-              .map((a) => (
-                <div
-                  key={a.id}
-                  className="p-3 border border-border rounded-xl bg-muted/50"
-                >
-                  {editingAllowance === a.id ? (
-                    <div className="space-y-3">
-                      <input
-                        className="text-xs font-bold w-full border-b border-pink-200 dark:border-pink-800 focus:border-pink-500 outline-none bg-transparent py-1 text-foreground"
-                        value={a.name}
-                        onChange={(e) =>
-                          updateAllowance(a.id, { name: e.target.value })
-                        }
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[9px] text-muted-foreground block uppercase font-bold">
-                            Días Totales
-                          </label>
-                          <input
-                            type="number"
-                            className="w-full border-b border-border text-xs py-1 bg-transparent text-foreground"
-                            value={a.totalDays}
-                            onChange={(e) =>
-                              updateAllowance(a.id, {
-                                totalDays: parseInt(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-muted-foreground block uppercase font-bold">
-                            Modo
-                          </label>
-                          <select
-                            className="w-full text-xs bg-transparent py-1 border-b border-border text-foreground"
-                            value={a.consumptionMode}
-                            onChange={(e) =>
-                              updateAllowance(a.id, {
-                                consumptionMode: e.target
-                                  .value as ConsumptionMode,
-                              })
-                            }
-                          >
-                            <option value="days">Días</option>
-                            <option value="weeks">Semanas</option>
-                            <option value="all">Bloque</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2">
-                        <button
-                          onClick={() => deleteAllowance(a.id)}
-                          className="text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => setEditingAllowance(null)}
-                          className="bg-pink-600 text-white px-2 py-1 rounded text-[10px] font-bold"
-                        >
-                          OK
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-xs font-bold text-card-foreground ">
-                              {a.name}
-                            </span>
-                            <button
-                              onClick={() => setEditingAllowance(a.id)}
-                              className="text-muted-foreground hover:text-pink-500"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                          </div>
-                          <div className="flex justify-between text-[9px] text-muted-foreground mb-1">
-                            <span>
-                              {a.consumptionMode === "weeks"
-                                ? `${Math.floor(a.totalDays / 7)} sem`
-                                : `${a.totalDays} d`}
-                            </span>
-                            <span>
-                              {a.consumptionMode === "weeks"
-                                ? `${Math.floor(getUsedDays(a.id) / 7)} / ${Math.floor(a.totalDays / 7)} sem`
-                                : `${getUsedDays(a.id)} / ${a.totalDays} d`}
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-pink-400 transition-all duration-500"
-                              style={{
-                                width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
+          <aside id="sidebar-dad" className={`sidebar-fixed ${openSidebar === "dad" ? "open" : ""}`}>
+            <div className="sidebar-inner">{renderKPIs("Padre")}</div>
+            <div className="sidebar-handle" onClick={() => toggleSidebar("dad")}>
+              👨
+            </div>
+          </aside>
 
-          <div className="pt-4 border-t border-border">
-            <button
-              onClick={() => togglePeriods("mother")}
-              className="w-full flex justify-between items-center mb-4 text-muted-foreground hover:text-gray-600 "
-            >
-              <h4 className="text-[10px] font-bold uppercase tracking-widest">
-                Periodos Planificados
-              </h4>
-              {expandedPeriods.mother ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )}
-            </button>
-
+          {/* Click outside backdrop overlay */}
+          {openSidebar && (
             <div
-              className={`space-y-3 transition-all duration-300 overflow-hidden ${expandedPeriods.mother ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"}`}
-            >
-              {allBlocks
-                .filter((b) => b.parent === "mother")
-                .map((b) => (
-                  <div
-                    key={b.id}
-                    className="p-3 bg-pink-50/30 dark:bg-pink-900/20 rounded-xl border border-pink-100 dark:border-pink-800"
-                  >
-                    <div className="flex justify-between text-[10px] font-bold text-pink-700 dark:text-pink-300 mb-1">
-                      <span>
-                        {allowances.find((al) => al.id === b.allowanceId)?.name}
-                        {b.id.startsWith("mandatory-") ? " (Obligatorio)" : ""}
-                      </span>
-                      <span>
-                        {allowances.find((al) => al.id === b.allowanceId)
-                          ?.consumptionMode === "weeks"
-                          ? `${Math.floor(countEffectiveLeaveDays(b.startDate, b.endDate, holidays) / 7)} sem`
-                          : `${countEffectiveLeaveDays(b.startDate, b.endDate, holidays)} d`}
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium text-foreground">
-                      {formatDate(b.startDate)} al {formatDate(b.endDate)}
-                    </p>
-                    {!b.id.startsWith("mandatory-") && (
-                      <button
-                        onClick={() => removeBlock(b.id)}
-                        className="mt-2 text-[9px] text-red-500 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    )}
-                  </div>
-                ))}
+              className="fixed inset-0 bg-black/20 dark:bg-black/40 backdrop-blur-xs z-[1999]"
+              onClick={() => setOpenSidebar(null)}
+            />
+          )}
+        </>
+      )}
+
+      {/* Main Container Layout */}
+      <div className="max-w-6xl mx-auto px-2 sm:px-4 py-4 space-y-6">
+        {/* Sleek, Ultra-Modern Top Header */}
+        <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl p-2.5 px-3.5 sm:px-4 rounded-2xl shadow-xs border border-slate-200/80 dark:border-slate-700/80 flex flex-wrap md:flex-nowrap items-center justify-between gap-2.5">
+          {/* Brand Logo */}
+          <div className="flex items-center gap-2.5 shrink-0 order-1">
+            <span className="text-2xl">👶</span>
+            <div className="flex flex-col">
+              <h1 className="text-xs font-black text-slate-900 dark:text-slate-100 uppercase tracking-widest leading-none">
+                Parental
+              </h1>
+              <span className="text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase leading-tight">
+                Planner
+              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Side Drawer Padre (Desktop & Mobile) - Always from Right */}
-      <div
-        className={`fixed inset-y-0 right-0 w-[85%] md:w-80 bg-card text-card-foreground shadow-2xl z-50 transform transition-transform duration-300 ease-in-out border-l border-border p-6 overflow-y-auto
- ${rightDrawerOpen || mobileTab === "father" ? "translate-x-0" : "translate-x-full"}`}
-      >
-        <div className="flex justify-between items-center mb-6">
-          <button
-            onClick={() => {
-              setRightDrawerOpen(false);
-              if (mobileTab === "father") setMobileTab("calendar");
-            }}
-            className="text-muted-foreground hover:text-gray-600 "
-          >
-            <ChevronRight size={24} />
-          </button>
-          <h3 className="font-extrabold flex items-center gap-2 text-blue-600">
-            Gestión Padre
-            <User size={20} />
-          </h3>
-        </div>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <button
-              onClick={() => addAllowance("father")}
-              className="text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1 rounded-lg transition"
-            >
-              <Plus size={16} />
-            </button>
-            <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-              Configuración Permisos
-            </h4>
-          </div>
-
-          <div className="space-y-4">
-            {allowances
-              .filter((a) => a.parent === "father")
-              .map((a) => (
-                <div
-                  key={a.id}
-                  className="p-3 border border-border rounded-xl bg-muted/50"
-                >
-                  {editingAllowance === a.id ? (
-                    <div className="space-y-3">
-                      <input
-                        className="text-xs font-bold w-full border-b border-blue-200 dark:border-blue-800 focus:border-blue-500 outline-none bg-transparent py-1 text-right text-foreground"
-                        value={a.name}
-                        onChange={(e) =>
-                          updateAllowance(a.id, { name: e.target.value })
-                        }
-                      />
-                      <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <label className="text-[9px] text-muted-foreground block uppercase font-bold text-right">
-                            Modo
-                          </label>
-                          <select
-                            className="w-full text-xs bg-transparent py-1 border-b border-border text-right text-foreground"
-                            value={a.consumptionMode}
-                            onChange={(e) =>
-                              updateAllowance(a.id, {
-                                consumptionMode: e.target
-                                  .value as ConsumptionMode,
-                              })
-                            }
-                          >
-                            <option value="days">Días</option>
-                            <option value="weeks">Semanas</option>
-                            <option value="all">Bloque</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="text-[9px] text-muted-foreground block uppercase font-bold text-right">
-                            Días Totales
-                          </label>
-                          <input
-                            type="number"
-                            className="w-full border-b border-border text-xs py-1 bg-transparent text-right text-foreground"
-                            value={a.totalDays}
-                            onChange={(e) =>
-                              updateAllowance(a.id, {
-                                totalDays: parseInt(e.target.value) || 0,
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                      <div className="flex justify-start gap-2">
-                        <button
-                          onClick={() => setEditingAllowance(null)}
-                          className="bg-blue-600 text-white px-2 py-1 rounded text-[10px] font-bold"
-                        >
-                          OK
-                        </button>
-                        <button
-                          onClick={() => deleteAllowance(a.id)}
-                          className="text-red-500 p-1"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex justify-between items-center mb-1">
-                            <button
-                              onClick={() => setEditingAllowance(a.id)}
-                              className="text-muted-foreground hover:text-blue-500"
-                            >
-                              <Edit2 size={12} />
-                            </button>
-                            <span className="text-xs font-bold text-card-foreground ">
-                              {a.name}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-[9px] text-muted-foreground mb-1">
-                            <span>
-                              {a.consumptionMode === "weeks"
-                                ? `${Math.floor(getUsedDays(a.id) / 7)} / ${Math.floor(a.totalDays / 7)} sem`
-                                : `${getUsedDays(a.id)} / ${a.totalDays} d`}
-                            </span>
-                            <span>
-                              {a.consumptionMode === "weeks"
-                                ? `${Math.floor(a.totalDays / 7)} sem`
-                                : `${a.totalDays} d`}
-                            </span>
-                          </div>
-                          <div className="w-full bg-muted h-1.5 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-blue-400 transition-all duration-500 ml-auto"
-                              style={{
-                                width: `${Math.min(100, (getUsedDays(a.id) / a.totalDays) * 100)}%`,
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-          </div>
-
-          <div className="pt-4 border-t border-border">
-            <button
-              onClick={() => togglePeriods("father")}
-              className="w-full flex justify-between items-center mb-4 text-muted-foreground hover:text-gray-600 "
-            >
-              <h4 className="text-[10px] font-bold uppercase tracking-widest">
-                Periodos Planificados
-              </h4>
-              {expandedPeriods.father ? (
-                <ChevronUp size={16} />
-              ) : (
-                <ChevronDown size={16} />
-              )}
-            </button>
-
-            <div
-              className={`space-y-3 transition-all duration-300 overflow-hidden ${expandedPeriods.father ? "max-h-[1000px] opacity-100" : "max-h-0 opacity-0"}`}
-            >
-              {allBlocks
-                .filter((b) => b.parent === "father")
-                .map((b) => (
-                  <div
-                    key={b.id}
-                    className="p-3 bg-blue-50/30 dark:bg-blue-900/20 rounded-xl border border-blue-100 dark:border-blue-800"
-                  >
-                    <div className="flex justify-between text-[10px] font-bold text-blue-700 dark:text-blue-300 mb-1">
-                      <span>
-                        {allowances.find((al) => al.id === b.allowanceId)
-                          ?.consumptionMode === "weeks"
-                          ? `${Math.floor(countEffectiveLeaveDays(b.startDate, b.endDate, holidays) / 7)} sem`
-                          : `${countEffectiveLeaveDays(b.startDate, b.endDate, holidays)} d`}
-                      </span>
-                      <span>
-                        {allowances.find((al) => al.id === b.allowanceId)?.name}
-                        {b.id.startsWith("mandatory-") ? " (Obligatorio)" : ""}
-                      </span>
-                    </div>
-                    <p className="text-xs font-medium text-foreground">
-                      {formatDate(b.startDate)} al {formatDate(b.endDate)}
-                    </p>
-                    {!b.id.startsWith("mandatory-") && (
-                      <button
-                        onClick={() => removeBlock(b.id)}
-                        className="mt-2 text-[9px] text-red-500 hover:underline"
-                      >
-                        Eliminar
-                      </button>
-                    )}
-                  </div>
-                ))}
+          {/* Baby Status Inline Pill - Responsive centered */}
+          {globalData.birthDate && (
+            <div className="order-3 md:order-2 w-full md:w-auto flex items-center justify-center h-8 bg-slate-100/80 dark:bg-slate-900/60 px-3.5 rounded-full gap-2 border border-slate-200/60 dark:border-slate-700/60 text-xs">
+              <span className="text-xs animate-pulse shrink-0">✨</span>
+              <span id="display-birth-date" className="font-extrabold text-slate-700 dark:text-slate-300 text-[11px] truncate">
+                {birthDateDisplay}
+              </span>
+              <span className="text-slate-300 dark:text-slate-600 font-light shrink-0">|</span>
+              <span id="baby-weeks" className="font-black text-indigo-600 dark:text-indigo-400 uppercase text-[10px] tracking-wider shrink-0">
+                {babyWeeksText}
+              </span>
             </div>
+          )}
+
+          {/* Header Action Buttons */}
+          <div className="flex items-center gap-1.5 shrink-0 order-2 md:order-3">
+            <button
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+              onClick={handleRefresh}
+              title="Sincronizar"
+            >
+              <RefreshCw size={14} />
+            </button>
+            <button
+              className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
+              onClick={() => setShowConfigModal(true)}
+              title="Ajustes"
+            >
+              <Settings size={14} />
+            </button>
           </div>
         </div>
-      </div>
 
-      {showSettings || mobileTab === "settings" ? (
-        <div className="max-w-md mx-auto animate-in fade-in zoom-in-95 duration-300 px-4 md:px-0">
-          <button
-            onClick={() => {
-              setShowSettings(false);
-              setMobileTab("calendar");
-            }}
-            className="flex items-center gap-2 text-sm font-bold text-muted-foreground hover:text-foreground dark:hover:text-white mb-6 transition"
-          >
-            <ChevronLeft size={20} />
-            Volver al Calendario
-          </button>
-
-          <div className="bg-card text-card-foreground p-6 rounded-2xl border border-border shadow-sm">
-            <h2 className="text-xl font-bold mb-4 flex items-center gap-2 text-foreground">
-              <Settings size={20} className="text-muted-foreground" />
-              Datos Generales
-            </h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Fecha de Nacimiento
-                </label>
-                <input
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  className="w-full px-4 py-2 border border-border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                />
+        {/* Sticky Filter & Festivos Capsule Bar on Scroll */}
+        {globalData.birthDate && isLoaded && (
+          <div className="sticky top-12 z-30 flex justify-center py-1 transition-all duration-200 pointer-events-none">
+            <div className="pointer-events-auto flex items-center p-1.5 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-slate-200/90 dark:border-slate-700/90 shadow-lg shadow-slate-900/5 gap-1.5 transition-all">
+              {/* Integrated Segmented Filters */}
+              <div className="flex items-center gap-1 pr-1.5 border-r border-slate-200/80 dark:border-slate-700/80">
+                <button
+                  className={`h-7 px-3.5 text-[11px] font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                    currentFilter === "all"
+                      ? "bg-indigo-600 text-white shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  }`}
+                  onClick={() => setCurrentFilter("all")}
+                >
+                  TODO
+                </button>
+                <button
+                  className={`h-7 px-3.5 text-[11px] font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                    currentFilter === "Madre"
+                      ? "bg-pink-500 text-white shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  }`}
+                  onClick={() => setCurrentFilter("Madre")}
+                >
+                  MAMÁ
+                </button>
+                <button
+                  className={`h-7 px-3.5 text-[11px] font-black rounded-xl transition-all duration-200 cursor-pointer ${
+                    currentFilter === "Padre"
+                      ? "bg-sky-500 text-white shadow-xs"
+                      : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                  }`}
+                  onClick={() => setCurrentFilter("Padre")}
+                >
+                  PAPÁ
+                </button>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">
-                  Festivos de Empresa
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={newHoliday}
-                    onChange={(e) => setNewHoliday(e.target.value)}
-                    className="flex-1 px-4 py-2 border border-border rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition"
-                  />
-                  <button
-                    onClick={handleAddHoliday}
-                    className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition"
-                  >
-                    <Plus size={24} />
-                  </button>
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {holidays.map((h) => (
-                    <span
-                      key={h}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-muted text-foreground rounded-full text-xs font-medium border border-border "
+              {/* Holiday Mode Toggle */}
+              <button
+                onClick={() => setHolidayMode(!holidayMode)}
+                className={`h-7 px-3 text-[11px] font-black rounded-xl transition-all duration-200 flex items-center gap-1.5 cursor-pointer ${
+                  holidayMode
+                    ? "bg-amber-500 text-white shadow-xs"
+                    : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50"
+                }`}
+                title="Activar modo festivos para marcar festivos directamente haciendo clic en el calendario"
+              >
+                <span>🚩</span>
+                <span className="text-[10px] uppercase tracking-wider font-extrabold">{holidayMode ? "FESTIVOS: ON" : "FESTIVOS"}</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Initial Setup Screen (if no birthDate is set) */}
+        {!globalData.birthDate && isLoaded && (
+          <div id="setup-screen" className="max-w-md mx-auto text-center bg-white dark:bg-slate-800 p-8 rounded-3xl shadow-md border border-slate-100 dark:border-slate-700/80 my-12 animate-in fade-in zoom-in-95">
+            <h2 className="text-2xl font-black mb-2 text-slate-800 dark:text-slate-100">¡Bienvenida/o! ✨</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
+              Introduce la fecha de nacimiento del bebé para comenzar a planificar:
+            </p>
+            <input
+              type="date"
+              value={configBirthDate}
+              onChange={(e) => setConfigBirthDate(e.target.value)}
+              className="w-full p-4 border border-slate-200 dark:border-slate-700 rounded-xl mb-6 font-bold text-slate-700 dark:text-white dark:bg-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none text-center"
+            />
+            <button
+              onClick={saveInitialConfig}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold p-4 rounded-xl shadow-md transition"
+            >
+              Comenzar
+            </button>
+          </div>
+        )}
+
+        {/* Main Application Workspace */}
+        {globalData.birthDate && isLoaded && (
+          <div id="app-content" className="space-y-6">
+            <div id="calendar-grid">
+              {monthsData.map((monthDate, mIdx) => {
+                const year = monthDate.getFullYear();
+                const month = monthDate.getMonth();
+                const monthNames = [
+                  "Enero",
+                  "Febrero",
+                  "Marzo",
+                  "Abril",
+                  "Mayo",
+                  "Junio",
+                  "Julio",
+                  "Agosto",
+                  "Septiembre",
+                  "Octubre",
+                  "Noviembre",
+                  "Diciembre",
+                ];
+                const dayNames = ["L", "M", "X", "J", "V", "S", "D"];
+
+                // Compute weekday offset
+                let firstDay = new Date(year, month, 1).getDay();
+                if (firstDay === 0) firstDay = 7;
+
+                // Total cells tracker to guarantee 42 cells grid
+                let totalCells = 0;
+                const gridCells = [];
+
+                // Pad preceding empty cells
+                for (let j = 1; j < firstDay; j++) {
+                  gridCells.push(<div key={`empty-start-${j}`} className="day-cell-fixed empty-cell" />);
+                  totalCells++;
+                }
+
+                // Days of the month
+                const daysInMonth = new Date(year, month + 1, 0).getDate();
+                for (let d = 1; d <= daysInMonth; d++) {
+                  const dateObj = new Date(year, month, d);
+                  const dateStr = formatDateStr(dateObj);
+                  const dayOfWeek = dateObj.getDay();
+
+                  // Find event, holiday, mandatory statuses
+                  const evt = globalData.events.find((e) => e.date === dateStr);
+                  const festivo = globalData.festivos.find((f) => f.date === dateStr);
+
+                  const checkTime = dateObj.getTime();
+                  const [by, bm, bd] = globalData.birthDate!.split("-").map(Number);
+                  const birthTime = new Date(by, bm - 1, bd).getTime();
+                  let mandEndTime = 0;
+                  if (mandatoryEndStr) {
+                    const [mey, mem, med] = mandatoryEndStr.split("-").map(Number);
+                    mandEndTime = new Date(mey, mem - 1, med).getTime();
+                  }
+                  const isMandatory = checkTime >= birthTime && checkTime <= mandEndTime;
+
+                  let cssClass = "";
+                  let icon = "";
+                  let text = "";
+                  let showDot = false;
+                  let hoverInfo = `Día: ${dateStr}`;
+
+                  // Visual Filtering rules
+                  let isVisible = true;
+                  if (evt && currentFilter !== "all" && evt.person !== currentFilter) {
+                    isVisible = false;
+                  }
+
+                  if (evt && isVisible) {
+                    cssClass = evt.person === "Madre" ? "bg-mom" : "bg-dad";
+                    icon = evt.person === "Madre" ? "👩" : "👨";
+                    text = evt.type;
+                    hoverInfo = `${evt.person}: ${evt.type}`;
+                    if (festivo) {
+                      showDot = true;
+                      hoverInfo += ` | Festivo`;
+                    }
+                  } else if (festivo) {
+                    cssClass = "bg-holiday";
+                    icon = "🚩";
+                    text = festivo.nombre;
+                    hoverInfo = `Festivo: ${festivo.nombre}`;
+                  } else if (isMandatory) {
+                    cssClass = "bg-joint";
+                    icon = "👶";
+                    text = "OBLIG.";
+                    hoverInfo = "Periodo Obligatorio";
+                  }
+
+                  if (dayOfWeek === 0 || dayOfWeek === 6) {
+                    cssClass += " weekend";
+                  }
+
+                  const isSelected = selectedDates.includes(dateStr);
+
+                  gridCells.push(
+                    <div
+                      key={`day-${d}`}
+                      id={`cell-${dateStr}`}
+                      className={`day-cell-fixed ${cssClass} ${isSelected ? "selected" : ""}`}
+                      title={hoverInfo}
+                      onClick={(e) => handleDateClick(e, dateStr)}
+                      onDoubleClick={() => handleDateDoubleClick(dateStr)}
                     >
-                      {h}
-                      <button
-                        onClick={() => removeHoliday(h)}
-                        className="hover:text-red-600"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              </div>
+                      <span className="d-num">{d}</span>
+                      {showDot && <div className="dot-festivo" />}
+                      <div className="cell-inner-wrapper">
+                        <div className="d-icon">{icon}</div>
+                        <div className="d-text truncate px-0.5">{text}</div>
+                      </div>
+                    </div>
+                  );
+                  totalCells++;
+                }
+
+                // Pad remaining cells up to 42
+                let padIdx = 0;
+                while (totalCells < 42) {
+                  gridCells.push(<div key={`empty-end-${padIdx}`} className="day-cell-fixed empty-cell" />);
+                  totalCells++;
+                  padIdx++;
+                }
+
+                return (
+                  <div key={mIdx} className="month-card">
+                    <div className="month-header">
+                      {monthNames[month]} {year}
+                    </div>
+                    <div className="days-names-row">
+                      {dayNames.map((n, nIdx) => (
+                        <div key={nIdx} className="day-name-label">
+                          {n}
+                        </div>
+                      ))}
+                    </div>
+                    <div className="days-grid">{gridCells}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-        </div>
-      ) : (
-        <div
-          className={`animate-in slide-in-from-bottom-4 duration-300 ${mobileTab !== "calendar" ? "hidden md:block" : ""}`}
+        )}
+      </div>
+
+      {/* Floating Range Selection Bar - Compact & Modern Pill */}
+      <div id="floating-wrapper" className={selectedDates.length > 0 ? "visible" : ""}>
+        <button
+          className="btn-float-close"
+          onClick={clearAllSelections}
+          title="Limpiar selección"
         >
-          <div className="max-w-5xl mx-auto space-y-8 p-4 md:p-0">
-            <div className="bg-card text-card-foreground p-6 md:p-10 rounded-[2.5rem] border border-border shadow-xl">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-10">
-                <div className="flex items-center gap-6 w-full sm:w-auto">
-                  <h2 className="text-2xl font-black flex items-center gap-3 text-foreground">
-                    <CalendarIcon size={28} className="text-blue-600" />
-                    <span className="hidden xs:inline">Calendario</span>
-                  </h2>
-                  <div className="flex bg-muted p-1.5 rounded-2xl">
-                    <button
-                      onClick={() => setViewMode("month")}
-                      className={`px-4 py-2 text-xs font-black rounded-xl transition ${viewMode === "month" ? "bg-card text-card-foreground shadow-sm text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}
-                    >
-                      MES
-                    </button>
-                    <button
-                      onClick={() => setViewMode("year")}
-                      className={`px-4 py-2 text-xs font-black rounded-xl transition ${viewMode === "year" ? "bg-card text-card-foreground shadow-sm text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}
-                    >
-                      AÑO
-                    </button>
-                  </div>
-                </div>
+          <X size={13} />
+        </button>
+        <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+        <button
+          className="btn-float-action"
+          onClick={() => openModalForSelection()}
+        >
+          <span className="bg-white text-indigo-700 dark:bg-slate-950 dark:text-indigo-300 px-1.5 py-0.5 rounded-md text-[10px] font-black leading-none flex items-center justify-center min-w-[16px] shadow-xs">
+            {selectedDates.length}
+          </span>
+          <span className="text-[11px] font-black tracking-tight">Configurar Días</span>
+        </button>
+      </div>
 
-                <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
-                  {/* Mode Toggle: Normal vs Holiday */}
-                  <div className="flex bg-muted p-1.5 rounded-2xl w-full md:w-auto">
-                    <button
-                      onClick={() => setHolidayMode(false)}
-                      className={`flex-1 md:flex-none px-4 py-2 text-xs font-black rounded-xl transition flex items-center justify-center gap-2 ${!holidayMode ? "bg-card text-card-foreground shadow-sm text-blue-600 dark:text-blue-400" : "text-muted-foreground"}`}
-                    >
-                      PLANIFICAR
-                    </button>
-                    <button
-                      onClick={() => {
-                        setHolidayMode(true);
-                        setSelectedDay(null);
-                        setShowSettings(false);
-                      }}
-                      className={`flex-1 md:flex-none px-4 py-2 text-xs font-black rounded-xl transition flex items-center justify-center gap-2 ${holidayMode ? "bg-amber-100 dark:bg-amber-900/40 shadow-sm text-amber-700 dark:text-amber-300" : "text-muted-foreground"}`}
-                    >
-                      GESTIÓN FESTIVOS
-                    </button>
-                  </div>
+      {/* --- ASSIGN PERMIT MODAL (Tailwind Glassmorphic Overhaul) --- */}
+      {showAssignModal && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight">
+                  Configurar Días
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  Se configurarán {selectedDates.length} día(s)
+                </p>
+              </div>
+              <button
+                onClick={() => setShowAssignModal(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
 
-                  <div className="flex items-center gap-3 bg-muted text-muted-foreground p-1.5 rounded-2xl border border-border w-full md:w-auto justify-between md:justify-start text-foreground">
-                    <button
-                      onClick={() =>
-                        changeMonth(viewMode === "month" ? -1 : -12)
-                      }
-                      className="p-3 hover:bg-card dark:hover:bg-gray-700 hover:shadow-sm rounded-xl transition bg-white/50 dark:bg-transparent"
+            {/* List/Summary of selected dates */}
+            <div className="space-y-1">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                Días Seleccionados
+              </label>
+              <div className="flex flex-wrap gap-1 max-h-20 overflow-y-auto p-2 bg-slate-50 dark:bg-slate-900 rounded-xl border border-slate-100 dark:border-slate-800">
+                {selectedDates.map((dStr) => {
+                  const formatted = dStr.split("-").reverse().slice(0, 2).join("/");
+                  return (
+                    <span
+                      key={dStr}
+                      className="text-[10px] font-bold px-2 py-0.5 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 rounded-md border border-indigo-100/50 dark:border-indigo-900/50"
                     >
-                      <ChevronLeft
-                        size={24}
-                        className="text-muted-foreground"
-                      />
-                    </button>
-                    <span className="font-black min-w-[140px] text-center capitalize text-sm md:text-base tracking-tight">
-                      {viewMode === "month"
-                        ? viewDate.toLocaleDateString("es-ES", {
-                            month: "long",
-                            year: "numeric",
-                          })
-                        : viewDate.getFullYear()}
+                      {formatted}
                     </span>
-                    <button
-                      onClick={() => changeMonth(viewMode === "month" ? 1 : 12)}
-                      className="p-3 hover:bg-card dark:hover:bg-gray-700 hover:shadow-sm rounded-xl transition bg-white/50 dark:bg-transparent"
-                    >
-                      <ChevronRight
-                        size={24}
-                        className="text-muted-foreground"
-                      />
-                    </button>
-                  </div>
-                </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                  Asignar A
+                </label>
+                <select
+                  value={selectedPerson}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    setSelectedPerson(val);
+                    if (val !== "Festivo") {
+                      const permits = globalData.balances.filter((b) => b.person === val);
+                      if (permits.length > 0) {
+                        setSelectedType(permits[0].type);
+                      } else {
+                        setSelectedType("");
+                      }
+                    }
+                  }}
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                >
+                  <option value="Madre">Madre 👩</option>
+                  <option value="Padre">Padre 👨</option>
+                  <option value="Festivo">Festivo 🚩</option>
+                </select>
               </div>
 
-              {viewMode === "month" ? (
-                <div className="grid grid-cols-7 gap-3 md:gap-4">
-                  {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map(
-                    (d) => (
-                      <div
-                        key={d}
-                        className="text-center text-xs font-black text-muted-foreground uppercase py-3"
-                      >
-                        {d}
-                      </div>
-                    ),
-                  )}
-                  {paddingDays.map((_, i) => (
-                    <div key={`pad-${i}`} />
-                  ))}
-                  {daysInMonth.map((day) => {
-                    const status = getLeaveStatus(day, allBlocks);
-                    const holiday = isHoliday(day, holidays);
-                    const isBoth = status.mother && status.father;
-                    const isMother = status.mother;
-                    const isFather = status.father;
-                    const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-
-                    const isSelected =
-                      selectedDay && isSameDay(day, selectedDay);
-
-                    let bgColor =
-                      "bg-card text-card-foreground text-foreground border border-border hover:border-blue-200 dark:hover:border-blue-800 transition-all cursor-pointer";
-                    if (isSelected)
-                      bgColor =
-                        "bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-500 dark:border-blue-400 ring-2 ring-blue-200 dark:ring-blue-900/50 z-10 scale-105";
-                    else if (isBoth)
-                      bgColor =
-                        "bg-gradient-to-br from-pink-400 to-blue-400 text-white shadow-sm ring-1 ring-white/20";
-                    else if (isMother)
-                      bgColor =
-                        "bg-pink-500 text-white shadow-sm ring-1 ring-white/20";
-                    else if (isFather)
-                      bgColor =
-                        "bg-blue-500 text-white shadow-sm ring-1 ring-white/20";
-                    else if (holiday)
-                      bgColor =
-                        "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 font-bold border-amber-200 dark:border-amber-800";
-                    else if (isWeekend)
-                      bgColor =
-                        "bg-muted text-muted-foreground text-muted-foreground";
-
-                    return (
-                      <button
-                        key={day.toISOString()}
-                        onClick={() =>
-                          holidayMode ? toggleHoliday(day) : setSelectedDay(day)
-                        }
-                        className={`aspect-square flex items-center justify-center text-lg md:text-2xl rounded-2xl md:rounded-3xl font-black relative group transition-all duration-200 active:scale-90 ${bgColor}`}
-                      >
-                        {day.getDate()}
-                        {!holidayMode &&
-                          !isBoth &&
-                          !isMother &&
-                          !isFather &&
-                          !holiday &&
-                          !isWeekend &&
-                          !isSelected && (
-                            <div className="absolute inset-0 bg-blue-500/0 group-hover:bg-blue-500/10 rounded-2xl md:rounded-3xl transition-colors flex items-center justify-center">
-                              <Plus
-                                size={16}
-                                className="opacity-0 group-hover:opacity-100 text-blue-500"
-                              />
-                            </div>
-                          )}
-                        {holidayMode && !holiday && (
-                          <div className="absolute inset-0 bg-amber-500/0 group-hover:bg-amber-500/10 rounded-2xl md:rounded-3xl transition-colors flex items-center justify-center border-2 border-dashed border-transparent hover:border-amber-400">
-                            <Plus
-                              size={20}
-                              className="opacity-0 group-hover:opacity-100 text-amber-500"
-                            />
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+              {selectedPerson === "Festivo" ? (
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    Nombre del Festivo
+                  </label>
+                  <input
+                    type="text"
+                    value={holidayNameVal}
+                    onChange={(e) => setHolidayNameVal(e.target.value)}
+                    placeholder="Ej. Año Nuevo"
+                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                    required
+                  />
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                  {Array.from({ length: 12 }).map((_, i) => {
-                    const monthDate = new Date(viewDate.getFullYear(), i, 1);
-                    return renderMonth(monthDate);
-                  })}
-                </div>
-              )}
-              {selectedDay && (
-                <div className="fixed inset-x-0 bottom-24 md:relative md:bottom-0 md:mt-8 p-6 md:p-5 bg-card text-card-foreground border-t md:border border-border shadow-2xl md:shadow-none animate-in slide-in-from-bottom md:slide-in-from-top duration-300 z-40 md:rounded-[2rem]">
-                  <div className="flex flex-col gap-6">
-                    {/* Header + Actions */}
-                    <div className="flex justify-between items-center border-b border-border md:border-none pb-4 md:pb-0">
-                      <div className="flex items-center gap-4">
-                        <span className="text-sm font-black bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 px-4 py-2 rounded-xl">
-                          {formatDate(selectedDay)
-                            .split("-")
-                            .reverse()
-                            .slice(0, 2)
-                            .join("/")}
-                        </span>
-                        <div className="flex bg-muted p-1.5 rounded-xl text-white">
-                          <button
-                            onClick={() => setAssignmentParent("mother")}
-                            className={`px-5 py-2 text-xs font-black rounded-lg transition ${assignmentParent === "mother" ? "bg-pink-500 text-white shadow-md" : "text-muted-foreground"}`}
-                          >
-                            MAMÁ
-                          </button>
-                          <button
-                            onClick={() => setAssignmentParent("father")}
-                            className={`px-5 py-2 text-xs font-black rounded-lg transition ${assignmentParent === "father" ? "bg-blue-500 text-white shadow-md" : "text-muted-foreground"}`}
-                          >
-                            PAPÁ
-                          </button>
-                        </div>
-                      </div>
-                      <button
-                        onClick={() => setSelectedDay(null)}
-                        className="p-2 text-muted-foreground hover:text-muted-foreground dark:hover:text-muted-foreground/80 transition"
-                      >
-                        <Trash2 size={24} />
-                      </button>
-                    </div>
-
-                    {/* Allowance Selection (Scrollable Bar) */}
-                    <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-                      {allowances
-                        .filter((a) => a.parent === assignmentParent)
-                        .map((a) => {
-                          const used = getUsedDays(a.id);
-                          const disabled = used >= a.totalDays;
-                          return (
-                            <button
-                              key={a.id}
-                              disabled={disabled}
-                              onClick={() => {
-                                let daysToTake = 1;
-                                if (a.consumptionMode === "weeks")
-                                  daysToTake = 7;
-                                if (a.consumptionMode === "all")
-                                  daysToTake = a.totalDays - used;
-
-                                const newBlock: LeaveBlock = {
-                                  id: crypto.randomUUID(),
-                                  allowanceId: a.id,
-                                  startDate: selectedDay,
-                                  endDate: calculateEndDate(
-                                    selectedDay,
-                                    daysToTake,
-                                  ),
-                                  parent: assignmentParent,
-                                };
-                                setFlexibleBlocks([
-                                  ...flexibleBlocks,
-                                  newBlock,
-                                ]);
-                                setSelectedDay(null);
-                              }}
-                              className={`whitespace-nowrap px-6 py-4 rounded-2xl text-sm font-black border transition-all active:scale-95 flex items-center gap-3 ${
-                                disabled
-                                  ? "bg-muted text-muted-foreground text-muted-foreground border-border grayscale"
-                                  : assignmentParent === "mother"
-                                    ? "bg-pink-50 dark:bg-pink-900/20 text-pink-700 dark:text-pink-300 border-pink-100 dark:border-pink-800 hover:bg-pink-100 dark:hover:bg-pink-900/40 shadow-sm"
-                                    : "bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/40 shadow-sm"
-                              }`}
-                            >
-                              {a.name}
-                              <span className="opacity-50 text-[10px] bg-white/50 dark:bg-black/20 px-2 py-1 rounded-md">
-                                {a.consumptionMode === "weeks" ? "sem" : "d"}
-                              </span>
-                            </button>
-                          );
-                        })}
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                    Tipo de Permiso
+                  </label>
+                  <select
+                    value={selectedType}
+                    onChange={(e) => setSelectedType(e.target.value)}
+                    className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
+                  >
+                    {currentPersonPermits.map((p, idx) => (
+                      <option key={idx} value={p.type}>
+                        {p.type} {p.frecuencia === "Semanal" ? "(Semana)" : ""}
+                      </option>
+                    ))}
+                    {currentPersonPermits.length === 0 && (
+                      <option value="">No hay tipos de permisos configurados</option>
+                    )}
+                  </select>
                 </div>
               )}
 
-              <div className="mt-10 flex flex-wrap gap-6 text-xs font-black uppercase tracking-widest justify-center md:justify-start text-muted-foreground">
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 bg-pink-500 rounded-md"></div> Madre
+              {selectedPerson !== "Festivo" && (
+                /* Omit non-working days logic checkbox */
+                <div className="flex items-center gap-2 pt-1.5">
+                  <input
+                    type="checkbox"
+                    id="skipNonWorkDays"
+                    checked={skipNonWorkDays}
+                    onChange={(e) => setSkipNonWorkDays(e.target.checked)}
+                    className="w-4 h-4 rounded-sm border-slate-200 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+                  />
+                  <label
+                    htmlFor="skipNonWorkDays"
+                    className="text-xs font-bold text-slate-500 dark:text-slate-400 cursor-pointer select-none"
+                  >
+                    Omitir fines de semana y festivos al guardar
+                  </label>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 bg-blue-500 rounded-md"></div> Padre
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 bg-gradient-to-br from-pink-400 to-blue-400 rounded-md"></div>{" "}
-                  Ambos
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-4 h-4 bg-amber-100 dark:bg-amber-900/40 border border-amber-200 dark:border-amber-800 rounded-md"></div>{" "}
-                  Festivo
-                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between gap-3 pt-3 border-t border-slate-100 dark:border-slate-700">
+              <button
+                className="px-4 py-2 border border-red-200 dark:border-red-900 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl text-red-500 font-bold transition text-sm cursor-pointer"
+                onClick={handleDeleteEvents}
+              >
+                Borrar
+              </button>
+              <div className="flex gap-2">
+                <button
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
+                  onClick={() => setShowAssignModal(false)}
+                >
+                  Cerrar
+                </button>
+                <button
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
+                  onClick={handleSaveEvents}
+                >
+                  Guardar
+                </button>
               </div>
             </div>
           </div>
         </div>
       )}
-      {/* Mobile Navigation Bar */}
-      <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-2xl border-t border-border flex justify-around items-center p-5 pb-8 z-[60] md:hidden">
-        <button
-          onClick={() => {
-            setMobileTab("mother");
-            setShowSettings(false);
-            setLeftDrawerOpen(false);
-            setRightDrawerOpen(false);
-            setHolidayMode(false);
-          }}
-          className={`flex flex-col items-center gap-2 p-3 flex-1 transition-all active:scale-90 ${mobileTab === "mother" ? "text-pink-600" : "text-muted-foreground"}`}
-        >
-          <User size={28} />
-          <span className="text-[11px] font-black uppercase tracking-tighter">
-            MAMÁ
-          </span>
-        </button>
-        <button
-          onClick={() => {
-            setMobileTab("calendar");
-            setShowSettings(false);
-            setLeftDrawerOpen(false);
-            setRightDrawerOpen(false);
-            setHolidayMode(false);
-          }}
-          className={`flex flex-col items-center gap-2 p-3 flex-1 transition-all active:scale-90 ${mobileTab === "calendar" ? "text-blue-600" : "text-muted-foreground"}`}
-        >
-          <CalendarIcon size={28} />
-          <span className="text-[11px] font-black uppercase tracking-tighter">
-            CALENDARIO
-          </span>
-        </button>
-        <button
-          onClick={() => {
-            setMobileTab("father");
-            setShowSettings(false);
-            setLeftDrawerOpen(false);
-            setRightDrawerOpen(false);
-            setHolidayMode(false);
-          }}
-          className={`flex flex-col items-center gap-2 p-3 flex-1 transition-all active:scale-90 ${mobileTab === "father" ? "text-blue-600" : "text-muted-foreground"}`}
-        >
-          <User size={28} />
-          <span className="text-[11px] font-black uppercase tracking-tighter">
-            PAPÁ
-          </span>
-        </button>
-      </div>
+
+      {/* --- SETTINGS / CONFIGURATION MODAL (Tailwind Overhaul) --- */}
+      {showConfigModal && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+              <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <Settings size={20} className="text-slate-500 dark:text-slate-400" />
+                Ajustes Generales
+              </h3>
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Tab: Birth Date */}
+            <div className="space-y-4 pt-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                  Fecha de nacimiento
+                </label>
+                <input
+                  type="date"
+                  value={configBirthDate}
+                  onChange={(e) => setConfigBirthDate(e.target.value)}
+                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-bold focus:ring-2 focus:ring-indigo-500 outline-none bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200"
+                />
+                <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
+                  * Al cambiar esta fecha, el calendario de 15 meses se recalculará automáticamente a partir del mes de nacimiento.
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
+                <button
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
+                  onClick={() => setShowConfigModal(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
+                  onClick={handleConfigSubmit}
+                >
+                  Actualizar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CUSTOM CONFIRMATION & ALERT MODAL (Replaces browser default popups) --- */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[4000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+                {confirmModal.title}
+              </h3>
+              <button
+                onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              {confirmModal.message}
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+              {confirmModal.cancelText && (
+                <button
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-xs cursor-pointer"
+                  onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                >
+                  {confirmModal.cancelText}
+                </button>
+              )}
+              <button
+                className={`px-4 py-2 rounded-xl text-white font-bold transition text-xs shadow-xs cursor-pointer ${
+                  confirmModal.isDanger
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
+                onClick={() => {
+                  if (confirmModal.onConfirm) {
+                    confirmModal.onConfirm();
+                  } else {
+                    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                  }
+                }}
+              >
+                {confirmModal.confirmText || "Aceptar"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
