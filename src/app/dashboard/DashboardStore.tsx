@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Search,
   Heart,
@@ -18,9 +19,11 @@ import {
   LayoutGrid,
   Layers,
   Trash2,
+  Download,
+  X,
+  Share,
 } from "lucide-react";
 
-// Serialization-friendly Tool type
 interface SerializedTool {
   id: string;
   name: string;
@@ -44,7 +47,14 @@ function getToolIcon(id: string) {
   return ICON_MAP[id] || Package;
 }
 
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 export default function DashboardStore({ tools }: DashboardStoreProps) {
+  const router = useRouter();
+
   // Client-side states (lazy initialization)
   const [favorites, setFavorites] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
@@ -88,10 +98,55 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
   const [sortBy, setSortBy] = useState<"name" | "plays" | "category">("name");
 
+  // Touch Swipe Gesture State
+  const [touchStartPos, setTouchStartPos] = useState<{ id: string; x: number; y: number } | null>(null);
+  const [swipeOffset, setSwipeOffset] = useState<{ id: string; x: number } | null>(null);
+
+  // PWA Install Prompt State
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [showIosInstructions, setShowIosInstructions] = useState(false);
+  const [isStandalone] = useState(() => {
+    if (typeof window !== "undefined") {
+      return (
+        window.matchMedia("(display-mode: standalone)").matches ||
+        !!(window.navigator as unknown as { standalone?: boolean }).standalone
+      );
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const handleBeforeInstall = (e: Event) => {
+        e.preventDefault();
+        setDeferredPrompt(e as BeforeInstallPromptEvent);
+      };
+
+      window.addEventListener("beforeinstallprompt", handleBeforeInstall);
+      return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
+    }
+  }, []);
+
+  const handleInstallPWA = () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then((choiceResult) => {
+        if (choiceResult.outcome === "accepted") {
+          setDeferredPrompt(null);
+        }
+      });
+    } else {
+      // Fallback for iOS / Safari
+      setShowIosInstructions(true);
+    }
+  };
+
   // Sync state modifications with localStorage
-  const toggleFavorite = (id: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const toggleFavorite = (id: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     const updated = favorites.includes(id)
       ? favorites.filter((favId) => favId !== id)
       : [...favorites, id];
@@ -102,12 +157,16 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   };
 
   // Record tool execution stats before navigating
-  const registerLaunch = (id: string) => {
+  const registerLaunch = (id: string, href?: string) => {
     const newCounts = { ...playCounts, [id]: (playCounts[id] || 0) + 1 };
     setPlayCounts(newCounts);
 
     if (typeof window !== "undefined") {
       localStorage.setItem("toolhub_plays", JSON.stringify(newCounts));
+    }
+
+    if (href) {
+      router.push(href);
     }
   };
 
@@ -120,6 +179,38 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
         localStorage.removeItem("toolhub_plays");
       }
     }
+  };
+
+  // TOUCH SWIPE HANDLERS FOR MOBILE LIST/GRID ITEMS
+  const handleTouchStart = (id: string, e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    setTouchStartPos({ id, x: touch.clientX, y: touch.clientY });
+  };
+
+  const handleTouchMove = (id: string, e: React.TouchEvent) => {
+    if (!touchStartPos || touchStartPos.id !== id) return;
+    const touch = e.touches[0];
+    const diffX = touch.clientX - touchStartPos.x;
+    const diffY = touch.clientY - touchStartPos.y;
+
+    // Prevent scrolling interference if dragging horizontally
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+      setSwipeOffset({ id, x: diffX });
+    }
+  };
+
+  const handleTouchEnd = (id: string, toolHref: string) => {
+    if (swipeOffset && swipeOffset.id === id) {
+      if (swipeOffset.x > 70) {
+        // Swipe Right: Toggle Favorite
+        toggleFavorite(id);
+      } else if (swipeOffset.x < -70) {
+        // Swipe Left: Launch Tool
+        registerLaunch(id, toolHref);
+      }
+    }
+    setTouchStartPos(null);
+    setSwipeOffset(null);
   };
 
   // Extract all available categories dynamically from tools
@@ -135,14 +226,12 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   const filteredTools = useMemo(() => {
     let result = [...tools];
 
-    // 1. Category Filter
     if (selectedCategory === "FAVORITES") {
       result = result.filter((t) => favorites.includes(t.id));
     } else if (selectedCategory !== "ALL") {
       result = result.filter((t) => t.category === selectedCategory);
     }
 
-    // 2. Search Query Filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(
@@ -152,7 +241,6 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
       );
     }
 
-    // 3. Sorting
     result.sort((a, b) => {
       if (sortBy === "name") {
         return a.name.localeCompare(b.name);
@@ -169,7 +257,6 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
     return result;
   }, [tools, selectedCategory, searchQuery, sortBy, favorites, playCounts]);
 
-  // Change view mode and save
   const handleViewModeChange = (mode: "grid" | "list") => {
     setViewMode(mode);
     if (typeof window !== "undefined") {
@@ -179,6 +266,57 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
 
   return (
     <div className="container mx-auto px-3 py-3 max-w-7xl">
+
+      {/* -------------------- PWA MOBILE INSTALL BANNER -------------------- */}
+      {!isStandalone && (
+        <div className="mb-3 bg-gradient-to-r from-primary/15 via-primary/10 to-indigo-500/10 border border-primary/20 rounded-xl p-2.5 flex items-center justify-between gap-2 shadow-2xs">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-7 h-7 bg-primary text-primary-foreground rounded-lg flex items-center justify-center shrink-0">
+              <Download size={14} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-black text-foreground truncate">Instalar App ToolHub</p>
+              <p className="text-[10px] text-muted-foreground truncate">Acceso rápido desde tu pantalla de inicio</p>
+            </div>
+          </div>
+          <button
+            onClick={handleInstallPWA}
+            className="px-3 py-1 bg-primary hover:bg-primary-hover text-primary-foreground text-xs font-black rounded-lg shadow-xs shrink-0 transition-all active:scale-95"
+          >
+            Instalar
+          </button>
+        </div>
+      )}
+
+      {/* iOS Instructions Modal */}
+      {showIosInstructions && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl p-5 max-w-sm w-full space-y-3 shadow-xl">
+            <div className="flex justify-between items-center border-b border-border/50 pb-2">
+              <h3 className="font-extrabold text-sm text-foreground flex items-center gap-1.5">
+                <Share size={16} className="text-primary" /> Instalar en tu iPhone / iPad
+              </h3>
+              <button
+                onClick={() => setShowIosInstructions(false)}
+                className="p-1 rounded-lg hover:bg-muted text-muted-foreground"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
+              <li>Toca el botón <span className="font-bold text-foreground">Compartir <Share size={12} className="inline text-primary" /></span> en el navegador Safari.</li>
+              <li>Desplázate hacia abajo y selecciona <span className="font-bold text-foreground">&quot;Añadir a la pantalla de inicio&quot;</span>.</li>
+              <li>Abre ToolHub directamente como una App nativa.</li>
+            </ol>
+            <button
+              onClick={() => setShowIosInstructions(false)}
+              className="w-full py-2 bg-primary text-primary-foreground font-bold rounded-xl text-xs"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* -------------------- TOP BAR: MOBILE CATEGORY SLIDER & SEARCH -------------------- */}
       <div className="lg:hidden mb-3 space-y-2">
@@ -244,6 +382,11 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
             </button>
           )}
         </div>
+
+        {/* Mobile Swipe Gesture Helper Banner */}
+        <p className="text-[10px] text-muted-foreground/80 italic text-center">
+          💡 En móvil: Desliza 👉 para Favorito | Desliza 👈 para Abrir
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
@@ -410,7 +553,7 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
             </div>
           </div>
 
-          {/* DYNAMIC RESULTS: ULTRA COMPACT GRID OR LIST */}
+          {/* DYNAMIC RESULTS: ULTRA COMPACT GRID OR LIST WITH SWIPE SUPPORT */}
           {filteredTools.length > 0 ? (
             viewMode === "grid" ? (
 
@@ -420,11 +563,19 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
                   const ToolIcon = getToolIcon(tool.id);
                   const isFav = favorites.includes(tool.id);
                   const count = playCounts[tool.id] || 0;
+                  const currentSwipeX = swipeOffset && swipeOffset.id === tool.id ? swipeOffset.x : 0;
 
                   return (
                     <div
                       key={tool.id}
-                      className="group relative bg-card hover:bg-muted/40 rounded-xl border border-border/80 p-2.5 hover:border-primary/40 transition-all flex items-center justify-between gap-2 overflow-hidden shadow-2xs"
+                      onTouchStart={(e) => handleTouchStart(tool.id, e)}
+                      onTouchMove={(e) => handleTouchMove(tool.id, e)}
+                      onTouchEnd={() => handleTouchEnd(tool.id, tool.href)}
+                      style={{
+                        transform: currentSwipeX ? `translateX(${currentSwipeX}px)` : undefined,
+                        transition: currentSwipeX ? "none" : "transform 0.2s ease",
+                      }}
+                      className="group relative bg-card hover:bg-muted/40 rounded-xl border border-border/80 p-2.5 hover:border-primary/40 transition-all flex items-center justify-between gap-2 overflow-hidden shadow-2xs select-none touch-pan-y"
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
                         <div className="w-8 h-8 bg-primary/10 text-primary rounded-lg flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-all">
@@ -472,62 +623,83 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
               </div>
             ) : (
 
-              /* ULTRA COMPACT LIST MODE (SINGLE DENSE LINE PER TOOL) */
-              <div className="space-y-1">
+              /* ULTRA COMPACT LIST MODE WITH TOUCH SWIPE FEEDBACK */
+              <div className="space-y-1 overflow-hidden">
                 {filteredTools.map((tool) => {
                   const ToolIcon = getToolIcon(tool.id);
                   const isFav = favorites.includes(tool.id);
                   const count = playCounts[tool.id] || 0;
+                  const currentSwipeX = swipeOffset && swipeOffset.id === tool.id ? swipeOffset.x : 0;
 
                   return (
-                    <div
-                      key={tool.id}
-                      className="group bg-card hover:bg-muted/40 rounded-xl border border-border/60 px-2.5 py-1.5 hover:border-primary/30 transition-all flex items-center justify-between gap-2"
-                    >
-                      {/* Left: Icon & Name */}
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <div className="w-6 h-6 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
-                          <ToolIcon size={13} />
-                        </div>
+                    <div key={tool.id} className="relative rounded-xl overflow-hidden bg-muted/20">
 
-                        <div className="min-w-0 flex items-center gap-2">
-                          <h4 className="text-xs font-black text-foreground group-hover:text-primary transition-colors truncate">
-                            {tool.name}
-                          </h4>
-                          <span className="text-[8px] font-extrabold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.2 rounded-md shrink-0">
-                            {tool.category}
-                          </span>
-                        </div>
+                      {/* Swipe Underlay Background Actions (Mobile) */}
+                      <div className="absolute inset-0 flex items-center justify-between px-4 text-xs font-extrabold pointer-events-none">
+                        <span className="flex items-center gap-1 text-pink-500">
+                          <Heart size={14} className="fill-current" /> Favorito
+                        </span>
+                        <span className="flex items-center gap-1 text-emerald-500">
+                          Abrir <Play size={12} fill="currentColor" />
+                        </span>
                       </div>
 
-                      {/* Right: Actions */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {count > 0 && (
-                          <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1 py-0.2 rounded-md flex items-center gap-0.5">
-                            <Flame size={8} /> {count}
-                          </span>
-                        )}
+                      {/* Foreground Item with Touch Event Handlers */}
+                      <div
+                        onTouchStart={(e) => handleTouchStart(tool.id, e)}
+                        onTouchMove={(e) => handleTouchMove(tool.id, e)}
+                        onTouchEnd={() => handleTouchEnd(tool.id, tool.href)}
+                        style={{
+                          transform: currentSwipeX ? `translateX(${currentSwipeX}px)` : undefined,
+                          transition: currentSwipeX ? "none" : "transform 0.2s ease",
+                        }}
+                        className="group bg-card hover:bg-muted/40 rounded-xl border border-border/60 px-2.5 py-1.5 hover:border-primary/30 transition-all flex items-center justify-between gap-2 relative z-10 select-none touch-pan-y"
+                      >
+                        {/* Left: Icon & Name */}
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-6 h-6 bg-primary/10 text-primary rounded-md flex items-center justify-center shrink-0">
+                            <ToolIcon size={13} />
+                          </div>
 
-                        <button
-                          onClick={(e) => toggleFavorite(tool.id, e)}
-                          className={`p-1 rounded-md border transition-all ${
-                            isFav
-                              ? "bg-pink-600/15 border-pink-500 text-pink-500"
-                              : "bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted"
-                          }`}
-                        >
-                          <Heart size={10} className={isFav ? "fill-current" : ""} />
-                        </button>
+                          <div className="min-w-0 flex items-center gap-2">
+                            <h4 className="text-xs font-black text-foreground group-hover:text-primary transition-colors truncate">
+                              {tool.name}
+                            </h4>
+                            <span className="text-[8px] font-extrabold uppercase tracking-wider text-primary bg-primary/10 px-1.5 py-0.2 rounded-md shrink-0">
+                              {tool.category}
+                            </span>
+                          </div>
+                        </div>
 
-                        <Link
-                          href={tool.href}
-                          onClick={() => registerLaunch(tool.id)}
-                          className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-[10px] rounded-lg shadow-2xs hover:scale-[1.02] active:scale-[0.98] transition-all"
-                        >
-                          <Play size={8} fill="currentColor" /> Abrir
-                        </Link>
+                        {/* Right: Actions */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          {count > 0 && (
+                            <span className="text-[9px] font-bold text-emerald-500 bg-emerald-500/10 px-1 py-0.2 rounded-md flex items-center gap-0.5">
+                              <Flame size={8} /> {count}
+                            </span>
+                          )}
+
+                          <button
+                            onClick={(e) => toggleFavorite(tool.id, e)}
+                            className={`p-1 rounded-md border transition-all ${
+                              isFav
+                                ? "bg-pink-600/15 border-pink-500 text-pink-500"
+                                : "bg-muted/40 border-border/60 text-muted-foreground hover:text-foreground hover:bg-muted"
+                            }`}
+                          >
+                            <Heart size={10} className={isFav ? "fill-current" : ""} />
+                          </button>
+
+                          <Link
+                            href={tool.href}
+                            onClick={() => registerLaunch(tool.id)}
+                            className="inline-flex items-center justify-center gap-1 px-2 py-1 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-[10px] rounded-lg shadow-2xs hover:scale-[1.02] active:scale-[0.98] transition-all"
+                          >
+                            <Play size={8} fill="currentColor" /> Abrir
+                          </Link>
+                        </div>
+
                       </div>
-
                     </div>
                   );
                 })}
