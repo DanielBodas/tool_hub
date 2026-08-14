@@ -5,8 +5,8 @@ import { usePathname } from "next/navigation";
 export function AppFooter() {
   const pathname = usePathname();
 
-  // Hide footer inside tools for maximum workspace space
-  if (pathname?.startsWith("/tools/")) {
+  // Hide footer inside tools and login page for maximum workspace space and zero mobile scroll
+  if (pathname?.startsWith("/tools/") || pathname === "/login") {
     return null;
   }
 
