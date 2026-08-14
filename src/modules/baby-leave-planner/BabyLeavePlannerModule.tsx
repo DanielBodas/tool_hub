@@ -181,6 +181,33 @@ export function BabyLeavePlannerModule() {
   // Holiday Mode Toggle
   const [holidayMode, setHolidayMode] = useState(false);
 
+  // Custom Styled Confirmation & Alert Modal State (replaces native browser alert/confirm)
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    isDanger?: boolean;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+  });
+
+  const showAlert = (title: string, message: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title,
+      message,
+      confirmText: "Entendido",
+      cancelText: "",
+      isDanger: false,
+      onConfirm: () => setConfirmModal((prev) => ({ ...prev, isOpen: false })),
+    });
+  };
+
   // Sidebar Inline Balance Editing States
   const [editingBalanceKey, setEditingBalanceKey] = useState<string | null>(null); // "person-type"
   const [editTypeVal, setEditTypeVal] = useState("");
@@ -438,7 +465,7 @@ export function BabyLeavePlannerModule() {
     } else {
       // Save Permits
       if (!selectedType) {
-        alert("Selecciona un tipo de permiso");
+        showAlert("Tipo de Permiso Requerido", "Por favor, selecciona un tipo de permiso.");
         return;
       }
 
@@ -502,8 +529,6 @@ export function BabyLeavePlannerModule() {
   const handleDeleteEvents = () => {
     const datesToProcess = selectedDates.length > 0 ? selectedDates : (lastClickedDate ? [lastClickedDate] : []);
     if (datesToProcess.length === 0) return;
-
-    if (!confirm(`¿Borrar elementos de ${datesToProcess.length} día(s)?`)) return;
 
     if (selectedPerson === "Festivo") {
       // Delete Holidays
@@ -581,7 +606,7 @@ export function BabyLeavePlannerModule() {
     const total = parseFloat(sidebarAddTotal);
 
     if (!type || isNaN(total) || total <= 0) {
-      alert("Por favor, introduce un nombre válido y un número de días/semanas mayor que cero.");
+      showAlert("Datos Incompletos", "Por favor, introduce un nombre válido y un número mayor que cero.");
       return;
     }
 
@@ -591,7 +616,7 @@ export function BabyLeavePlannerModule() {
     );
 
     if (exists) {
-      alert("Ya existe un saldo con ese nombre para esta persona.");
+      showAlert("Permiso Duplicado", "Ya existe un saldo con ese nombre para esta persona.");
       return;
     }
 
@@ -629,7 +654,7 @@ export function BabyLeavePlannerModule() {
     const newTotal = parseFloat(editTotalVal);
 
     if (!newType || isNaN(newTotal) || newTotal <= 0) {
-      alert("Por favor, introduce un nombre válido y un número de días/semanas mayor que cero.");
+      showAlert("Datos Incompletos", "Por favor, introduce un nombre válido y un número mayor que cero.");
       return;
     }
 
@@ -639,7 +664,7 @@ export function BabyLeavePlannerModule() {
         (b) => b.person === person && b.type.toLowerCase() === newType.toLowerCase()
       );
       if (exists) {
-        alert("Ya existe un saldo con ese nombre para esta persona.");
+        showAlert("Permiso Duplicado", "Ya existe un saldo con ese nombre para esta persona.");
         return;
       }
     }
@@ -679,20 +704,23 @@ export function BabyLeavePlannerModule() {
   };
 
   const handleDeleteBalance = (person: string, type: string) => {
-    if (
-      !confirm(
-        `¿Estás seguro de que quieres eliminar la sección "${type}" de ${person}? Se borrarán también todos los días asignados en el calendario.`
-      )
-    )
-      return;
-
-    setGlobalData((prev) => ({
-      ...prev,
-      balances: prev.balances.filter((b) => !(b.person === person && b.type === type)),
-      events: prev.events.filter((e) => !(e.person === person && e.type === type)),
-    }));
-
-    setEditingBalanceKey(null);
+    setConfirmModal({
+      isOpen: true,
+      title: "Eliminar Permiso",
+      message: `¿Estás seguro de que quieres eliminar la sección "${type}" de ${person}? Se borrarán también todos los días asignados en el calendario.`,
+      confirmText: "Eliminar",
+      cancelText: "Cancelar",
+      isDanger: true,
+      onConfirm: () => {
+        setGlobalData((prev) => ({
+          ...prev,
+          balances: prev.balances.filter((b) => !(b.person === person && b.type === type)),
+          events: prev.events.filter((e) => !(e.person === person && e.type === type)),
+        }));
+        setEditingBalanceKey(null);
+        setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+      },
+    });
   };
 
   // Sync / Refresh handler
@@ -2160,6 +2188,54 @@ export function BabyLeavePlannerModule() {
                   Actualizar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- CUSTOM CONFIRMATION & ALERT MODAL (Replaces browser default popups) --- */}
+      {confirmModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[4000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-700 pb-3">
+              <h3 className="text-base font-black text-slate-800 dark:text-slate-100">
+                {confirmModal.title}
+              </h3>
+              <button
+                onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed font-medium">
+              {confirmModal.message}
+            </p>
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+              {confirmModal.cancelText && (
+                <button
+                  className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-xs cursor-pointer"
+                  onClick={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
+                >
+                  {confirmModal.cancelText}
+                </button>
+              )}
+              <button
+                className={`px-4 py-2 rounded-xl text-white font-bold transition text-xs shadow-xs cursor-pointer ${
+                  confirmModal.isDanger
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-indigo-600 hover:bg-indigo-700"
+                }`}
+                onClick={() => {
+                  if (confirmModal.onConfirm) {
+                    confirmModal.onConfirm();
+                  } else {
+                    setConfirmModal((prev) => ({ ...prev, isOpen: false }));
+                  }
+                }}
+              >
+                {confirmModal.confirmText || "Aceptar"}
+              </button>
             </div>
           </div>
         </div>
