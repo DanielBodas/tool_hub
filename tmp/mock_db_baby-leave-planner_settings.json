@@ -1,7 +1,7 @@
 [
   {
     "id": "default_family",
-    "birthDate": null,
+    "birthDate": "2025-05-15",
     "events": [],
     "balances": [
       {
@@ -30,6 +30,6 @@
       }
     ],
     "festivos": [],
-    "updatedAt": "2026-08-15T09:03:25.045Z"
+    "updatedAt": "2026-08-15T10:13:49.268Z"
   }
 ]

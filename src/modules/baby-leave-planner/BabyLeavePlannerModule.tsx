@@ -855,9 +855,19 @@ export function BabyLeavePlannerModule() {
             const isEditing = editingBalanceKey === `${person}-${bal.type}`;
 
             // Calculate used days counting from globalData.events
-            const usedDays = globalData.events.filter(
+            let usedDays = globalData.events.filter(
               (e) => e.person === bal.person && e.type === bal.type
             ).length;
+
+            // For "Permiso Nacimiento", the 19 total weeks include the 6 mandatory weeks (42 days).
+            // When birthDate is set, 42 mandatory days are auto-consumed, plus any additional scheduled events after the mandatory period.
+            if (bal.type === "Permiso Nacimiento" && globalData.birthDate && mandatoryEndStr) {
+              const extraEventsCount = globalData.events.filter((e) => {
+                if (e.person !== bal.person || e.type !== bal.type) return false;
+                return e.date > mandatoryEndStr;
+              }).length;
+              usedDays = 42 + extraEventsCount;
+            }
 
             const total = Number(bal.total);
             let used = 0;
