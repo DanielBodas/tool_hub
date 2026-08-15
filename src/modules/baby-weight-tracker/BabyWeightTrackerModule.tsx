@@ -73,6 +73,7 @@ export function BabyWeightTrackerModule() {
 
   // Settings Config states
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+  const [configTab, setConfigTab] = useState<"sites" | "clothing" | "blankets">("sites");
   const [newSite, setNewSite] = useState<string>("");
 
   const [newClothingName, setNewClothingName] = useState<string>("");
@@ -1607,136 +1608,175 @@ export function BabyWeightTrackerModule() {
               </button>
             </div>
 
+            {/* Modal Internal Navigation Sub-Tabs */}
+            <div className="grid grid-cols-3 bg-muted p-1 rounded-xl gap-1 mt-3 shrink-0 text-center">
+              <button
+                onClick={() => setConfigTab("sites")}
+                className={`py-1.5 text-[11px] font-extrabold rounded-lg transition cursor-pointer ${
+                  configTab === "sites"
+                    ? "bg-card text-foreground shadow-xs border border-border/40"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                📍 Sitios
+              </button>
+              <button
+                onClick={() => setConfigTab("clothing")}
+                className={`py-1.5 text-[11px] font-extrabold rounded-lg transition cursor-pointer ${
+                  configTab === "clothing"
+                    ? "bg-card text-foreground shadow-xs border border-border/40"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                👕 Ropa
+              </button>
+              <button
+                onClick={() => setConfigTab("blankets")}
+                className={`py-1.5 text-[11px] font-extrabold rounded-lg transition cursor-pointer ${
+                  configTab === "blankets"
+                    ? "bg-card text-foreground shadow-xs border border-border/40"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                🧶 Mantas
+              </button>
+            </div>
+
             {/* Scrollable Modal Content */}
             <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1 scrollbar-thin">
               {/* Sites Section */}
-              <div className="space-y-2">
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                1. Sitios de Pesaje:
-              </span>
-              <div className="space-y-1.5 max-h-[100px] overflow-y-auto pr-1">
-                {sites.map((s) => (
-                  <div key={s} className="flex items-center justify-between p-2 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
-                    <span>{s}</span>
+              {configTab === "sites" && (
+                <div className="space-y-3 animate-fade-in">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                    Básculas y Sitios Configurados:
+                  </span>
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                    {sites.map((s) => (
+                      <div key={s} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
+                        <span>{s}</span>
+                        <button
+                          onClick={() => handleRemoveSite(s)}
+                          disabled={sites.length <= 1}
+                          className="p-1 text-destructive/80 hover:text-destructive disabled:opacity-30 cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-1 border-t border-border/40">
+                    <input
+                      type="text"
+                      placeholder="Nueva báscula"
+                      value={newSite}
+                      onChange={(e) => setNewSite(e.target.value)}
+                      className="flex-1 px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                    />
                     <button
-                      onClick={() => handleRemoveSite(s)}
-                      disabled={sites.length <= 1}
-                      className="p-1 text-destructive/80 hover:text-destructive disabled:opacity-30 cursor-pointer"
+                      onClick={handleAddSite}
+                      className="px-3.5 py-2 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer text-xs"
                     >
-                      <Trash2 size={13} />
+                      Añadir
                     </button>
                   </div>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Nueva báscula"
-                  value={newSite}
-                  onChange={(e) => setNewSite(e.target.value)}
-                  className="flex-1 px-3 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
-                />
-                <button
-                  onClick={handleAddSite}
-                  className="px-3 py-1.5 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer"
-                >
-                  Añadir
-                </button>
-              </div>
-            </div>
-
-            {/* Clothing presets section */}
-            <div className="space-y-2 border-t border-border pt-3">
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                2. Vestimentas y márgenes:
-              </span>
-              <div className="space-y-1.5 max-h-[100px] overflow-y-auto pr-1">
-                {clothing.map((preset) => (
-                  <div key={preset.name} className="flex items-center justify-between p-2 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
-                    <span>{preset.name} (-{(preset.margin * 1000).toFixed(0)}g)</span>
-                    <button
-                      onClick={() => handleRemoveClothing(preset.name)}
-                      className="p-1 text-destructive/80 hover:text-destructive cursor-pointer"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Ej. Ropa ligera"
-                    value={newClothingName}
-                    onChange={(e) => setNewClothingName(e.target.value)}
-                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
-                  />
-                  <input
-                    type="number"
-                    step="0.005"
-                    placeholder="Margen (kg)"
-                    value={newClothingMargin}
-                    onChange={(e) => setNewClothingMargin(e.target.value)}
-                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
-                  />
                 </div>
-                <button
-                  onClick={handleAddClothing}
-                  className="w-full py-1.5 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1"
-                >
-                  <Plus size={13} />
-                  Añadir Vestimenta
-                </button>
-              </div>
-            </div>
+              )}
 
-            {/* Blanket presets section */}
-            <div className="space-y-2 border-t border-border pt-3">
-              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                3. Mantas y Trapos:
-              </span>
-              <div className="space-y-1.5 max-h-[100px] overflow-y-auto pr-1">
-                {blankets.map((preset) => (
-                  <div key={preset.name} className="flex items-center justify-between p-2 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
-                    <span>{preset.name} (-{(preset.margin * 1000).toFixed(0)}g)</span>
+              {/* Clothing presets section */}
+              {configTab === "clothing" && (
+                <div className="space-y-3 animate-fade-in">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                    Presets de Ropa y Márgenes (kg):
+                  </span>
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                    {clothing.map((preset) => (
+                      <div key={preset.name} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
+                        <span>{preset.name} (-{(preset.margin * 1000).toFixed(0)}g)</span>
+                        <button
+                          onClick={() => handleRemoveClothing(preset.name)}
+                          className="p-1 text-destructive/80 hover:text-destructive cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2 pt-1 border-t border-border/40 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ej. Ropa ligera"
+                        value={newClothingName}
+                        onChange={(e) => setNewClothingName(e.target.value)}
+                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                      />
+                      <input
+                        type="number"
+                        step="0.005"
+                        placeholder="Margen (kg)"
+                        value={newClothingMargin}
+                        onChange={(e) => setNewClothingMargin(e.target.value)}
+                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
+                      />
+                    </div>
                     <button
-                      onClick={() => handleRemoveBlanket(preset.name)}
-                      className="p-1 text-destructive/80 hover:text-destructive cursor-pointer"
+                      onClick={handleAddClothing}
+                      className="w-full py-2 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 text-xs"
                     >
-                      <Trash2 size={13} />
+                      <Plus size={14} />
+                      Añadir Vestimenta
                     </button>
                   </div>
-                ))}
-              </div>
-              <div className="space-y-1.5 text-xs">
-                <div className="grid grid-cols-2 gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Ej. Toalla fina"
-                    value={newBlanketName}
-                    onChange={(e) => setNewBlanketName(e.target.value)}
-                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
-                  />
-                  <input
-                    type="number"
-                    step="0.005"
-                    placeholder="Margen (kg)"
-                    value={newBlanketMargin}
-                    onChange={(e) => setNewBlanketMargin(e.target.value)}
-                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
-                  />
                 </div>
-                <button
-                  onClick={handleAddBlanket}
-                  className="w-full py-1.5 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1"
-                >
-                  <Plus size={13} />
-                  Añadir Manta/Trapo
-                </button>
-              </div>
-            </div>
+              )}
 
+              {/* Blanket presets section */}
+              {configTab === "blankets" && (
+                <div className="space-y-3 animate-fade-in">
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                    Presets de Mantas/Trapos y Márgenes (kg):
+                  </span>
+                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+                    {blankets.map((preset) => (
+                      <div key={preset.name} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
+                        <span>{preset.name} (-{(preset.margin * 1000).toFixed(0)}g)</span>
+                        <button
+                          onClick={() => handleRemoveBlanket(preset.name)}
+                          className="p-1 text-destructive/80 hover:text-destructive cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="space-y-2 pt-1 border-t border-border/40 text-xs">
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="Ej. Toalla fina"
+                        value={newBlanketName}
+                        onChange={(e) => setNewBlanketName(e.target.value)}
+                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                      />
+                      <input
+                        type="number"
+                        step="0.005"
+                        placeholder="Margen (kg)"
+                        value={newBlanketMargin}
+                        onChange={(e) => setNewBlanketMargin(e.target.value)}
+                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
+                      />
+                    </div>
+                    <button
+                      onClick={handleAddBlanket}
+                      className="w-full py-2 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                    >
+                      <Plus size={14} />
+                      Añadir Manta/Trapo
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
