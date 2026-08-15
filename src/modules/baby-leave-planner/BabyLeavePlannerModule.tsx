@@ -238,6 +238,7 @@ export function BabyLeavePlannerModule() {
   const [sidebarAddType, setSidebarAddType] = useState("");
   const [sidebarAddTotal, setSidebarAddTotal] = useState("");
   const [sidebarAddFreq, setSidebarAddFreq] = useState<"Diario" | "Semanal">("Diario");
+  const [sidebarAddGenWeeks, setSidebarAddGenWeeks] = useState(true);
 
   // Modal States
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -668,14 +669,43 @@ export function BabyLeavePlannerModule() {
       frecuencia: sidebarAddFreq,
     };
 
-    setGlobalData((prev) => ({
-      ...prev,
-      balances: [...prev.balances, newBalance],
-    }));
+    setGlobalData((prev) => {
+      let newEvents = [...prev.events];
+
+      // Auto generate weeks in calendar if option selected and birthDate exists
+      if (sidebarAddGenWeeks && prev.birthDate && sidebarAddFreq === "Semanal") {
+        const birthDate = new Date(prev.birthDate);
+        const daysCount = Math.round(total * 7);
+
+        const generated: EventItem[] = [];
+        for (let i = 0; i < daysCount; i++) {
+          const d = new Date(birthDate);
+          d.setDate(birthDate.getDate() + i);
+          generated.push({
+            date: formatDateStr(d),
+            person,
+            type,
+          });
+        }
+
+        const newDatesSet = new Set(generated.map((e) => e.date));
+        newEvents = [
+          ...newEvents.filter((e) => !(e.person === person && e.type === type && newDatesSet.has(e.date))),
+          ...generated,
+        ].sort((a, b) => a.date.localeCompare(b.date));
+      }
+
+      return {
+        ...prev,
+        balances: [...prev.balances, newBalance],
+        events: newEvents,
+      };
+    });
 
     // Reset Form
     setSidebarAddType("");
     setSidebarAddTotal("");
+    setSidebarAddGenWeeks(true);
     if (person === "Madre") setShowAddFormMom(false);
     else setShowAddFormDad(false);
   };
@@ -884,19 +914,12 @@ export function BabyLeavePlannerModule() {
           </span>
           <div className="flex items-center gap-1.5">
             <button
-              onClick={handleSyncParentsConfig}
-              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer flex items-center gap-1 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700"
-              title="Igualar permisos entre Madre y Padre"
-            >
-              <RefreshCw size={11} />
-              <span>Igualar Padres</span>
-            </button>
-            <button
               onClick={() => setShowAddForm(!showAddForm)}
-              className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
-              title="Añadir saldo de días"
+              className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer flex items-center gap-1 text-xs font-extrabold border border-indigo-200/60 dark:border-indigo-800/60"
+              title="Añadir permiso"
             >
-              <Plus size={16} />
+              <Plus size={14} />
+              <span>Añadir Permiso</span>
             </button>
           </div>
         </div>
@@ -955,7 +978,19 @@ export function BabyLeavePlannerModule() {
                 required
               />
             </div>
-            <div className="flex gap-2 text-xs">
+            <div className="flex items-center gap-2 pt-0.5">
+              <input
+                type="checkbox"
+                id={`genWeeks-${person}`}
+                checked={sidebarAddGenWeeks}
+                onChange={(e) => setSidebarAddGenWeeks(e.target.checked)}
+                className="w-4 h-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
+              />
+              <label htmlFor={`genWeeks-${person}`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                ⚡ Generar en calendario al añadir
+              </label>
+            </div>
+            <div className="flex gap-2 text-xs pt-1">
               <button
                 type="button"
                 className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold cursor-pointer"
@@ -1138,24 +1173,6 @@ export function BabyLeavePlannerModule() {
                   </div>
                 </div>
 
-                {/* Generate Leave Weeks Action Button (If Permiso Nacimiento) */}
-                {bal.type === "Permiso Nacimiento" && (
-                  <div className="mb-2">
-                    <button
-                      onClick={() =>
-                        setGenerateModal({
-                          isOpen: true,
-                          person,
-                          type: bal.type,
-                        })
-                      }
-                      className="w-full py-1.5 px-2 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/80 rounded-lg text-indigo-700 dark:text-indigo-200 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
-                    >
-                      <span>⚡</span>
-                      <span>Generar Semanas en Calendario</span>
-                    </button>
-                  </div>
-                )}
 
                 {/* Compact Metrics Row: Available vs Total/Used */}
                 <div className="flex items-baseline justify-between px-2.5 py-1.5 mb-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg border border-slate-200/80 dark:border-slate-700/80">

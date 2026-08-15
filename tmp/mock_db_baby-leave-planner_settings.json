@@ -1,0 +1,35 @@
+[
+  {
+    "id": "default_family",
+    "birthDate": "2025-05-15",
+    "events": [],
+    "balances": [
+      {
+        "person": "Madre",
+        "type": "Permiso Nacimiento",
+        "total": 19,
+        "frecuencia": "Semanal"
+      },
+      {
+        "person": "Madre",
+        "type": "Lactancia",
+        "total": 15,
+        "frecuencia": "Diario"
+      },
+      {
+        "person": "Padre",
+        "type": "Permiso Nacimiento",
+        "total": 19,
+        "frecuencia": "Semanal"
+      },
+      {
+        "person": "Padre",
+        "type": "Lactancia",
+        "total": 15,
+        "frecuencia": "Diario"
+      }
+    ],
+    "festivos": [],
+    "updatedAt": "2026-08-15T23:17:04.465Z"
+  }
+]
