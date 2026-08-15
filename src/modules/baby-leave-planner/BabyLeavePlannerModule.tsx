@@ -876,7 +876,7 @@ export function BabyLeavePlannerModule() {
                   setSidebarAddTotal("19");
                   setSidebarAddFreq("Semanal");
                 }}
-                className="text-[9px] font-extrabold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 rounded-md border border-indigo-200 dark:border-indigo-800 transition cursor-pointer"
+                className="text-[10px] font-extrabold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-md border border-indigo-200 dark:border-indigo-700 transition cursor-pointer"
                 title="Cargar ajuste predeterminado de 19 semanas (6 obligatorias + 13 flexibles)"
               >
                 ✨ Preset 19 Semanas
@@ -884,36 +884,36 @@ export function BabyLeavePlannerModule() {
             </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Frecuencia</label>
                 <select
                   value={sidebarAddFreq}
                   onChange={(e) => setSidebarAddFreq(e.target.value as "Diario" | "Semanal")}
-                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
                 >
                   <option value="Diario">Diario</option>
                   <option value="Semanal">Semanal</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Días/Semanas</label>
+                <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Días/Semanas</label>
                 <input
                   type="number"
                   placeholder="Ej. 15"
                   value={sidebarAddTotal}
                   onChange={(e) => setSidebarAddTotal(e.target.value)}
-                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                  className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold text-center"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre del Permiso</label>
+              <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Nombre del Permiso</label>
               <input
                 type="text"
                 placeholder="Ej. Permiso Nacimiento"
                 value={sidebarAddType}
                 onChange={(e) => setSidebarAddType(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 outline-none font-semibold"
+                className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold outline-none"
                 required
               />
             </div>
@@ -982,36 +982,36 @@ export function BabyLeavePlannerModule() {
             if (isEditing) {
               return (
                 <div key={idx} className="p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 animate-in fade-in duration-150">
-                  <div className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Editar Permiso</div>
+                  <div className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Editar Permiso</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                      <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Frecuencia</label>
                       <select
                         value={editFreqVal}
                         onChange={(e) => setEditFreqVal(e.target.value as "Diario" | "Semanal")}
-                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
                       >
                         <option value="Diario">Diario</option>
                         <option value="Semanal">Semanal</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Cantidad</label>
+                      <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Cantidad</label>
                       <input
                         type="number"
                         value={editTotalVal}
                         onChange={(e) => setEditTotalVal(e.target.value)}
-                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold text-center"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Nombre</label>
+                    <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Nombre</label>
                     <input
                       type="text"
                       value={editTypeVal}
                       onChange={(e) => setEditTypeVal(e.target.value)}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                      className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
                     />
                   </div>
                   <div className="flex justify-between items-center gap-2 text-xs pt-1.5">
@@ -1047,55 +1047,55 @@ export function BabyLeavePlannerModule() {
             return (
               <div
                 key={idx}
-                className={`group relative bg-white/95 dark:bg-slate-850/95 backdrop-blur-sm p-3 rounded-xl border transition-all duration-200 shadow-2xs hover:shadow-xs ${
+                className={`group relative bg-white dark:bg-slate-900 p-3.5 rounded-xl border transition-all duration-200 shadow-xs ${
                   isLow
-                    ? "border-red-200 dark:border-red-900/60 bg-red-50/30 dark:bg-red-950/20"
-                    : "border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700"
+                    ? "border-red-300 dark:border-red-900/80 bg-red-50/50 dark:bg-red-950/30"
+                    : "border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600"
                 }`}
               >
                 {/* Header row: Title, Badge and Action Toolbar */}
                 <div className="flex items-center justify-between gap-1.5 mb-2">
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    <span className="font-extrabold text-[11px] tracking-tight text-slate-800 dark:text-slate-100 truncate" title={bal.type}>
+                    <span className="font-black text-xs tracking-tight text-slate-900 dark:text-slate-100 truncate" title={bal.type}>
                       {bal.type}
                     </span>
-                    <span className="text-[8px] font-extrabold px-1 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase tracking-wider shrink-0 border border-slate-200/60 dark:border-slate-700/60">
                       {bal.frecuencia}
                     </span>
                   </div>
 
                   {/* Sleek Action Toolbar: Reorder Up/Down, Edit, Delete */}
-                  <div className="flex items-center gap-0.5 p-0.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                  <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
                     <button
                       onClick={() => moveBalance(person, "up", idx)}
                       disabled={idx === 0}
-                      className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
+                      className="p-1 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
                       title="Mover arriba"
                     >
-                      <ArrowUp size={11} />
+                      <ArrowUp size={12} />
                     </button>
                     <button
                       onClick={() => moveBalance(person, "down", idx)}
                       disabled={idx === personBalances.length - 1}
-                      className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
+                      className="p-1 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
                       title="Mover abajo"
                     >
-                      <ArrowDown size={11} />
+                      <ArrowDown size={12} />
                     </button>
-                    <span className="w-px h-2.5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+                    <span className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-0.5" />
                     <button
                       onClick={() => startEditingBalance(person, bal.type)}
-                      className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                      className="p-1 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
                       title="Editar saldo"
                     >
-                      <Edit2 size={11} />
+                      <Edit2 size={12} />
                     </button>
                     <button
                       onClick={() => handleDeleteBalance(person, bal.type)}
-                      className="p-1 rounded text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      className="p-1 rounded text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
                       title="Eliminar saldo"
                     >
-                      <Trash2 size={11} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
@@ -1111,7 +1111,7 @@ export function BabyLeavePlannerModule() {
                           type: bal.type,
                         })
                       }
-                      className="w-full py-1.5 px-2 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/80 rounded-lg text-indigo-600 dark:text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                      className="w-full py-1.5 px-2 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-200 dark:border-indigo-700/80 rounded-lg text-indigo-700 dark:text-indigo-200 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
                     >
                       <span>⚡</span>
                       <span>Generar Semanas en Calendario</span>
@@ -1120,22 +1120,22 @@ export function BabyLeavePlannerModule() {
                 )}
 
                 {/* Compact Metrics Row: Available vs Total/Used */}
-                <div className="flex items-baseline justify-between px-2.5 py-1.5 mb-1.5 bg-slate-50 dark:bg-slate-900/80 rounded-lg border border-slate-100 dark:border-slate-800/80">
-                  <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                <div className="flex items-baseline justify-between px-2.5 py-1.5 mb-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     Disponibles
                   </span>
                   <div className="flex items-baseline gap-1">
-                    <span className={`text-base font-black leading-none tabular-nums tracking-tight ${isLow ? "text-red-500" : "text-slate-900 dark:text-slate-100"}`}>
+                    <span className={`text-base font-black leading-none tabular-nums tracking-tight ${isLow ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"}`}>
                       {remaining}
                     </span>
-                    <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase">
+                    <span className="text-[9px] font-extrabold text-slate-600 dark:text-slate-400 uppercase">
                       {unit}
                     </span>
                   </div>
                 </div>
 
                 {/* Sleek Compact Progress bar */}
-                <div className="h-1.5 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden my-1.5">
+                <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden my-2 border border-slate-200/50 dark:border-slate-700/50">
                   <div
                     className={`h-full rounded-full transition-all duration-500 ease-out ${
                       isMom
@@ -1147,9 +1147,9 @@ export function BabyLeavePlannerModule() {
                 </div>
 
                 {/* Compact Footer stats */}
-                <div className="flex items-center justify-between text-[9px] font-bold text-slate-400 dark:text-slate-500">
-                  <span>Usados: <strong className="text-slate-700 dark:text-slate-300">{used} {unit}</strong></span>
-                  <span>Total: <strong className="text-slate-700 dark:text-slate-300">{total} {unit}</strong></span>
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                  <span>Usados: <strong className="text-slate-900 dark:text-slate-100 font-black">{used} {unit}</strong></span>
+                  <span>Total: <strong className="text-slate-900 dark:text-slate-100 font-black">{total} {unit}</strong></span>
                 </div>
               </div>
             );
