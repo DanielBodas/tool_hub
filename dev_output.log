@@ -1,0 +1,13 @@
+
+> tool-app@0.1.0 start
+> next start
+
+▲ Next.js 16.2.9
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 208ms
+⚠️ Local MongoDB server is not running. Falling back to Mock DB Storage...
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
