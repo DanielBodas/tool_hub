@@ -22,7 +22,10 @@ import {
   Search,
   LineChart,
   History,
-  Activity
+  Activity,
+  MapPin,
+  Shirt,
+  Layers
 } from "lucide-react";
 
 interface WeightRecord {
@@ -1591,140 +1594,204 @@ export function BabyWeightTrackerModule() {
       {/* Config Customization Modal */}
       {showConfigModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in text-xs">
+          <div className="bg-card border border-border/90 w-full max-w-lg rounded-[2.5rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in text-xs">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <Sliders size={18} className="text-primary" />
-                <h3 className="font-extrabold text-foreground tracking-tight text-sm">
-                  Ajustes de Sitios, Vestimentas y Mantas
-                </h3>
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                  <Sliders size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-foreground tracking-tight text-sm leading-none">
+                    Configuración de Básculas y Márgenes
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground font-medium mt-1">
+                    Gestiona los parámetros para el cálculo del peso neto real
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="p-1 hover:bg-muted rounded-xl transition cursor-pointer"
+                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Internal Navigation Sub-Tabs */}
-            <div className="grid grid-cols-3 bg-muted p-1 rounded-xl gap-1 mt-3 shrink-0 text-center">
+            <div className="grid grid-cols-3 bg-muted/80 p-1 rounded-2xl gap-1 mt-3.5 shrink-0 text-center border border-border/30">
               <button
                 onClick={() => setConfigTab("sites")}
-                className={`py-1.5 text-[11px] font-extrabold rounded-lg transition cursor-pointer ${
+                className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   configTab === "sites"
-                    ? "bg-card text-foreground shadow-xs border border-border/40"
+                    ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                📍 Sitios
+                <MapPin size={13} />
+                <span>Sitios</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                  {sites.length}
+                </span>
               </button>
               <button
                 onClick={() => setConfigTab("clothing")}
-                className={`py-1.5 text-[11px] font-extrabold rounded-lg transition cursor-pointer ${
+                className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   configTab === "clothing"
-                    ? "bg-card text-foreground shadow-xs border border-border/40"
+                    ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                👕 Ropa
+                <Shirt size={13} />
+                <span>Ropa</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                  {clothing.length}
+                </span>
               </button>
               <button
                 onClick={() => setConfigTab("blankets")}
-                className={`py-1.5 text-[11px] font-extrabold rounded-lg transition cursor-pointer ${
+                className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                   configTab === "blankets"
-                    ? "bg-card text-foreground shadow-xs border border-border/40"
+                    ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                🧶 Mantas
+                <Layers size={13} />
+                <span>Mantas</span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                  {blankets.length}
+                </span>
               </button>
             </div>
 
             {/* Scrollable Modal Content */}
-            <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto py-3.5 space-y-4 pr-1 scrollbar-thin">
               {/* Sites Section */}
               {configTab === "sites" && (
-                <div className="space-y-3 animate-fade-in">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                    Básculas y Sitios Configurados:
-                  </span>
-                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
-                    {sites.map((s) => (
-                      <div key={s} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
-                        <span>{s}</span>
+                <div className="space-y-3.5 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                      Básculas y Ubicaciones
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">La primera báscula es la de referencia</span>
+                  </div>
+
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                    {sites.map((s, idx) => (
+                      <div
+                        key={s}
+                        className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (siteColors[s] || { hex: "#888" }).hex }} />
+                          <span className="truncate">{s}</span>
+                          {idx === 0 && (
+                            <span className="px-2 py-0.5 bg-primary/15 text-primary text-[9px] font-extrabold rounded-md uppercase tracking-wider shrink-0">
+                              Principal
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleRemoveSite(s)}
                           disabled={sites.length <= 1}
-                          className="p-1 text-destructive/80 hover:text-destructive disabled:opacity-30 cursor-pointer"
+                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition disabled:opacity-30 cursor-pointer shrink-0"
+                          title="Eliminar báscula"
                         >
                           <Trash2 size={14} />
                         </button>
                       </div>
                     ))}
                   </div>
-                  <div className="flex gap-2 pt-1 border-t border-border/40">
-                    <input
-                      type="text"
-                      placeholder="Nueva báscula"
-                      value={newSite}
-                      onChange={(e) => setNewSite(e.target.value)}
-                      className="flex-1 px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
-                    />
-                    <button
-                      onClick={handleAddSite}
-                      className="px-3.5 py-2 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer text-xs"
-                    >
-                      Añadir
-                    </button>
+
+                  {/* Add site card container */}
+                  <div className="p-3 bg-muted/20 border border-border/60 rounded-2xl space-y-2">
+                    <span className="text-[10px] font-bold text-foreground block">
+                      Añadir nueva báscula
+                    </span>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <MapPin size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          type="text"
+                          placeholder="Ej. Báscula Abuelos"
+                          value={newSite}
+                          onChange={(e) => setNewSite(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs"
+                        />
+                      </div>
+                      <button
+                        onClick={handleAddSite}
+                        className="px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl transition active:scale-95 cursor-pointer text-xs shrink-0 flex items-center gap-1"
+                      >
+                        <Plus size={14} />
+                        Añadir
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
 
               {/* Clothing presets section */}
               {configTab === "clothing" && (
-                <div className="space-y-3 animate-fade-in">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                    Presets de Ropa y Márgenes (kg):
+                <div className="space-y-3.5 animate-fade-in">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Presets de Vestimenta y Márgenes
                   </span>
-                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                     {clothing.map((preset) => (
-                      <div key={preset.name} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
-                        <span>{preset.name} (-{(preset.margin * 1000).toFixed(0)}g)</span>
-                        <button
-                          onClick={() => handleRemoveClothing(preset.name)}
-                          className="p-1 text-destructive/80 hover:text-destructive cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      <div
+                        key={preset.name}
+                        className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Shirt size={14} className="text-primary/70 shrink-0" />
+                          <span>{preset.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-mono font-extrabold text-[11px] rounded-full">
+                            -{(preset.margin * 1000).toFixed(0)}g
+                          </span>
+                          <button
+                            onClick={() => handleRemoveClothing(preset.name)}
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition cursor-pointer"
+                            title="Eliminar preset"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <div className="space-y-2 pt-1 border-t border-border/40 text-xs">
+
+                  {/* Add clothing card container */}
+                  <div className="p-3.5 bg-muted/20 border border-border/60 rounded-2xl space-y-2.5">
+                    <span className="text-[10px] font-bold text-foreground block">
+                      Añadir preset de vestimenta
+                    </span>
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="text"
-                        placeholder="Ej. Ropa ligera"
+                        placeholder="Nombre (ej. Pijama grueso)"
                         value={newClothingName}
                         onChange={(e) => setNewClothingName(e.target.value)}
-                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                        className="px-3 py-2 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs"
                       />
                       <input
                         type="number"
                         step="0.005"
-                        placeholder="Margen (kg)"
+                        placeholder="Margen en kg (ej. 0.08)"
                         value={newClothingMargin}
                         onChange={(e) => setNewClothingMargin(e.target.value)}
-                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
+                        className="px-3 py-2 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs font-mono"
                       />
                     </div>
                     <button
                       onClick={handleAddClothing}
-                      className="w-full py-2 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                      className="w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-xs shadow-xs"
                     >
                       <Plus size={14} />
-                      Añadir Vestimenta
+                      Añadir Presets Ropa
                     </button>
                   </div>
                 </div>
@@ -1732,47 +1799,65 @@ export function BabyWeightTrackerModule() {
 
               {/* Blanket presets section */}
               {configTab === "blankets" && (
-                <div className="space-y-3 animate-fade-in">
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                    Presets de Mantas/Trapos y Márgenes (kg):
+                <div className="space-y-3.5 animate-fade-in">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Presets de Mantas, Trapos y Toallas
                   </span>
-                  <div className="space-y-1.5 max-h-[160px] overflow-y-auto pr-1">
+
+                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
                     {blankets.map((preset) => (
-                      <div key={preset.name} className="flex items-center justify-between p-2.5 bg-muted/40 rounded-xl border border-border/50 text-xs font-bold text-foreground">
-                        <span>{preset.name} (-{(preset.margin * 1000).toFixed(0)}g)</span>
-                        <button
-                          onClick={() => handleRemoveBlanket(preset.name)}
-                          className="p-1 text-destructive/80 hover:text-destructive cursor-pointer"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                      <div
+                        key={preset.name}
+                        className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Layers size={14} className="text-primary/70 shrink-0" />
+                          <span>{preset.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-mono font-extrabold text-[11px] rounded-full">
+                            -{(preset.margin * 1000).toFixed(0)}g
+                          </span>
+                          <button
+                            onClick={() => handleRemoveBlanket(preset.name)}
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition cursor-pointer"
+                            title="Eliminar preset"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
-                  <div className="space-y-2 pt-1 border-t border-border/40 text-xs">
+
+                  {/* Add blanket card container */}
+                  <div className="p-3.5 bg-muted/20 border border-border/60 rounded-2xl space-y-2.5">
+                    <span className="text-[10px] font-bold text-foreground block">
+                      Añadir preset de manta / trapo
+                    </span>
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="text"
-                        placeholder="Ej. Toalla fina"
+                        placeholder="Nombre (ej. Manta de lana)"
                         value={newBlanketName}
                         onChange={(e) => setNewBlanketName(e.target.value)}
-                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                        className="px-3 py-2 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs"
                       />
                       <input
                         type="number"
                         step="0.005"
-                        placeholder="Margen (kg)"
+                        placeholder="Margen en kg (ej. 0.15)"
                         value={newBlanketMargin}
                         onChange={(e) => setNewBlanketMargin(e.target.value)}
-                        className="px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
+                        className="px-3 py-2 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs font-mono"
                       />
                     </div>
                     <button
                       onClick={handleAddBlanket}
-                      className="w-full py-2 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                      className="w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-xs shadow-xs"
                     >
                       <Plus size={14} />
-                      Añadir Manta/Trapo
+                      Añadir Preset Manta
                     </button>
                   </div>
                 </div>
@@ -1780,12 +1865,12 @@ export function BabyWeightTrackerModule() {
             </div>
 
             {/* Footer */}
-            <div className="pt-2 border-t border-border shrink-0">
+            <div className="pt-2.5 border-t border-border/60 shrink-0">
               <button
                 onClick={() => setShowConfigModal(false)}
-                className="w-full py-2.5 bg-muted text-foreground font-extrabold text-xs rounded-xl cursor-pointer"
+                className="w-full py-2.5 bg-muted hover:bg-muted/80 text-foreground font-black text-xs rounded-xl cursor-pointer transition active:scale-98"
               >
-                Cerrar
+                Cerrar Configuración
               </button>
             </div>
           </div>
