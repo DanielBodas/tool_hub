@@ -67,30 +67,39 @@ function formatDateStr(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+// Helper function to ensure balance symmetry between Madre and Padre
+function syncBalancesSymmetry(balances: BalanceItem[]): BalanceItem[] {
+  const result = [...balances];
+  const parents: ("Madre" | "Padre")[] = ["Madre", "Padre"];
+
+  parents.forEach((sourceParent) => {
+    const targetParent: "Madre" | "Padre" = sourceParent === "Madre" ? "Padre" : "Madre";
+    const sourceItems = result.filter((b) => b.person === sourceParent);
+
+    sourceItems.forEach((sourceBal) => {
+      const exists = result.some((b) => b.person === targetParent && b.type === sourceBal.type);
+      if (!exists) {
+        result.push({
+          person: targetParent,
+          type: sourceBal.type,
+          total: sourceBal.total,
+          frecuencia: sourceBal.frecuencia,
+        });
+      }
+    });
+  });
+
+  return result;
+}
+
 // Migration Helper
 function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
-  if (loadedData && Array.isArray(loadedData.events)) {
-    return {
-      birthDate: loadedData.birthDate || null,
-      events: loadedData.events,
-      balances: loadedData.balances || [],
-      festivos: loadedData.festivos || [],
-    };
-  }
-
   const defaultBalances: BalanceItem[] = [
     { person: "Madre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Madre", type: "Lactancia", total: 15, frecuencia: "Diario" },
     { person: "Padre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Padre", type: "Lactancia", total: 15, frecuencia: "Diario" },
   ];
-
-  const migrated: GlobalData = {
-    birthDate: loadedData?.birthDate || null,
-    events: [],
-    balances: defaultBalances,
-    festivos: [],
-  };
 
   if (loadedData && Array.isArray(loadedData.events)) {
     let loadedBalances = loadedData.balances || [];
@@ -112,10 +121,17 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
     return {
       birthDate: loadedData.birthDate || null,
       events: loadedData.events,
-      balances: loadedBalances,
+      balances: syncBalancesSymmetry(loadedBalances),
       festivos: loadedData.festivos || [],
     };
   }
+
+  const migrated: GlobalData = {
+    birthDate: loadedData?.birthDate || null,
+    events: [],
+    balances: defaultBalances,
+    festivos: [],
+  };
 
   if (Array.isArray(loadedData?.holidays)) {
     migrated.festivos = loadedData.holidays.map((hStr: string) => ({
@@ -613,6 +629,18 @@ export function BabyLeavePlannerModule() {
     }
   };
 
+  // Sync Balance Configuration between Madre and Padre
+  const handleSyncParentsConfig = () => {
+    setGlobalData((prev) => ({
+      ...prev,
+      balances: syncBalancesSymmetry(prev.balances),
+    }));
+    showAlert(
+      "Configuración Sincronizada",
+      "Se han igualado todos los permisos y saldos entre Madre y Padre para que ambos tengan la misma configuración."
+    );
+  };
+
   // Sidebar Inline Balance Editor Handlers (Step 1)
   const handleAddBalanceSidebar = (person: "Madre" | "Padre") => {
     const type = sidebarAddType.trim();
@@ -854,13 +882,23 @@ export function BabyLeavePlannerModule() {
           <span className="text-slate-800 dark:text-slate-100 font-extrabold flex items-center gap-2">
             {isMom ? "👩 Madre" : "👨 Padre"}
           </span>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
-            title="Añadir saldo de días"
-          >
-            <Plus size={16} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleSyncParentsConfig}
+              className="px-2 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 transition cursor-pointer flex items-center gap-1 text-[10px] font-extrabold border border-slate-200 dark:border-slate-700"
+              title="Igualar permisos entre Madre y Padre"
+            >
+              <RefreshCw size={11} />
+              <span>Igualar Padres</span>
+            </button>
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
+              title="Añadir saldo de días"
+            >
+              <Plus size={16} />
+            </button>
+          </div>
         </div>
 
         {/* Inline form to create a new balance */}
