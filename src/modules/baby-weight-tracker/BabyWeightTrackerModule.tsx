@@ -1385,10 +1385,10 @@ export function BabyWeightTrackerModule() {
 
       {/* Popover Form Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-8 flex flex-col space-y-4 max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
                   <Scale size={18} />
@@ -1409,7 +1409,8 @@ export function BabyWeightTrackerModule() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
+            <div className="flex-1 overflow-y-auto py-3 pr-1 scrollbar-thin">
+              <form onSubmit={handleSave} className="space-y-3 text-xs">
               <div className="grid grid-cols-2 gap-2">
                 {/* Date Input */}
                 <div className="space-y-1">
@@ -1550,47 +1551,48 @@ export function BabyWeightTrackerModule() {
                 />
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 pt-2 border-t border-border">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAddModal(false);
-                    resetForm();
-                  }}
-                  className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  {saving ? (
-                    <>
-                      <RefreshCw className="animate-spin" size={14} />
-                      Guardando...
-                    </>
-                  ) : (
-                    <>
-                      <PlusCircle size={14} />
-                      Guardar
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
+                {/* Action Buttons */}
+                <div className="flex gap-2 pt-2 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      resetForm();
+                    }}
+                    className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    {saving ? (
+                      <>
+                        <RefreshCw className="animate-spin" size={14} />
+                        Guardando...
+                      </>
+                    ) : (
+                      <>
+                        <PlusCircle size={14} />
+                        Guardar
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
 
       {/* Config Customization Modal */}
       {showConfigModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-8 flex flex-col space-y-4 max-h-[90vh] overflow-y-auto animate-fade-in text-xs">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in text-xs">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
               <div className="flex items-center gap-2">
                 <Sliders size={18} className="text-primary" />
                 <h3 className="font-extrabold text-foreground tracking-tight text-sm">
@@ -1605,8 +1607,10 @@ export function BabyWeightTrackerModule() {
               </button>
             </div>
 
-            {/* Sites Section */}
-            <div className="space-y-2">
+            {/* Scrollable Modal Content */}
+            <div className="flex-1 overflow-y-auto py-3 space-y-4 pr-1 scrollbar-thin">
+              {/* Sites Section */}
+              <div className="space-y-2">
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
                 1. Sitios de Pesaje:
               </span>
@@ -1733,12 +1737,17 @@ export function BabyWeightTrackerModule() {
               </div>
             </div>
 
-            <button
-              onClick={() => setShowConfigModal(false)}
-              className="w-full py-2.5 bg-muted text-foreground font-extrabold text-xs rounded-xl cursor-pointer mt-2"
-            >
-              Cerrar
-            </button>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-2 border-t border-border shrink-0">
+              <button
+                onClick={() => setShowConfigModal(false)}
+                className="w-full py-2.5 bg-muted text-foreground font-extrabold text-xs rounded-xl cursor-pointer"
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
         </div>
       )}
