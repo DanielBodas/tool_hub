@@ -238,7 +238,6 @@ export function BabyLeavePlannerModule() {
   const [sidebarAddType, setSidebarAddType] = useState("");
   const [sidebarAddTotal, setSidebarAddTotal] = useState("");
   const [sidebarAddFreq, setSidebarAddFreq] = useState<"Diario" | "Semanal">("Diario");
-  const [sidebarAddGenWeeks, setSidebarAddGenWeeks] = useState(true);
 
   // Modal States
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -670,42 +669,15 @@ export function BabyLeavePlannerModule() {
     };
 
     setGlobalData((prev) => {
-      let newEvents = [...prev.events];
-
-      // Auto generate weeks in calendar if option selected and birthDate exists
-      if (sidebarAddGenWeeks && prev.birthDate && sidebarAddFreq === "Semanal") {
-        const birthDate = new Date(prev.birthDate);
-        const daysCount = Math.round(total * 7);
-
-        const generated: EventItem[] = [];
-        for (let i = 0; i < daysCount; i++) {
-          const d = new Date(birthDate);
-          d.setDate(birthDate.getDate() + i);
-          generated.push({
-            date: formatDateStr(d),
-            person,
-            type,
-          });
-        }
-
-        const newDatesSet = new Set(generated.map((e) => e.date));
-        newEvents = [
-          ...newEvents.filter((e) => !(e.person === person && e.type === type && newDatesSet.has(e.date))),
-          ...generated,
-        ].sort((a, b) => a.date.localeCompare(b.date));
-      }
-
       return {
         ...prev,
         balances: [...prev.balances, newBalance],
-        events: newEvents,
       };
     });
 
     // Reset Form
     setSidebarAddType("");
     setSidebarAddTotal("");
-    setSidebarAddGenWeeks(true);
     if (person === "Madre") setShowAddFormMom(false);
     else setShowAddFormDad(false);
   };
@@ -977,18 +949,6 @@ export function BabyLeavePlannerModule() {
                 className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold outline-none"
                 required
               />
-            </div>
-            <div className="flex items-center gap-2 pt-0.5">
-              <input
-                type="checkbox"
-                id={`genWeeks-${person}`}
-                checked={sidebarAddGenWeeks}
-                onChange={(e) => setSidebarAddGenWeeks(e.target.checked)}
-                className="w-4 h-4 rounded-sm border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer accent-indigo-600"
-              />
-              <label htmlFor={`genWeeks-${person}`} className="text-[11px] font-bold text-slate-700 dark:text-slate-300 cursor-pointer select-none">
-                ⚡ Generar en calendario al añadir
-              </label>
             </div>
             <div className="flex gap-2 text-xs pt-1">
               <button
