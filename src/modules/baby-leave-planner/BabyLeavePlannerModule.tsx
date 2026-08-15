@@ -8,6 +8,8 @@ import {
   Trash2,
   Edit2,
   Plus,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 // Define TypeScript interfaces for our data structure
@@ -738,6 +740,30 @@ export function BabyLeavePlannerModule() {
       });
   };
 
+  // Reorder balance card helper
+  const moveBalance = (person: "Madre" | "Padre", direction: "up" | "down", indexInPerson: number) => {
+    const personIndices = globalData.balances
+      .map((b, idx) => (b.person === person ? idx : -1))
+      .filter((idx) => idx !== -1);
+
+    const targetIndexInPerson = direction === "up" ? indexInPerson - 1 : indexInPerson + 1;
+    if (targetIndexInPerson < 0 || targetIndexInPerson >= personIndices.length) return;
+
+    const globalIdx1 = personIndices[indexInPerson];
+    const globalIdx2 = personIndices[targetIndexInPerson];
+
+    setGlobalData((prev) => {
+      const newBalances = [...prev.balances];
+      const temp = newBalances[globalIdx1];
+      newBalances[globalIdx1] = newBalances[globalIdx2];
+      newBalances[globalIdx2] = temp;
+      return {
+        ...prev,
+        balances: newBalances,
+      };
+    });
+  };
+
   // Sidebar KPI & Balance Editing Render Logic (Step 1)
   const renderKPIs = (person: "Madre" | "Padre") => {
     const personBalances = globalData.balances.filter((b) => b.person === person);
@@ -824,7 +850,7 @@ export function BabyLeavePlannerModule() {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {personBalances.map((bal, idx) => {
             const isEditing = editingBalanceKey === `${person}-${bal.type}`;
 
@@ -849,7 +875,6 @@ export function BabyLeavePlannerModule() {
             }
 
             const percent = Math.min(100, (used / total) * 100);
-            const barClass = isMom ? "bar-mom" : "bar-dad";
             const isLow = (remaining <= 2 && bal.frecuencia !== "Semanal") || remaining <= 0;
 
             if (isEditing) {
@@ -918,57 +943,87 @@ export function BabyLeavePlannerModule() {
             }
 
             return (
-              <div key={idx} className={`kpi-card-sidebar group ${isLow ? "bg-danger-light" : ""}`}>
-                {/* Header row: Title and Action Buttons */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <span className="font-extrabold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 leading-tight break-words flex-1 min-w-0" title={bal.type}>
-                    {bal.type}
-                  </span>
-                  <div className="flex items-center gap-1 shrink-0">
+              <div
+                key={idx}
+                className={`group relative bg-white/90 dark:bg-slate-850/90 backdrop-blur-sm p-4 rounded-2xl border transition-all duration-200 shadow-xs hover:shadow-md ${
+                  isLow
+                    ? "border-red-200 dark:border-red-900/60 bg-red-50/30 dark:bg-red-950/20"
+                    : "border-slate-200/80 dark:border-slate-800 hover:border-indigo-300 dark:hover:border-indigo-700"
+                }`}
+              >
+                {/* Header row: Title, Badge and Action Toolbar */}
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <span className="font-extrabold text-xs tracking-tight text-slate-800 dark:text-slate-100 truncate" title={bal.type}>
+                      {bal.type}
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 uppercase tracking-wider shrink-0">
+                      {bal.frecuencia}
+                    </span>
+                  </div>
+
+                  {/* Sleek Action Toolbar: Reorder Up/Down, Edit, Delete */}
+                  <div className="flex items-center gap-0.5 p-0.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-xl border border-slate-200/60 dark:border-slate-700/60 shrink-0">
+                    <button
+                      onClick={() => moveBalance(person, "up", idx)}
+                      disabled={idx === 0}
+                      className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
+                      title="Mover arriba"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      onClick={() => moveBalance(person, "down", idx)}
+                      disabled={idx === personBalances.length - 1}
+                      className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
+                      title="Mover abajo"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                    <span className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-0.5" />
                     <button
                       onClick={() => startEditingBalance(person, bal.type)}
-                      className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
-                      title="Editar este saldo"
+                      className="p-1 rounded-lg text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                      title="Editar saldo"
                     >
-                      <Edit2 size={13} />
+                      <Edit2 size={12} />
                     </button>
                     <button
                       onClick={() => handleDeleteBalance(person, bal.type)}
-                      className="p-1.5 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
-                      title="Eliminar esta sección y sus días"
+                      className="p-1 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      title="Eliminar saldo"
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={12} />
                     </button>
                   </div>
                 </div>
 
-                {/* Remaining metric pill / banner */}
-                <div className="flex items-center justify-between p-2.5 mb-3 bg-slate-50 dark:bg-slate-900/80 rounded-xl border border-slate-100 dark:border-slate-800">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-                      {unit} LIBRES
-                    </span>
-                  </div>
-                  <span className={`text-2xl font-black leading-none tabular-nums ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
+                {/* Remaining metric pill */}
+                <div className="flex items-center justify-between p-3 mb-3 bg-slate-50/90 dark:bg-slate-900/80 rounded-xl border border-slate-100 dark:border-slate-800/80">
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+                    {unit} DISPONIBLES
+                  </span>
+                  <span className={`text-2xl font-black leading-none tabular-nums tracking-tight ${isLow ? "text-red-500" : "text-slate-900 dark:text-slate-50"}`}>
                     {remaining}
                   </span>
                 </div>
 
-                {/* Progress bar */}
-                <div className="kpi-progress-wrapper my-2.5">
-                  <div className={`kpi-progress-bar ${barClass}`} style={{ width: `${percent}%` }} />
+                {/* Sleek Progress bar */}
+                <div className="h-2 w-full bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden my-2.5">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                      isMom
+                        ? "bg-gradient-to-r from-pink-500 to-rose-400"
+                        : "bg-gradient-to-r from-sky-500 to-blue-400"
+                    }`}
+                    style={{ width: `${percent}%` }}
+                  />
                 </div>
 
                 {/* Footer stats */}
-                <div className="kpi-card-footer mt-2">
-                  <div className="footer-stat text-left">
-                    <span>{used} {unit}</span>
-                    <span>USADOS</span>
-                  </div>
-                  <div className="footer-stat text-right">
-                    <span>{total} {unit}</span>
-                    <span>TOTAL</span>
-                  </div>
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 pt-0.5">
+                  <span>Usados: <strong className="text-slate-700 dark:text-slate-200">{used} {unit}</strong></span>
+                  <span>Total: <strong className="text-slate-700 dark:text-slate-200">{total} {unit}</strong></span>
                 </div>
               </div>
             );
