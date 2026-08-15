@@ -229,6 +229,17 @@ export function BabyLeavePlannerModule() {
   const [selectedType, setSelectedType] = useState<string>("");
   const [holidayNameVal, setHolidayNameVal] = useState("Festivo");
 
+  // Generation Modal State
+  const [generateModal, setGenerateModal] = useState<{
+    isOpen: boolean;
+    person: "Madre" | "Padre";
+    type: string;
+  }>({
+    isOpen: false,
+    person: "Madre",
+    type: "Permiso Nacimiento",
+  });
+
   // Configuration Modal States (only contains birthDate now)
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configBirthDate, setConfigBirthDate] = useState("");
@@ -740,6 +751,72 @@ export function BabyLeavePlannerModule() {
       });
   };
 
+  // Generation Helpers for Permiso Nacimiento / Leave Weeks
+  const handleAutoGenerateWeeks = (person: "Madre" | "Padre", weeksCount: number) => {
+    if (!globalData.birthDate) {
+      showAlert("Fecha Inexistente", "Debes configurar primero la fecha de nacimiento del bebé.");
+      return;
+    }
+
+    const birthDate = new Date(globalData.birthDate);
+    const targetBalance = globalData.balances.find((b) => b.person === person && b.type === "Permiso Nacimiento");
+    const typeName = targetBalance?.type || "Permiso Nacimiento";
+
+    const daysCount = weeksCount * 7;
+    const newEvents: EventItem[] = [];
+
+    for (let i = 0; i < daysCount; i++) {
+      const d = new Date(birthDate);
+      d.setDate(birthDate.getDate() + i);
+      newEvents.push({
+        date: formatDateStr(d),
+        person,
+        type: typeName,
+      });
+    }
+
+    setGlobalData((prev) => {
+      // Filter out existing events for this person and type within the date range
+      const newDatesSet = new Set(newEvents.map((e) => e.date));
+      const filteredExisting = prev.events.filter(
+        (e) => !(e.person === person && e.type === typeName && newDatesSet.has(e.date))
+      );
+
+      return {
+        ...prev,
+        events: [...filteredExisting, ...newEvents].sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    });
+
+    setGenerateModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleManualGenerateWeeks = (person: "Madre" | "Padre", weeksCount: number) => {
+    if (!globalData.birthDate) {
+      showAlert("Fecha Inexistente", "Debes configurar primero la fecha de nacimiento del bebé.");
+      return;
+    }
+
+    const birthDate = new Date(globalData.birthDate);
+    const targetBalance = globalData.balances.find((b) => b.person === person && b.type === "Permiso Nacimiento");
+    const typeName = targetBalance?.type || "Permiso Nacimiento";
+
+    const daysCount = weeksCount * 7;
+    const preselectedDates: string[] = [];
+
+    for (let i = 0; i < daysCount; i++) {
+      const d = new Date(birthDate);
+      d.setDate(birthDate.getDate() + i);
+      preselectedDates.push(formatDateStr(d));
+    }
+
+    setSelectedDates(preselectedDates);
+    setSelectedPerson(person);
+    setSelectedType(typeName);
+    setGenerateModal((prev) => ({ ...prev, isOpen: false }));
+    setShowAssignModal(true);
+  };
+
   // Reorder balance card helper
   const moveBalance = (person: "Madre" | "Padre", direction: "up" | "down", indexInPerson: number) => {
     const personIndices = globalData.balances
@@ -1007,6 +1084,25 @@ export function BabyLeavePlannerModule() {
                     </button>
                   </div>
                 </div>
+
+                {/* Generate Leave Weeks Action Button (If Permiso Nacimiento) */}
+                {bal.type === "Permiso Nacimiento" && (
+                  <div className="mb-2">
+                    <button
+                      onClick={() =>
+                        setGenerateModal({
+                          isOpen: true,
+                          person,
+                          type: bal.type,
+                        })
+                      }
+                      className="w-full py-1.5 px-2 bg-indigo-50 dark:bg-indigo-950/50 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 border border-indigo-200/80 dark:border-indigo-800/80 rounded-lg text-indigo-600 dark:text-indigo-300 text-[10px] font-black uppercase tracking-wider flex items-center justify-center gap-1.5 transition cursor-pointer shadow-2xs"
+                    >
+                      <span>⚡</span>
+                      <span>Generar Semanas en Calendario</span>
+                    </button>
+                  </div>
+                )}
 
                 {/* Compact Metrics Row: Available vs Total/Used */}
                 <div className="flex items-baseline justify-between px-2.5 py-1.5 mb-1.5 bg-slate-50 dark:bg-slate-900/80 rounded-lg border border-slate-100 dark:border-slate-800/80">
@@ -2267,6 +2363,99 @@ export function BabyLeavePlannerModule() {
                   Actualizar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- GENERATE LEAVE WEEKS MODAL --- */}
+      {generateModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3500] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <span>⚡</span> Generar Semanas ({generateModal.person})
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
+                  Selecciona la modalidad de generación en el calendario:
+                </p>
+              </div>
+              <button
+                onClick={() => setGenerateModal((prev) => ({ ...prev, isOpen: false }))}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {/* Option 1: Generate 6 Mandatory Weeks Auto */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                    6 Semanas Obligatorias
+                  </span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300">
+                    OBLIGATORIO
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                  Genera los 42 días ininterrumpidos a partir de la fecha de nacimiento.
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleAutoGenerateWeeks(generateModal.person, 6)}
+                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    ⚡ Auto Generar
+                  </button>
+                  <button
+                    onClick={() => handleManualGenerateWeeks(generateModal.person, 6)}
+                    className="flex-1 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    ✍️ Manual
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2: Generate All 19 Weeks */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                    19 Semanas Completas
+                  </span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300">
+                    COMPLETO
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                  Genera los 133 días ininterrumpidos desde el nacimiento (6 obligatorias + 13 flexibles del tirón).
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleAutoGenerateWeeks(generateModal.person, 19)}
+                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    ⚡ Auto Generar
+                  </button>
+                  <button
+                    onClick={() => handleManualGenerateWeeks(generateModal.person, 19)}
+                    className="flex-1 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    ✍️ Manual
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+              <button
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-xs cursor-pointer"
+                onClick={() => setGenerateModal((prev) => ({ ...prev, isOpen: false }))}
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
