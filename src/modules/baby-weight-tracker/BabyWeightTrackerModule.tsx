@@ -832,13 +832,13 @@ export function BabyWeightTrackerModule() {
               <Scale size={20} />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base md:text-lg font-black text-foreground tracking-tight truncate flex items-center gap-1.5">
+              <h2 className="text-sm sm:text-base md:text-lg font-black text-foreground tracking-tight leading-tight flex items-center gap-1.5">
                 Seguimiento de Peso
               </h2>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-semibold">
-                <span>Neto actual: <strong className="text-foreground">{metrics.lastNetWeight > 0 ? `${metrics.lastNetWeight.toFixed(3)} kg` : "—"}</strong></span>
-                {metrics.totalGain !== 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full font-bold text-[10px] ${metrics.totalGain >= 0 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/15 text-rose-600"}`}>
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground font-semibold mt-0.5">
+                <span className="whitespace-nowrap">Neto actual: <strong className="text-foreground">{metrics.lastNetWeight > 0 ? `${metrics.lastNetWeight.toFixed(3)} kg` : "—"}</strong></span>
+                {metrics.lastNetWeight > 0 && metrics.totalGain !== 0 && (
+                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 ${metrics.totalGain >= 0 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/15 text-rose-600"}`}>
                     {metrics.totalGain >= 0 ? "+" : ""}{metrics.totalGain.toFixed(3)} kg
                   </span>
                 )}
@@ -929,9 +929,9 @@ export function BabyWeightTrackerModule() {
 
             <div className="bg-card p-3 rounded-2xl border border-border/60 shadow-xs flex flex-col">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Ganancia Total</span>
-              <div className="mt-0.5 flex items-baseline gap-1">
-                <span className={`text-xl font-black ${metrics.totalGain >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
-                  {metrics.totalGain >= 0 ? "+" : ""}{metrics.lastNetWeight > 0 ? metrics.totalGain.toFixed(3) : "—"}
+              <div className="mt-0.5 flex items-baseline gap-1 whitespace-nowrap">
+                <span className={`text-xl font-black ${metrics.lastNetWeight > 0 && metrics.totalGain < 0 ? "text-rose-500" : "text-emerald-600 dark:text-emerald-400"}`}>
+                  {metrics.lastNetWeight > 0 ? `${metrics.totalGain >= 0 ? "+" : ""}${metrics.totalGain.toFixed(3)}` : "—"}
                 </span>
                 <span className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400">kg</span>
               </div>
@@ -1644,7 +1644,7 @@ export function BabyWeightTrackerModule() {
             {/* Clothing presets section */}
             <div className="space-y-2 border-t border-border pt-3">
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-                2. Vestimentas:
+                2. Vestimentas y márgenes:
               </span>
               <div className="space-y-1.5 max-h-[100px] overflow-y-auto pr-1">
                 {clothing.map((preset) => (
@@ -1658,6 +1658,32 @@ export function BabyWeightTrackerModule() {
                     </button>
                   </div>
                 ))}
+              </div>
+              <div className="space-y-1.5 text-xs">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="Ej. Ropa ligera"
+                    value={newClothingName}
+                    onChange={(e) => setNewClothingName(e.target.value)}
+                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                  />
+                  <input
+                    type="number"
+                    step="0.005"
+                    placeholder="Margen (kg)"
+                    value={newClothingMargin}
+                    onChange={(e) => setNewClothingMargin(e.target.value)}
+                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
+                  />
+                </div>
+                <button
+                  onClick={handleAddClothing}
+                  className="w-full py-1.5 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Plus size={13} />
+                  Añadir Vestimenta
+                </button>
               </div>
             </div>
 
@@ -1678,6 +1704,32 @@ export function BabyWeightTrackerModule() {
                     </button>
                   </div>
                 ))}
+              </div>
+              <div className="space-y-1.5 text-xs">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <input
+                    type="text"
+                    placeholder="Ej. Toalla fina"
+                    value={newBlanketName}
+                    onChange={(e) => setNewBlanketName(e.target.value)}
+                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs"
+                  />
+                  <input
+                    type="number"
+                    step="0.005"
+                    placeholder="Margen (kg)"
+                    value={newBlanketMargin}
+                    onChange={(e) => setNewBlanketMargin(e.target.value)}
+                    className="px-2.5 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-bold text-xs font-mono"
+                  />
+                </div>
+                <button
+                  onClick={handleAddBlanket}
+                  className="w-full py-1.5 bg-primary text-primary-foreground font-extrabold rounded-xl cursor-pointer flex items-center justify-center gap-1"
+                >
+                  <Plus size={13} />
+                  Añadir Manta/Trapo
+                </button>
               </div>
             </div>
 
