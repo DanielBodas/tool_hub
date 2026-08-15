@@ -918,42 +918,49 @@ export function BabyLeavePlannerModule() {
             }
 
             return (
-              <div key={idx} className={`kpi-card-sidebar relative group ${isLow ? "bg-danger-light" : ""}`}>
-                {/* Action buttons (Edit and Delete) visible on mobile and desktop hover */}
-                <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
-                  <button
-                    onClick={() => startEditingBalance(person, bal.type)}
-                    className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
-                    title="Editar este saldo"
-                  >
-                    <Edit2 size={13} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteBalance(person, bal.type)}
-                    className="p-1.5 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
-                    title="Eliminar esta sección y sus días"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-
-                <div className="kpi-card-header pr-16">
-                  <span className="kpi-card-label truncate max-w-[130px]" title={bal.type}>
+              <div key={idx} className={`kpi-card-sidebar group ${isLow ? "bg-danger-light" : ""}`}>
+                {/* Header row: Title and Action Buttons */}
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <span className="font-extrabold text-xs uppercase tracking-wider text-slate-700 dark:text-slate-200 leading-tight break-words flex-1 min-w-0" title={bal.type}>
                     {bal.type}
                   </span>
-                  <div className="kpi-card-remaining shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                    <span className={`remaining-value ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
-                      {remaining}
-                    </span>
-                    <span className="remaining-unit">{unit} LIBRES</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => startEditingBalance(person, bal.type)}
+                      className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
+                      title="Editar este saldo"
+                    >
+                      <Edit2 size={13} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBalance(person, bal.type)}
+                      className="p-1.5 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
+                      title="Eliminar esta sección y sus días"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </div>
 
-                <div className="kpi-progress-wrapper">
+                {/* Remaining metric pill / banner */}
+                <div className="flex items-center justify-between p-2.5 mb-3 bg-slate-50 dark:bg-slate-900/80 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+                      {unit} LIBRES
+                    </span>
+                  </div>
+                  <span className={`text-2xl font-black leading-none tabular-nums ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
+                    {remaining}
+                  </span>
+                </div>
+
+                {/* Progress bar */}
+                <div className="kpi-progress-wrapper my-2.5">
                   <div className={`kpi-progress-bar ${barClass}`} style={{ width: `${percent}%` }} />
                 </div>
 
-                <div className="kpi-card-footer">
+                {/* Footer stats */}
+                <div className="kpi-card-footer mt-2">
                   <div className="footer-stat text-left">
                     <span>{used} {unit}</span>
                     <span>USADOS</span>
