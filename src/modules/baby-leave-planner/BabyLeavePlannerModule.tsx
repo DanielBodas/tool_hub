@@ -866,7 +866,22 @@ export function BabyLeavePlannerModule() {
         {/* Inline form to create a new balance */}
         {showAddForm && (
           <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 mb-4 animate-in slide-in-from-top-4 duration-200">
-            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+              {/* Quick Preset Button for Permiso Nacimiento */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSidebarAddType("Permiso Nacimiento");
+                  setSidebarAddTotal("19");
+                  setSidebarAddFreq("Semanal");
+                }}
+                className="text-[9px] font-extrabold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-600 dark:text-indigo-300 rounded-md border border-indigo-200 dark:border-indigo-800 transition cursor-pointer"
+                title="Cargar ajuste predeterminado de 19 semanas (6 obligatorias + 13 flexibles)"
+              >
+                ✨ Preset 19 Semanas
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
                 <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
@@ -895,24 +910,24 @@ export function BabyLeavePlannerModule() {
               <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre del Permiso</label>
               <input
                 type="text"
-                placeholder="Ej. Lactancia"
+                placeholder="Ej. Permiso Nacimiento"
                 value={sidebarAddType}
                 onChange={(e) => setSidebarAddType(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 outline-none"
+                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 outline-none font-semibold"
                 required
               />
             </div>
             <div className="flex gap-2 text-xs">
               <button
                 type="button"
-                className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold"
+                className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold cursor-pointer"
                 onClick={() => setShowAddForm(false)}
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                className="flex-1 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+                className="flex-1 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs cursor-pointer"
                 onClick={() => handleAddBalanceSidebar(person)}
               >
                 Añadir
