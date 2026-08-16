@@ -673,7 +673,7 @@ export function FinanceTrackerModule() {
             </span>
           </div>
           <p className="text-sm text-muted-foreground mt-1">
-            Control de liquidez, plan de acciones Airbus con tributación detallada y diversificación.
+            Control de salud financiera, liquidez prudente e inversiones diversificadas.
           </p>
         </div>
 
@@ -735,7 +735,7 @@ export function FinanceTrackerModule() {
       {activeTab === "dashboard" && (
         <div className="space-y-8">
           {/* TOP SUMMARY METRICS */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
             <div className="bg-card p-6 rounded-2xl border border-border shadow-xs">
               <div className="flex items-center justify-between mb-3">
                 <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -791,23 +791,6 @@ export function FinanceTrackerModule() {
                   {calculations.investmentRatio.toFixed(1)}%
                 </span>
               </div>
-            </div>
-
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-xs">
-              <div className="flex items-center justify-between mb-3">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  Beneficio Estimado Airbus
-                </span>
-                <div className="p-2.5 bg-indigo-500/10 text-indigo-600 rounded-xl">
-                  <Plane size={20} />
-                </div>
-              </div>
-              <p className="text-3xl font-extrabold text-indigo-600 tracking-tight">
-                {formatEUR(calculations.totalAirbusNetProfitIfSold)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-2">
-                Tras impuestos IRPF ({settings.taxRate}%)
-              </p>
             </div>
           </div>
 
@@ -919,111 +902,6 @@ export function FinanceTrackerModule() {
                 </div>
               </div>
             )}
-          </div>
-
-          {/* DIVERSIFICATION BREAKDOWN CARDS */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* AIRBUS PLAN OVERVIEW */}
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-xs space-y-4">
-              <div className="flex justify-between items-center border-b border-border pb-3">
-                <h3 className="font-bold text-lg flex items-center gap-2">
-                  <Plane className="text-indigo-600" size={20} /> Plan Acciones Airbus (ESOP)
-                </h3>
-                <button
-                  onClick={() => setActiveTab("airbus")}
-                  className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
-                >
-                  Ver Detalle →
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="bg-muted/50 p-3 rounded-xl">
-                  <p className="text-xs text-muted-foreground font-medium">Acciones Totales</p>
-                  <p className="text-xl font-extrabold text-foreground mt-1">
-                    {calculations.totalAirbusShares} <span className="text-xs text-muted-foreground font-normal">uds</span>
-                  </p>
-                </div>
-                <div className="bg-muted/50 p-3 rounded-xl">
-                  <p className="text-xs text-muted-foreground font-medium">Valor Mercado</p>
-                  <p className="text-xl font-extrabold text-indigo-600 mt-1">
-                    {formatEUR(calculations.totalAirbusMarketValue)}
-                  </p>
-                </div>
-                <div className="bg-muted/50 p-3 rounded-xl">
-                  <p className="text-xs text-muted-foreground font-medium">🔒 Valor Bloqueado (&lt; 3 años)</p>
-                  <p className="text-base font-bold text-amber-600 mt-1">
-                    {formatEUR(calculations.totalAirbusLockedValue)}
-                  </p>
-                </div>
-                <div className="bg-muted/50 p-3 rounded-xl">
-                  <p className="text-xs text-muted-foreground font-medium">🔓 Valor Disponible (&ge; 3 años)</p>
-                  <p className="text-base font-bold text-emerald-600 mt-1">
-                    {formatEUR(calculations.totalAirbusUnlockedValue)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* OTHER INVESTMENTS OVERVIEW */}
-            <div className="bg-card p-6 rounded-2xl border border-border shadow-xs space-y-4">
-              <div className="flex justify-between items-center border-b border-border pb-3">
-                <h3 className="font-bold text-lg flex items-center gap-2">
-                  <TrendingUp className="text-purple-600" size={20} /> Otras Inversiones
-                </h3>
-                <button
-                  onClick={() => setActiveTab("other")}
-                  className="text-xs text-blue-600 font-bold hover:underline cursor-pointer"
-                >
-                  Ver Detalle →
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="bg-muted/50 p-3 rounded-xl">
-                  <p className="text-xs text-muted-foreground font-medium">Inversión Inicial</p>
-                  <p className="text-xl font-extrabold text-foreground mt-1">
-                    {formatEUR(calculations.totalOtherInvestmentsInitial)}
-                  </p>
-                </div>
-                <div className="bg-muted/50 p-3 rounded-xl">
-                  <p className="text-xs text-muted-foreground font-medium">Valor Actual</p>
-                  <p className="text-xl font-extrabold text-purple-600 mt-1">
-                    {formatEUR(calculations.totalOtherInvestmentsCurrent)}
-                  </p>
-                </div>
-                <div className="col-span-2 bg-muted/50 p-3 rounded-xl flex justify-between items-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground font-medium">Plusvalía / Ganancia acumulada</p>
-                    <p
-                      className={`text-lg font-extrabold mt-0.5 ${
-                        calculations.totalOtherInvestmentsGain >= 0
-                          ? "text-emerald-600"
-                          : "text-rose-600"
-                      }`}
-                    >
-                      {calculations.totalOtherInvestmentsGain >= 0 ? "+" : ""}
-                      {formatEUR(calculations.totalOtherInvestmentsGain)}
-                    </p>
-                  </div>
-                  <span
-                    className={`text-xs px-2.5 py-1 rounded-full font-bold ${
-                      calculations.totalOtherInvestmentsGain >= 0
-                        ? "bg-emerald-500/10 text-emerald-600"
-                        : "bg-rose-500/10 text-rose-600"
-                    }`}
-                  >
-                    {calculations.totalOtherInvestmentsInitial > 0
-                      ? `${(
-                          (calculations.totalOtherInvestmentsGain /
-                            calculations.totalOtherInvestmentsInitial) *
-                          100
-                        ).toFixed(1)}%`
-                      : "0%"}
-                  </span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}
