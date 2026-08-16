@@ -73,10 +73,29 @@ export async function GET() {
       type: doc.type,
     }));
 
-    // 2. Fetch settings (birthDate, balances, festivos)
-    let settingsDoc = await db.collection("settings").findOne({ id: FAMILY_ID });
+    // 2. Fetch settings (look for document with configured balances or birthDate, or id: "admin@example.com", or default_family)
+    let settingsDoc = await db.collection("settings").findOne({
+      $or: [
+        { balances: { $exists: true, $not: { $size: 0 } } },
+        { allowances: { $exists: true, $not: { $size: 0 } } },
+        { id: "admin@example.com" },
+        { id: FAMILY_ID },
+      ],
+    });
+
     if (!settingsDoc) {
       settingsDoc = await db.collection("settings").findOne({}, { sort: { updatedAt: -1 } });
+    }
+
+    // Map holidays array to festivos format if holidays exists
+    let festivos = Array.isArray(settingsDoc?.festivos) && settingsDoc.festivos.length > 0
+      ? settingsDoc.festivos
+      : [];
+
+    if (festivos.length === 0 && Array.isArray(settingsDoc?.holidays) && settingsDoc.holidays.length > 0) {
+      festivos = settingsDoc.holidays.map((h: string | { date: string; nombre?: string }) =>
+        typeof h === "string" ? { date: h, nombre: "Festivo" } : { date: h.date, nombre: h.nombre || "Festivo" }
+      );
     }
 
     // If events collection was empty but settings had legacy events, fallback gracefully
@@ -90,7 +109,10 @@ export async function GET() {
     return NextResponse.json({
       birthDate: settingsDoc?.birthDate || null,
       balances: settingsDoc?.balances || [],
-      festivos: settingsDoc?.festivos || [],
+      festivos: festivos,
+      holidays: settingsDoc?.holidays || [],
+      allowances: settingsDoc?.allowances || [],
+      flexibleBlocks: settingsDoc?.flexibleBlocks || [],
       events: finalEvents,
     });
   } catch (e) {
@@ -119,6 +141,20 @@ export async function POST(request: Request) {
     // 1. Save general settings (birthDate, balances, festivos)
     const { birthDate, balances, festivos, events } = body;
 
+    // Update all matching settings documents or upsert
+    await db.collection("settings").updateMany(
+      {},
+      {
+        $set: {
+          birthDate: birthDate || null,
+          balances: balances || [],
+          festivos: festivos || [],
+          updatedAt: new Date(),
+        },
+      },
+    );
+
+    // Also ensure default_family exists
     await db.collection("settings").updateOne(
       { id: FAMILY_ID },
       {

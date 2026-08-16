@@ -101,81 +101,76 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
     { person: "Padre", type: "Lactancia", total: 15, frecuencia: "Diario" },
   ];
 
-  if (loadedData && Array.isArray(loadedData.events)) {
-    let loadedBalances = loadedData.balances || [];
-    if (loadedBalances.length === 0) {
-      loadedBalances = defaultBalances;
-    } else {
-      // Normalize balances: convert Permiso Nacimiento to 19 weeks Semanal if legacy 112 days
-      loadedBalances = loadedBalances.map((b) => {
-        if (b.type === "Permiso Nacimiento" && (b.total === 112 || b.frecuencia === "Diario")) {
-          return { ...b, total: 19, frecuencia: "Semanal" };
-        }
-        if (b.frecuencia === "Semanal" && b.total > 50) {
-          return { ...b, total: Math.round(b.total / 7) };
-        }
-        return b;
-      });
-    }
-
+  if (!loadedData) {
     return {
-      birthDate: loadedData.birthDate || null,
-      events: loadedData.events,
-      balances: syncBalancesSymmetry(loadedBalances),
-      festivos: loadedData.festivos || [],
+      birthDate: null,
+      events: [],
+      balances: defaultBalances,
+      festivos: [],
     };
   }
 
-  const migrated: GlobalData = {
-    birthDate: loadedData?.birthDate || null,
-    events: [],
-    balances: defaultBalances,
-    festivos: [],
-  };
-
-  if (Array.isArray(loadedData?.holidays)) {
-    migrated.festivos = loadedData.holidays.map((hStr: string) => ({
-      date: hStr,
-      nombre: "Festivo",
+  // 1. Process Balances
+  let finalBalances: BalanceItem[] = [];
+  if (Array.isArray(loadedData.balances) && loadedData.balances.length > 0) {
+    finalBalances = loadedData.balances.map((b) => ({
+      person: b.person,
+      type: b.type,
+      total: Number(b.total) || 0,
+      frecuencia: b.frecuencia || "Diario",
     }));
-  }
-
-  if (Array.isArray(loadedData?.allowances)) {
-    migrated.balances = loadedData.allowances.map((a) => ({
+  } else if (Array.isArray(loadedData.allowances) && loadedData.allowances.length > 0) {
+    finalBalances = loadedData.allowances.map((a) => ({
       person: a.parent === "mother" ? "Madre" : "Padre",
       type: a.name || "Permiso",
       total: Number(a.totalDays) || 0,
       frecuencia: a.consumptionMode === "weeks" ? "Semanal" : "Diario",
     }));
+  } else {
+    finalBalances = defaultBalances;
   }
 
-  if (Array.isArray(loadedData?.flexibleBlocks) && loadedData.birthDate) {
-    const eventsList: EventItem[] = [];
+  // 2. Process Festivos / Holidays
+  let finalFestivos: FestivoItem[] = [];
+  if (Array.isArray(loadedData.festivos) && loadedData.festivos.length > 0) {
+    finalFestivos = loadedData.festivos;
+  } else if (Array.isArray(loadedData.holidays) && loadedData.holidays.length > 0) {
+    finalFestivos = loadedData.holidays.map((hStr: string) => ({
+      date: typeof hStr === "string" ? hStr : (hStr as unknown as { date: string }).date || "",
+      nombre: typeof hStr === "string" ? "Festivo" : (hStr as unknown as { nombre: string }).nombre || "Festivo",
+    })).filter((f) => f.date);
+  }
 
+  // 3. Process Events
+  let finalEvents: EventItem[] = [];
+  if (Array.isArray(loadedData.events) && loadedData.events.length > 0) {
+    finalEvents = loadedData.events;
+  } else if (Array.isArray(loadedData.flexibleBlocks) && loadedData.birthDate) {
     loadedData.flexibleBlocks.forEach((block) => {
       const start = new Date(block.startDate);
       const end = new Date(block.endDate);
       const person = block.parent === "mother" ? "Madre" : "Padre";
-
       const allowance = loadedData.allowances?.find((a) => a.id === block.allowanceId);
       const type = allowance?.name || "Permiso";
 
       const current = new Date(start);
       while (current <= end) {
-        const dateStr = formatDateStr(current);
-        eventsList.push({
-          date: dateStr,
+        finalEvents.push({
+          date: formatDateStr(current),
           person,
           type,
         });
         current.setDate(current.getDate() + 1);
       }
     });
-
-    migrated.events = eventsList;
   }
 
-  return migrated;
+  return {
+    birthDate: loadedData.birthDate || null,
+    events: finalEvents,
+    balances: finalBalances,
+    festivos: finalFestivos,
+  };
 }
 
 export function BabyLeavePlannerModule() {
