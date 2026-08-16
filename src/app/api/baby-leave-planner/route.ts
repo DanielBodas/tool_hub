@@ -73,58 +73,22 @@ export async function GET() {
       type: doc.type,
     }));
 
-    // 2. Fetch settings (look for document with configured balances or birthDate, or id: "admin@example.com", or default_family)
-    let settingsDoc = await db.collection("settings").findOne({
-      $or: [
-        { balances: { $exists: true, $not: { $size: 0 } } },
-        { allowances: { $exists: true, $not: { $size: 0 } } },
-        { id: "admin@example.com" },
-        { id: FAMILY_ID },
-      ],
-    });
+    // 2. Fetch settings (family settings document)
+    let settingsDoc = await db.collection("settings").findOne({ id: FAMILY_ID });
 
     if (!settingsDoc) {
       settingsDoc = await db.collection("settings").findOne({}, { sort: { updatedAt: -1 } });
     }
 
-    // Map holidays array to festivos format if holidays exists
-    let festivos = Array.isArray(settingsDoc?.festivos) && settingsDoc.festivos.length > 0
-      ? settingsDoc.festivos
-      : [];
-
-    if (festivos.length === 0 && Array.isArray(settingsDoc?.holidays) && settingsDoc.holidays.length > 0) {
-      festivos = settingsDoc.holidays.map((h: string | { date: string; nombre?: string }) =>
-        typeof h === "string" ? { date: h, nombre: "Festivo" } : { date: h.date, nombre: h.nombre || "Festivo" }
-      );
-    }
-
-    // Map allowances to balances if balances is missing/empty
-    let balances = Array.isArray(settingsDoc?.balances) && settingsDoc.balances.length > 0
-      ? settingsDoc.balances
-      : [];
-
-    if (balances.length === 0 && Array.isArray(settingsDoc?.allowances) && settingsDoc.allowances.length > 0) {
-      balances = settingsDoc.allowances.map((a: { parent?: string; name?: string; totalDays?: number | string; consumptionMode?: string }) => ({
-        person: a.parent === "mother" ? "Madre" : "Padre",
-        type: a.name || "Permiso",
-        total: Number(a.totalDays) || 0,
-        frecuencia: a.consumptionMode === "weeks" ? "Semanal" : "Diario",
-      }));
-    }
-
-    // If events collection was empty but settings had legacy events, fallback gracefully
-    const finalEvents =
-      events.length > 0
-        ? events
-        : Array.isArray(settingsDoc?.events)
-        ? settingsDoc.events
-        : [];
+    const birthDate = settingsDoc?.birthDate || null;
+    const balances = Array.isArray(settingsDoc?.balances) ? settingsDoc.balances : [];
+    const festivos = Array.isArray(settingsDoc?.festivos) ? settingsDoc.festivos : [];
 
     return NextResponse.json({
-      birthDate: settingsDoc?.birthDate || null,
-      balances: balances,
-      festivos: festivos,
-      events: finalEvents,
+      birthDate,
+      balances,
+      festivos,
+      events,
     });
   } catch (e) {
     console.error("GET baby-leave-planner error:", e);
