@@ -1,26 +1,31 @@
 import { NextResponse } from "next/server";
 import clientPromise from "@/lib/mongodb";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isToolAllowedForUser } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { loadAllToolEnvs } from "@/lib/env";
 
 loadAllToolEnvs();
 
+const TOOL_ID = "baby-leave-planner";
 
 async function getUserId() {
   const session = await getServerSession(authOptions);
-  if (session?.user?.email) {
-    return session.user.email;
+  const cookieStore = await cookies();
+  const isUnlockedByCookie =
+    cookieStore.get(`auth_tool_${TOOL_ID}`)?.value === "true" ||
+    cookieStore.get("auth_dashboard")?.value === "true";
+
+  if (session?.user) {
+    // If user has session, check if they are authorized for this tool
+    if (isToolAllowedForUser(session, TOOL_ID) || isUnlockedByCookie) {
+      return session.user.email || "session_user";
+    }
+    return null;
   }
 
   // Fallback to a tool-specific cookie or dashboard cookie if unlocked via PIN
-  const cookieStore = await cookies();
-  const isUnlocked =
-    cookieStore.get("auth_tool_baby-leave-planner")?.value === "true" ||
-    cookieStore.get("auth_dashboard")?.value === "true";
-
-  if (isUnlocked) {
+  if (isUnlockedByCookie) {
     return cookieStore.get("planner_id")?.value || "default_family";
   }
 

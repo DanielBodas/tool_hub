@@ -3,18 +3,20 @@ import { BabyWeightTrackerModule } from "@/modules/baby-weight-tracker/BabyWeigh
 import { ToolSecurityGate } from "@/components/ToolSecurityGate";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isToolAllowedForUser } from "@/lib/auth";
 
 export default async function BabyWeightTrackerPage() {
+  const toolId = "baby-weight-tracker";
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
-  const isUnlocked =
-    cookieStore.get("auth_tool_baby-weight-tracker")?.value === "true";
+  const isUnlockedByCookie =
+    cookieStore.get(`auth_tool_${toolId}`)?.value === "true";
+  const isAllowedBySession = isToolAllowedForUser(session, toolId);
 
-  if (!session && !isUnlocked) {
+  if (!isUnlockedByCookie && !isAllowedBySession) {
     return (
       <ToolSecurityGate
-        toolId="baby-weight-tracker"
+        toolId={toolId}
         toolName="Seguimiento de Peso"
       />
     );

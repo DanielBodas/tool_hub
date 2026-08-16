@@ -3,17 +3,19 @@ import { FinanceTrackerModule } from "@/modules/finance-tracker/FinanceTrackerMo
 import { ToolSecurityGate } from "@/components/ToolSecurityGate";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isToolAllowedForUser } from "@/lib/auth";
 
 export default async function FinanceTrackerPage() {
+  const toolId = "finance-tracker";
   const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
-  const isUnlocked =
-    cookieStore.get("auth_tool_finance-tracker")?.value === "true";
+  const isUnlockedByCookie =
+    cookieStore.get(`auth_tool_${toolId}`)?.value === "true";
+  const isAllowedBySession = isToolAllowedForUser(session, toolId);
 
-  if (!session && !isUnlocked) {
+  if (!isUnlockedByCookie && !isAllowedBySession) {
     return (
-      <ToolSecurityGate toolId="finance-tracker" toolName="Gestor Financiero" />
+      <ToolSecurityGate toolId={toolId} toolName="Gestor Financiero" />
     );
   }
 

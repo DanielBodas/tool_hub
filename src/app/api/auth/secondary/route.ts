@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { authOptions, isToolAllowedForUser } from "@/lib/auth";
 import { loadAllToolEnvs } from "@/lib/env";
 
 export async function POST(request: Request) {
@@ -18,16 +18,26 @@ export async function POST(request: Request) {
     const envVarName = `${toolId.replace(/-/g, "_").toUpperCase()}_PIN`;
     securePin = process.env[envVarName] as string;
     
-    // Si la herramienta no tiene un PIN configurado, bloquéala (no permitas 1234 por defecto)
-    if (!securePin) {
-      console.error(`Missing PIN for tool: ${toolId}. Please set ${envVarName} in the .env file.`);
-      return NextResponse.json({ success: false, error: "Tool PIN not configured." }, { status: 500 });
-    }
+    // Check if session user is allowed or PIN matches
     cookieName = `auth_tool_${toolId}`;
   }
 
   const session = await getServerSession(authOptions);
-  const isAuthorized = (pin && pin === securePin) || session;
+
+  let isAuthorized = false;
+  if (type === "dashboard") {
+    isAuthorized = Boolean((pin && pin === securePin) || session);
+  } else if (type === "tool" && toolId) {
+    const pinMatches = Boolean(securePin && pin && pin === securePin);
+    const sessionAllowed = isToolAllowedForUser(session, toolId);
+    isAuthorized = pinMatches || sessionAllowed;
+    if (!isAuthorized && !securePin) {
+      const envVarName = `${toolId.replace(/-/g, "_").toUpperCase()}_PIN`;
+      console.error(`Missing PIN for tool: ${toolId}. Please set ${envVarName} in the .env file.`);
+      return NextResponse.json({ success: false, error: "Tool PIN not configured." }, { status: 500 });
+    }
+  }
+
 
   if (isAuthorized) {
     const response = NextResponse.json({ success: true });
