@@ -53,6 +53,7 @@ export async function GET() {
 
     if (!doc) {
       return NextResponse.json({
+        liquidity: { totalLiquidity: 20500, monthlyExpenses: 2000 },
         liquidAccounts: [],
         airbusPackages: [],
         otherInvestments: [],
@@ -64,6 +65,7 @@ export async function GET() {
     }
 
     return NextResponse.json({
+      liquidity: doc.liquidity || { totalLiquidity: 20500, monthlyExpenses: 2000 },
       liquidAccounts: doc.liquidAccounts || [],
       airbusPackages: doc.airbusPackages || [],
       otherInvestments: doc.otherInvestments || [],
@@ -89,13 +91,14 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { liquidAccounts, airbusPackages, otherInvestments, settings } = body;
+    const { liquidity, liquidAccounts, airbusPackages, otherInvestments, settings } = body;
 
     const client = await clientPromise;
     const db = client.db(getDbName());
 
     const payload = {
       id: DATA_DOC_ID,
+      liquidity: liquidity || { totalLiquidity: 20500, monthlyExpenses: 2000 },
       liquidAccounts: Array.isArray(liquidAccounts) ? liquidAccounts : [],
       airbusPackages: Array.isArray(airbusPackages) ? airbusPackages : [],
       otherInvestments: Array.isArray(otherInvestments) ? otherInvestments : [],
