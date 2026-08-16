@@ -7,7 +7,6 @@ import { loadAllToolEnvs } from "@/lib/env";
 
 loadAllToolEnvs();
 
-
 async function getUserId() {
   const session = await getServerSession(authOptions);
   if (session?.user?.email) {
@@ -39,9 +38,21 @@ export async function GET() {
       process.env.BABY_LEAVE_PLANNER_DB_NAME || "baby-leave-planner",
     );
 
-    const data = await db.collection("settings").findOne({ id: userId });
+    const settings = (await db.collection("settings").findOne({ id: userId })) || {};
+    const eventsDocs = await db.collection("events").find({ userId }).toArray();
 
-    return NextResponse.json(data || {});
+    const events = eventsDocs.map((doc: any) => ({
+      date: doc.date,
+      person: doc.person,
+      type: doc.type,
+    }));
+
+    const mergedData = {
+      ...settings,
+      events: events.length > 0 ? events : (settings.events || []),
+    };
+
+    return NextResponse.json(mergedData);
   } catch (e) {
     console.error(e);
     return NextResponse.json(
@@ -59,18 +70,35 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
+    const { events = [], ...settingsData } = body;
+
     const client = await clientPromise;
     const db = client.db(
       process.env.BABY_LEAVE_PLANNER_DB_NAME || "baby-leave-planner",
     );
 
+    // Save settings (keeping events inside settings for backwards compatibility)
     await db
       .collection("settings")
       .updateOne(
         { id: userId },
-        { $set: { ...body, id: userId, updatedAt: new Date() } },
+        { $set: { ...settingsData, events, id: userId, updatedAt: new Date() } },
         { upsert: true },
       );
+
+    // Save individual event records into dedicated 'events' collection
+    await db.collection("events").deleteMany({ userId });
+
+    if (Array.isArray(events) && events.length > 0) {
+      const eventDocs = events.map((evt: { date: string; person: string; type: string }) => ({
+        userId,
+        date: evt.date,
+        person: evt.person,
+        type: evt.type,
+        updatedAt: new Date(),
+      }));
+      await db.collection("events").insertMany(eventDocs);
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {

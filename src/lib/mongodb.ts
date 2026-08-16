@@ -102,6 +102,30 @@ class MockCollection {
     }
     return { deletedCount: 0 };
   }
+
+  async deleteMany(query: any = {}) {
+    const data = this._read();
+    const initialLength = data.length;
+    const remaining = data.filter((item: any) => {
+      for (const key in query) {
+        if (item[key] === query[key]) return false;
+      }
+      return true;
+    });
+
+    this._write(remaining);
+    return { deletedCount: initialLength - remaining.length };
+  }
+
+  async insertMany(docs: any[]) {
+    if (!Array.isArray(docs) || docs.length === 0) {
+      return { insertedCount: 0 };
+    }
+    const data = this._read();
+    data.push(...docs);
+    this._write(data);
+    return { insertedCount: docs.length };
+  }
 }
 
 class MockDb {
