@@ -8,6 +8,8 @@ import {
   Trash2,
   Edit2,
   Plus,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 
 // Define TypeScript interfaces for our data structure
@@ -65,30 +67,39 @@ function formatDateStr(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+// Helper function to ensure balance symmetry between Madre and Padre
+function syncBalancesSymmetry(balances: BalanceItem[]): BalanceItem[] {
+  const result = [...balances];
+  const parents: ("Madre" | "Padre")[] = ["Madre", "Padre"];
+
+  parents.forEach((sourceParent) => {
+    const targetParent: "Madre" | "Padre" = sourceParent === "Madre" ? "Padre" : "Madre";
+    const sourceItems = result.filter((b) => b.person === sourceParent);
+
+    sourceItems.forEach((sourceBal) => {
+      const exists = result.some((b) => b.person === targetParent && b.type === sourceBal.type);
+      if (!exists) {
+        result.push({
+          person: targetParent,
+          type: sourceBal.type,
+          total: sourceBal.total,
+          frecuencia: sourceBal.frecuencia,
+        });
+      }
+    });
+  });
+
+  return result;
+}
+
 // Migration Helper
 function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
-  if (loadedData && Array.isArray(loadedData.events)) {
-    return {
-      birthDate: loadedData.birthDate || null,
-      events: loadedData.events,
-      balances: loadedData.balances || [],
-      festivos: loadedData.festivos || [],
-    };
-  }
-
   const defaultBalances: BalanceItem[] = [
     { person: "Madre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Madre", type: "Lactancia", total: 15, frecuencia: "Diario" },
     { person: "Padre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Padre", type: "Lactancia", total: 15, frecuencia: "Diario" },
   ];
-
-  const migrated: GlobalData = {
-    birthDate: loadedData?.birthDate || null,
-    events: [],
-    balances: defaultBalances,
-    festivos: [],
-  };
 
   if (loadedData && Array.isArray(loadedData.events)) {
     let loadedBalances = loadedData.balances || [];
@@ -110,10 +121,17 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
     return {
       birthDate: loadedData.birthDate || null,
       events: loadedData.events,
-      balances: loadedBalances,
+      balances: syncBalancesSymmetry(loadedBalances),
       festivos: loadedData.festivos || [],
     };
   }
+
+  const migrated: GlobalData = {
+    birthDate: loadedData?.birthDate || null,
+    events: [],
+    balances: defaultBalances,
+    festivos: [],
+  };
 
   if (Array.isArray(loadedData?.holidays)) {
     migrated.festivos = loadedData.holidays.map((hStr: string) => ({
@@ -226,6 +244,17 @@ export function BabyLeavePlannerModule() {
   const [selectedPerson, setSelectedPerson] = useState<string>("Madre"); // "Madre" | "Padre" | "Festivo"
   const [selectedType, setSelectedType] = useState<string>("");
   const [holidayNameVal, setHolidayNameVal] = useState("Festivo");
+
+  // Generation Modal State
+  const [generateModal, setGenerateModal] = useState<{
+    isOpen: boolean;
+    person: "Madre" | "Padre";
+    type: string;
+  }>({
+    isOpen: false,
+    person: "Madre",
+    type: "Permiso Nacimiento",
+  });
 
   // Configuration Modal States (only contains birthDate now)
   const [showConfigModal, setShowConfigModal] = useState(false);
@@ -600,6 +629,18 @@ export function BabyLeavePlannerModule() {
     }
   };
 
+  // Sync Balance Configuration between Madre and Padre
+  const handleSyncParentsConfig = () => {
+    setGlobalData((prev) => ({
+      ...prev,
+      balances: syncBalancesSymmetry(prev.balances),
+    }));
+    showAlert(
+      "Configuración Sincronizada",
+      "Se han igualado todos los permisos y saldos entre Madre y Padre para que ambos tengan la misma configuración."
+    );
+  };
+
   // Sidebar Inline Balance Editor Handlers (Step 1)
   const handleAddBalanceSidebar = (person: "Madre" | "Padre") => {
     const type = sidebarAddType.trim();
@@ -627,10 +668,12 @@ export function BabyLeavePlannerModule() {
       frecuencia: sidebarAddFreq,
     };
 
-    setGlobalData((prev) => ({
-      ...prev,
-      balances: [...prev.balances, newBalance],
-    }));
+    setGlobalData((prev) => {
+      return {
+        ...prev,
+        balances: [...prev.balances, newBalance],
+      };
+    });
 
     // Reset Form
     setSidebarAddType("");
@@ -738,6 +781,96 @@ export function BabyLeavePlannerModule() {
       });
   };
 
+  // Generation Helpers for Permiso Nacimiento / Leave Weeks
+  const handleAutoGenerateWeeks = (person: "Madre" | "Padre", weeksCount: number) => {
+    if (!globalData.birthDate) {
+      showAlert("Fecha Inexistente", "Debes configurar primero la fecha de nacimiento del bebé.");
+      return;
+    }
+
+    const birthDate = new Date(globalData.birthDate);
+    const targetBalance = globalData.balances.find((b) => b.person === person && b.type === "Permiso Nacimiento");
+    const typeName = targetBalance?.type || "Permiso Nacimiento";
+
+    const daysCount = weeksCount * 7;
+    const newEvents: EventItem[] = [];
+
+    for (let i = 0; i < daysCount; i++) {
+      const d = new Date(birthDate);
+      d.setDate(birthDate.getDate() + i);
+      newEvents.push({
+        date: formatDateStr(d),
+        person,
+        type: typeName,
+      });
+    }
+
+    setGlobalData((prev) => {
+      // Filter out existing events for this person and type within the date range
+      const newDatesSet = new Set(newEvents.map((e) => e.date));
+      const filteredExisting = prev.events.filter(
+        (e) => !(e.person === person && e.type === typeName && newDatesSet.has(e.date))
+      );
+
+      return {
+        ...prev,
+        events: [...filteredExisting, ...newEvents].sort((a, b) => a.date.localeCompare(b.date)),
+      };
+    });
+
+    setGenerateModal((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleManualGenerateWeeks = (person: "Madre" | "Padre", weeksCount: number) => {
+    if (!globalData.birthDate) {
+      showAlert("Fecha Inexistente", "Debes configurar primero la fecha de nacimiento del bebé.");
+      return;
+    }
+
+    const birthDate = new Date(globalData.birthDate);
+    const targetBalance = globalData.balances.find((b) => b.person === person && b.type === "Permiso Nacimiento");
+    const typeName = targetBalance?.type || "Permiso Nacimiento";
+
+    const daysCount = weeksCount * 7;
+    const preselectedDates: string[] = [];
+
+    for (let i = 0; i < daysCount; i++) {
+      const d = new Date(birthDate);
+      d.setDate(birthDate.getDate() + i);
+      preselectedDates.push(formatDateStr(d));
+    }
+
+    setSelectedDates(preselectedDates);
+    setSelectedPerson(person);
+    setSelectedType(typeName);
+    setGenerateModal((prev) => ({ ...prev, isOpen: false }));
+    setShowAssignModal(true);
+  };
+
+  // Reorder balance card helper
+  const moveBalance = (person: "Madre" | "Padre", direction: "up" | "down", indexInPerson: number) => {
+    const personIndices = globalData.balances
+      .map((b, idx) => (b.person === person ? idx : -1))
+      .filter((idx) => idx !== -1);
+
+    const targetIndexInPerson = direction === "up" ? indexInPerson - 1 : indexInPerson + 1;
+    if (targetIndexInPerson < 0 || targetIndexInPerson >= personIndices.length) return;
+
+    const globalIdx1 = personIndices[indexInPerson];
+    const globalIdx2 = personIndices[targetIndexInPerson];
+
+    setGlobalData((prev) => {
+      const newBalances = [...prev.balances];
+      const temp = newBalances[globalIdx1];
+      newBalances[globalIdx1] = newBalances[globalIdx2];
+      newBalances[globalIdx2] = temp;
+      return {
+        ...prev,
+        balances: newBalances,
+      };
+    });
+  };
+
   // Sidebar KPI & Balance Editing Render Logic (Step 1)
   const renderKPIs = (person: "Madre" | "Padre") => {
     const personBalances = globalData.balances.filter((b) => b.person === person);
@@ -751,65 +884,83 @@ export function BabyLeavePlannerModule() {
           <span className="text-slate-800 dark:text-slate-100 font-extrabold flex items-center gap-2">
             {isMom ? "👩 Madre" : "👨 Padre"}
           </span>
-          <button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="p-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 transition cursor-pointer"
-            title="Añadir saldo de días"
-          >
-            <Plus size={16} />
-          </button>
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setShowAddForm(!showAddForm)}
+              className="px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/60 transition cursor-pointer flex items-center gap-1 text-xs font-extrabold border border-indigo-200/60 dark:border-indigo-800/60"
+              title="Añadir permiso"
+            >
+              <Plus size={14} />
+              <span>Añadir Permiso</span>
+            </button>
+          </div>
         </div>
 
         {/* Inline form to create a new balance */}
         {showAddForm && (
           <div className="bg-slate-100 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-3 mb-4 animate-in slide-in-from-top-4 duration-200">
-            <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Añadir Saldo</span>
+              {/* Quick Preset Button for Permiso Nacimiento */}
+              <button
+                type="button"
+                onClick={() => {
+                  setSidebarAddType("Permiso Nacimiento");
+                  setSidebarAddTotal("19");
+                  setSidebarAddFreq("Semanal");
+                }}
+                className="text-[10px] font-extrabold px-2 py-1 bg-indigo-50 dark:bg-indigo-950/80 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 rounded-md border border-indigo-200 dark:border-indigo-700 transition cursor-pointer"
+                title="Cargar ajuste predeterminado de 19 semanas (6 obligatorias + 13 flexibles)"
+              >
+                ✨ Preset 19 Semanas
+              </button>
+            </div>
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Frecuencia</label>
                 <select
                   value={sidebarAddFreq}
                   onChange={(e) => setSidebarAddFreq(e.target.value as "Diario" | "Semanal")}
-                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                  className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
                 >
                   <option value="Diario">Diario</option>
                   <option value="Semanal">Semanal</option>
                 </select>
               </div>
               <div>
-                <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Días/Semanas</label>
+                <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Días/Semanas</label>
                 <input
                   type="number"
                   placeholder="Ej. 15"
                   value={sidebarAddTotal}
                   onChange={(e) => setSidebarAddTotal(e.target.value)}
-                  className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                  className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold text-center"
                   required
                 />
               </div>
             </div>
             <div>
-              <label className="block text-[9px] text-slate-500 font-bold mb-1 uppercase">Nombre del Permiso</label>
+              <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Nombre del Permiso</label>
               <input
                 type="text"
-                placeholder="Ej. Lactancia"
+                placeholder="Ej. Permiso Nacimiento"
                 value={sidebarAddType}
                 onChange={(e) => setSidebarAddType(e.target.value)}
-                className="w-full p-2 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 outline-none"
+                className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold outline-none"
                 required
               />
             </div>
-            <div className="flex gap-2 text-xs">
+            <div className="flex gap-2 text-xs pt-1">
               <button
                 type="button"
-                className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold"
+                className="flex-1 p-2 bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg font-bold cursor-pointer"
                 onClick={() => setShowAddForm(false)}
               >
                 Cancelar
               </button>
               <button
                 type="button"
-                className="flex-1 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs"
+                className="flex-1 p-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-bold shadow-xs cursor-pointer"
                 onClick={() => handleAddBalanceSidebar(person)}
               >
                 Añadir
@@ -824,14 +975,24 @@ export function BabyLeavePlannerModule() {
           </div>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {personBalances.map((bal, idx) => {
             const isEditing = editingBalanceKey === `${person}-${bal.type}`;
 
             // Calculate used days counting from globalData.events
-            const usedDays = globalData.events.filter(
+            let usedDays = globalData.events.filter(
               (e) => e.person === bal.person && e.type === bal.type
             ).length;
+
+            // For "Permiso Nacimiento", the 19 total weeks include the 6 mandatory weeks (42 days).
+            // When birthDate is set, 42 mandatory days are auto-consumed, plus any additional scheduled events after the mandatory period.
+            if (bal.type === "Permiso Nacimiento" && globalData.birthDate && mandatoryEndStr) {
+              const extraEventsCount = globalData.events.filter((e) => {
+                if (e.person !== bal.person || e.type !== bal.type) return false;
+                return e.date > mandatoryEndStr;
+              }).length;
+              usedDays = 42 + extraEventsCount;
+            }
 
             const total = Number(bal.total);
             let used = 0;
@@ -849,42 +1010,41 @@ export function BabyLeavePlannerModule() {
             }
 
             const percent = Math.min(100, (used / total) * 100);
-            const barClass = isMom ? "bar-mom" : "bar-dad";
             const isLow = (remaining <= 2 && bal.frecuencia !== "Semanal") || remaining <= 0;
 
             if (isEditing) {
               return (
                 <div key={idx} className="p-4 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 animate-in fade-in duration-150">
-                  <div className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase">Editar Permiso</div>
+                  <div className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase">Editar Permiso</div>
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Frecuencia</label>
+                      <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Frecuencia</label>
                       <select
                         value={editFreqVal}
                         onChange={(e) => setEditFreqVal(e.target.value as "Diario" | "Semanal")}
-                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
                       >
                         <option value="Diario">Diario</option>
                         <option value="Semanal">Semanal</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Cantidad</label>
+                      <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Cantidad</label>
                       <input
                         type="number"
                         value={editTotalVal}
                         onChange={(e) => setEditTotalVal(e.target.value)}
-                        className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800 text-center"
+                        className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold text-center"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-[8px] text-slate-500 font-bold mb-1 uppercase">Nombre</label>
+                    <label className="block text-[10px] text-slate-700 dark:text-slate-300 font-extrabold mb-1 uppercase">Nombre</label>
                     <input
                       type="text"
                       value={editTypeVal}
                       onChange={(e) => setEditTypeVal(e.target.value)}
-                      className="w-full p-1.5 border border-slate-200 dark:border-slate-700 dark:bg-slate-850 rounded-lg bg-white dark:bg-slate-800"
+                      className="w-full p-2 border border-slate-300 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-bold"
                     />
                   </div>
                   <div className="flex justify-between items-center gap-2 text-xs pt-1.5">
@@ -918,50 +1078,93 @@ export function BabyLeavePlannerModule() {
             }
 
             return (
-              <div key={idx} className={`kpi-card-sidebar relative group ${isLow ? "bg-danger-light" : ""}`}>
-                {/* Action buttons (Edit and Delete) visible on mobile and desktop hover */}
-                <div className="absolute top-2.5 right-2.5 flex items-center gap-1 opacity-90 sm:opacity-0 group-hover:opacity-100 transition-opacity duration-150 z-10">
-                  <button
-                    onClick={() => startEditingBalance(person, bal.type)}
-                    className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-lg text-slate-500 dark:text-slate-400 transition cursor-pointer"
-                    title="Editar este saldo"
-                  >
-                    <Edit2 size={13} />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteBalance(person, bal.type)}
-                    className="p-1.5 bg-slate-100 hover:bg-red-50 dark:bg-slate-800 dark:hover:bg-red-950/40 rounded-lg text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition cursor-pointer"
-                    title="Eliminar esta sección y sus días"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+              <div
+                key={idx}
+                className={`group relative bg-white dark:bg-slate-900 p-3.5 rounded-xl border transition-all duration-200 shadow-xs ${
+                  isLow
+                    ? "border-red-300 dark:border-red-900/80 bg-red-50/50 dark:bg-red-950/30"
+                    : "border-slate-200 dark:border-slate-800 hover:border-indigo-400 dark:hover:border-indigo-600"
+                }`}
+              >
+                {/* Header row: Title, Badge and Action Toolbar */}
+                <div className="flex items-center justify-between gap-1.5 mb-2">
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <span className="font-black text-xs tracking-tight text-slate-900 dark:text-slate-100 truncate" title={bal.type}>
+                      {bal.type}
+                    </span>
+                    <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 uppercase tracking-wider shrink-0 border border-slate-200/60 dark:border-slate-700/60">
+                      {bal.frecuencia}
+                    </span>
+                  </div>
+
+                  {/* Sleek Action Toolbar: Reorder Up/Down, Edit, Delete */}
+                  <div className="flex items-center gap-0.5 p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 shrink-0">
+                    <button
+                      onClick={() => moveBalance(person, "up", idx)}
+                      disabled={idx === 0}
+                      className="p-1 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
+                      title="Mover arriba"
+                    >
+                      <ArrowUp size={12} />
+                    </button>
+                    <button
+                      onClick={() => moveBalance(person, "down", idx)}
+                      disabled={idx === personBalances.length - 1}
+                      className="p-1 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-25 disabled:hover:bg-transparent disabled:hover:text-slate-500 transition cursor-pointer"
+                      title="Mover abajo"
+                    >
+                      <ArrowDown size={12} />
+                    </button>
+                    <span className="w-px h-3 bg-slate-200 dark:bg-slate-700 mx-0.5" />
+                    <button
+                      onClick={() => startEditingBalance(person, bal.type)}
+                      className="p-1 rounded text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-white dark:hover:bg-slate-700 transition cursor-pointer"
+                      title="Editar saldo"
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button
+                      onClick={() => handleDeleteBalance(person, bal.type)}
+                      className="p-1 rounded text-slate-500 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition cursor-pointer"
+                      title="Eliminar saldo"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
 
-                <div className="kpi-card-header pr-16">
-                  <span className="kpi-card-label truncate max-w-[130px]" title={bal.type}>
-                    {bal.type}
+
+                {/* Compact Metrics Row: Available vs Total/Used */}
+                <div className="flex items-baseline justify-between px-2.5 py-1.5 mb-1.5 bg-slate-100/80 dark:bg-slate-800/80 rounded-lg border border-slate-200/80 dark:border-slate-700/80">
+                  <span className="text-[10px] font-black text-slate-600 dark:text-slate-300 uppercase tracking-wider">
+                    Disponibles
                   </span>
-                  <div className="kpi-card-remaining shrink-0 bg-slate-50 dark:bg-slate-900 border border-slate-100 dark:border-slate-800">
-                    <span className={`remaining-value ${isLow ? "text-danger" : "text-slate-800 dark:text-slate-100"}`}>
+                  <div className="flex items-baseline gap-1">
+                    <span className={`text-base font-black leading-none tabular-nums tracking-tight ${isLow ? "text-red-600 dark:text-red-400" : "text-slate-900 dark:text-slate-100"}`}>
                       {remaining}
                     </span>
-                    <span className="remaining-unit">{unit} LIBRES</span>
+                    <span className="text-[9px] font-extrabold text-slate-600 dark:text-slate-400 uppercase">
+                      {unit}
+                    </span>
                   </div>
                 </div>
 
-                <div className="kpi-progress-wrapper">
-                  <div className={`kpi-progress-bar ${barClass}`} style={{ width: `${percent}%` }} />
+                {/* Sleek Compact Progress bar */}
+                <div className="h-2 w-full bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden my-2 border border-slate-200/50 dark:border-slate-700/50">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ease-out ${
+                      isMom
+                        ? "bg-gradient-to-r from-pink-500 to-rose-400"
+                        : "bg-gradient-to-r from-sky-500 to-blue-400"
+                    }`}
+                    style={{ width: `${percent}%` }}
+                  />
                 </div>
 
-                <div className="kpi-card-footer">
-                  <div className="footer-stat text-left">
-                    <span>{used} {unit}</span>
-                    <span>USADOS</span>
-                  </div>
-                  <div className="footer-stat text-right">
-                    <span>{total} {unit}</span>
-                    <span>TOTAL</span>
-                  </div>
+                {/* Compact Footer stats */}
+                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 dark:text-slate-400">
+                  <span>Usados: <strong className="text-slate-900 dark:text-slate-100 font-black">{used} {unit}</strong></span>
+                  <span>Total: <strong className="text-slate-900 dark:text-slate-100 font-black">{total} {unit}</strong></span>
                 </div>
               </div>
             );
@@ -1037,7 +1240,9 @@ export function BabyLeavePlannerModule() {
 
         .sidebar-inner {
           flex-grow: 1;
-          padding: 30px 20px;
+          padding: 16px 12px;
+          width: 100%;
+          box-sizing: border-box;
           overflow-y: auto;
           background: #f8fafc;
         }
@@ -1046,8 +1251,8 @@ export function BabyLeavePlannerModule() {
         }
 
         .sidebar-handle {
-          width: 44px;
-          height: 100px;
+          width: 38px;
+          height: 80px;
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
@@ -1056,20 +1261,20 @@ export function BabyLeavePlannerModule() {
           justify-content: center;
           cursor: pointer;
           color: white;
-          font-size: 1.2rem;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+          font-size: 1.1rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
           z-index: 2001;
           user-select: none;
         }
 
         #sidebar-mom .sidebar-handle {
-          right: -44px;
+          right: -38px;
           background: #be185d;
           border-radius: 0 12px 12px 0;
         }
 
         #sidebar-dad .sidebar-handle {
-          left: -44px;
+          left: -38px;
           background: #0369a1;
           border-radius: 12px 0 0 12px;
         }
@@ -2188,6 +2393,99 @@ export function BabyLeavePlannerModule() {
                   Actualizar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- GENERATE LEAVE WEEKS MODAL --- */}
+      {generateModal.isOpen && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3500] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-sm mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                  <span>⚡</span> Generar Semanas ({generateModal.person})
+                </h3>
+                <p className="text-[11px] text-slate-400 mt-0.5 font-medium">
+                  Selecciona la modalidad de generación en el calendario:
+                </p>
+              </div>
+              <button
+                onClick={() => setGenerateModal((prev) => ({ ...prev, isOpen: false }))}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="space-y-3 pt-1">
+              {/* Option 1: Generate 6 Mandatory Weeks Auto */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                    6 Semanas Obligatorias
+                  </span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-950 text-purple-600 dark:text-purple-300">
+                    OBLIGATORIO
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                  Genera los 42 días ininterrumpidos a partir de la fecha de nacimiento.
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleAutoGenerateWeeks(generateModal.person, 6)}
+                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    ⚡ Auto Generar
+                  </button>
+                  <button
+                    onClick={() => handleManualGenerateWeeks(generateModal.person, 6)}
+                    className="flex-1 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    ✍️ Manual
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 2: Generate All 19 Weeks */}
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-extrabold text-slate-800 dark:text-slate-200">
+                    19 Semanas Completas
+                  </span>
+                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-indigo-100 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-300">
+                    COMPLETO
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                  Genera los 133 días ininterrumpidos desde el nacimiento (6 obligatorias + 13 flexibles del tirón).
+                </p>
+                <div className="flex gap-2 pt-1">
+                  <button
+                    onClick={() => handleAutoGenerateWeeks(generateModal.person, 19)}
+                    className="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer"
+                  >
+                    ⚡ Auto Generar
+                  </button>
+                  <button
+                    onClick={() => handleManualGenerateWeeks(generateModal.person, 19)}
+                    className="flex-1 py-1.5 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition cursor-pointer"
+                  >
+                    ✍️ Manual
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 dark:border-slate-700 flex justify-end">
+              <button
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-xs cursor-pointer"
+                onClick={() => setGenerateModal((prev) => ({ ...prev, isOpen: false }))}
+              >
+                Cancelar
+              </button>
             </div>
           </div>
         </div>
