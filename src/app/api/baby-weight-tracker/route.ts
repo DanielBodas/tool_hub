@@ -43,20 +43,24 @@ const DEFAULT_BLANKETS = [
   { name: "Manta algodón", margin: 0.200, label: "Manta algodón (+200g)" }
 ];
 
-async function getUserId() {
-  const session = await getServerSession(authOptions);
-  if (session?.user?.email) {
-    return session.user.email;
-  }
-
-  // Fallback to a tool-specific cookie or dashboard cookie if unlocked via PIN
+async function getUserAuthInfo() {
   const cookieStore = await cookies();
   const isUnlocked =
     cookieStore.get("auth_tool_baby-weight-tracker")?.value === "true" ||
     cookieStore.get("auth_dashboard")?.value === "true";
 
+  const session = await getServerSession(authOptions);
+
+  if (session?.user?.email) {
+    const cookieId = cookieStore.get("weight_tracker_id")?.value || "default_baby";
+    const allowed = Array.from(new Set([session.user.email, cookieId, "default_baby"]));
+    return { primary: session.user.email, allowed };
+  }
+
   if (isUnlocked) {
-    return cookieStore.get("weight_tracker_id")?.value || "default_baby";
+    const cookieId = cookieStore.get("weight_tracker_id")?.value || "default_baby";
+    const allowed = Array.from(new Set([cookieId, "default_baby"]));
+    return { primary: cookieId, allowed };
   }
 
   return null;
@@ -64,8 +68,8 @@ async function getUserId() {
 
 export async function GET() {
   try {
-    const userId = await getUserId();
-    if (!userId) {
+    const userAuth = await getUserAuthInfo();
+    if (!userAuth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -74,16 +78,22 @@ export async function GET() {
       process.env.BABY_WEIGHT_TRACKER_DB_NAME || "baby-weight-tracker",
     );
 
-    // Fetch weight records
+    // Fetch weight records from all allowed user IDs (e.g. session email + default_baby)
     const weightsData = (await db
       .collection("weights")
-      .find({ userId })
+      .find({ userId: { $in: userAuth.allowed } })
       .toArray()) as unknown as DBWeightRecord[];
 
-    // Fetch custom settings
-    const settingsDoc = await db
+    // Fetch custom settings (try primary userId first, then fallback to default_baby)
+    let settingsDoc = await db
       .collection("settings")
-      .findOne({ userId });
+      .findOne({ userId: userAuth.primary });
+
+    if (!settingsDoc && userAuth.primary !== "default_baby") {
+      settingsDoc = await db
+        .collection("settings")
+        .findOne({ userId: "default_baby" });
+    }
 
     const sorted = weightsData.sort((a, b) => {
       const dateA = `${a.date}T${a.time || "00:00"}`;
@@ -94,7 +104,7 @@ export async function GET() {
     const responseData = {
       weights: sorted,
       settings: settingsDoc || {
-        userId,
+        userId: userAuth.primary,
         sites: DEFAULT_SITES,
         clothing: DEFAULT_CLOTHING,
         blankets: DEFAULT_BLANKETS
@@ -113,11 +123,12 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const userId = await getUserId();
-    if (!userId) {
+    const userAuth = await getUserAuthInfo();
+    if (!userAuth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = userAuth.primary;
     const body = await request.json();
     const client = await clientPromise;
     const db = client.db(
@@ -148,6 +159,16 @@ export async function POST(request: Request) {
     // Otherwise, save a weight record
     const recordId = body.id || crypto.randomUUID();
 
+    // If updating an existing record, verify it belongs to one of the allowed IDs
+    if (body.id) {
+      const existing = await db
+        .collection("weights")
+        .findOne({ _id: recordId, userId: { $in: userAuth.allowed } });
+      if (!existing) {
+        return NextResponse.json({ error: "Record not found or unauthorized" }, { status: 404 });
+      }
+    }
+
     const weightRecord = {
       _id: recordId, // Use this as the unique document ID
       userId,
@@ -166,7 +187,7 @@ export async function POST(request: Request) {
     await db
       .collection("weights")
       .updateOne(
-        { _id: recordId, userId },
+        { _id: recordId },
         { $set: weightRecord },
         { upsert: true },
       );
@@ -180,8 +201,8 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
-    const userId = await getUserId();
-    if (!userId) {
+    const userAuth = await getUserAuthInfo();
+    if (!userAuth) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -209,7 +230,7 @@ export async function DELETE(request: Request) {
 
     const result = await db
       .collection("weights")
-      .deleteOne({ _id: recordId, userId });
+      .deleteOne({ _id: recordId, userId: { $in: userAuth.allowed } });
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: "Record not found or unauthorized" }, { status: 404 });

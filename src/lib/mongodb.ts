@@ -9,6 +9,18 @@ const uri = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/platform-db";
 // -----------------------------------------------------------------------------
 // GRACEFUL MOCK MONGODB CLIENT FALLBACK FOR ENVIRONMENTS WITHOUT RUNNING MONGO
 // -----------------------------------------------------------------------------
+function matchQuery(item: any, query: any): boolean {
+  for (const key in query) {
+    const qVal = query[key];
+    if (qVal && typeof qVal === "object" && Array.isArray(qVal.$in)) {
+      if (!qVal.$in.includes(item[key])) return false;
+    } else {
+      if (item[key] !== qVal) return false;
+    }
+  }
+  return true;
+}
+
 class MockCollection {
   name: string;
   dbName: string;
@@ -44,12 +56,7 @@ class MockCollection {
 
   async find(query: any = {}) {
     const data = this._read();
-    const filtered = data.filter((item: any) => {
-      for (const key in query) {
-        if (item[key] !== query[key]) return false;
-      }
-      return true;
-    });
+    const filtered = data.filter((item: any) => matchQuery(item, query));
     return {
       toArray: async () => filtered,
     };
@@ -57,12 +64,7 @@ class MockCollection {
 
   async findOne(query: any = {}) {
     const data = this._read();
-    const found = data.find((item: any) => {
-      for (const key in query) {
-        if (item[key] !== query[key]) return false;
-      }
-      return true;
-    });
+    const found = data.find((item: any) => matchQuery(item, query));
     return found || null;
   }
 
@@ -70,17 +72,20 @@ class MockCollection {
     const data = this._read();
     const setDoc = update.$set || {};
 
-    const index = data.findIndex((item: any) => {
-      for (const key in query) {
-        if (item[key] !== query[key]) return false;
-      }
-      return true;
-    });
+    const index = data.findIndex((item: any) => matchQuery(item, query));
 
     if (index !== -1) {
       data[index] = { ...data[index], ...setDoc };
     } else if (options.upsert) {
-      data.push({ ...query, ...setDoc });
+      const cleanQuery: any = {};
+      for (const k in query) {
+        if (query[k] && typeof query[k] === "object" && Array.isArray(query[k].$in)) {
+          cleanQuery[k] = query[k].$in[0];
+        } else {
+          cleanQuery[k] = query[k];
+        }
+      }
+      data.push({ ...cleanQuery, ...setDoc });
     }
     this._write(data);
     return { modifiedCount: index !== -1 ? 1 : 0, upsertedCount: index === -1 ? 1 : 0 };
@@ -88,12 +93,7 @@ class MockCollection {
 
   async deleteOne(query: any) {
     const data = this._read();
-    const index = data.findIndex((item: any) => {
-      for (const key in query) {
-        if (item[key] !== query[key]) return false;
-      }
-      return true;
-    });
+    const index = data.findIndex((item: any) => matchQuery(item, query));
 
     if (index !== -1) {
       data.splice(index, 1);
