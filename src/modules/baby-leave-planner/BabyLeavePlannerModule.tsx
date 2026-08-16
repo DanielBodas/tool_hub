@@ -67,31 +67,6 @@ function formatDateStr(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
-// Helper function to ensure balance symmetry between Madre and Padre
-function syncBalancesSymmetry(balances: BalanceItem[]): BalanceItem[] {
-  const result = [...balances];
-  const parents: ("Madre" | "Padre")[] = ["Madre", "Padre"];
-
-  parents.forEach((sourceParent) => {
-    const targetParent: "Madre" | "Padre" = sourceParent === "Madre" ? "Padre" : "Madre";
-    const sourceItems = result.filter((b) => b.person === sourceParent);
-
-    sourceItems.forEach((sourceBal) => {
-      const exists = result.some((b) => b.person === targetParent && b.type === sourceBal.type);
-      if (!exists) {
-        result.push({
-          person: targetParent,
-          type: sourceBal.type,
-          total: sourceBal.total,
-          frecuencia: sourceBal.frecuencia,
-        });
-      }
-    });
-  });
-
-  return result;
-}
-
 // Migration Helper
 function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
   const defaultBalances: BalanceItem[] = [
@@ -413,9 +388,10 @@ export function BabyLeavePlannerModule() {
         setSelectedPerson(existing.person);
         setSelectedType(existing.type);
       } else {
-        setSelectedPerson("Madre");
-        const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
-        setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+        const targetPerson = currentFilter === "Padre" ? "Padre" : "Madre";
+        setSelectedPerson(targetPerson);
+        const firstBalance = globalData.balances.find((b) => b.person === targetPerson);
+        setSelectedType(firstBalance ? firstBalance.type : "");
       }
     }
 
@@ -448,13 +424,22 @@ export function BabyLeavePlannerModule() {
   };
 
   const openModalForSelection = (dateStr?: string) => {
-    const count = dateStr ? 1 : selectedDates.length;
-    if (count === 0) return;
+    const datesToEvaluate = dateStr ? [dateStr] : selectedDates;
+    if (datesToEvaluate.length === 0) return;
 
-    // Prefill modal dropdowns
-    setSelectedPerson("Madre");
-    const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
-    setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+    // Detect if selected dates belong to a single person's existing events
+    let targetPerson = currentFilter === "Padre" ? "Padre" : "Madre";
+    const selectedEvents = globalData.events.filter((e) => datesToEvaluate.includes(e.date));
+    if (selectedEvents.length > 0) {
+      const persons = new Set(selectedEvents.map((e) => e.person));
+      if (persons.size === 1) {
+        targetPerson = Array.from(persons)[0];
+      }
+    }
+
+    setSelectedPerson(targetPerson);
+    const firstBalance = globalData.balances.find((b) => b.person === targetPerson);
+    setSelectedType(firstBalance ? firstBalance.type : "");
     setHolidayNameVal("Festivo");
 
     setShowAssignModal(true);
@@ -624,18 +609,6 @@ export function BabyLeavePlannerModule() {
     }
   };
 
-  // Sync Balance Configuration between Madre and Padre
-  const handleSyncParentsConfig = () => {
-    setGlobalData((prev) => ({
-      ...prev,
-      balances: syncBalancesSymmetry(prev.balances),
-    }));
-    showAlert(
-      "Configuración Sincronizada",
-      "Se han igualado todos los permisos y saldos entre Madre y Padre para que ambos tengan la misma configuración."
-    );
-  };
-
   // Sidebar Inline Balance Editor Handlers (Step 1)
   const handleAddBalanceSidebar = (person: "Madre" | "Padre") => {
     const type = sidebarAddType.trim();
@@ -784,7 +757,9 @@ export function BabyLeavePlannerModule() {
     }
 
     const birthDate = new Date(globalData.birthDate);
-    const targetBalance = globalData.balances.find((b) => b.person === person && b.type === "Permiso Nacimiento");
+    const targetBalance =
+      globalData.balances.find((b) => b.person === person && (b.type === "Permiso Nacimiento" || b.frecuencia === "Semanal")) ||
+      globalData.balances.find((b) => b.person === person);
     const typeName = targetBalance?.type || "Permiso Nacimiento";
 
     const daysCount = weeksCount * 7;
@@ -823,7 +798,9 @@ export function BabyLeavePlannerModule() {
     }
 
     const birthDate = new Date(globalData.birthDate);
-    const targetBalance = globalData.balances.find((b) => b.person === person && b.type === "Permiso Nacimiento");
+    const targetBalance =
+      globalData.balances.find((b) => b.person === person && (b.type === "Permiso Nacimiento" || b.frecuencia === "Semanal")) ||
+      globalData.balances.find((b) => b.person === person);
     const typeName = targetBalance?.type || "Permiso Nacimiento";
 
     const daysCount = weeksCount * 7;
