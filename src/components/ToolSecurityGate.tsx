@@ -2,38 +2,54 @@
 
 import React, { useState } from "react";
 import { useSecurity } from "./SecurityProvider";
-import { Lock } from "lucide-react";
+import { Lock, ShieldAlert, ArrowLeft } from "lucide-react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 
 /**
  * ToolSecurityGate is the individual login for EACH tool.
- * Note: rendered only by the server component when the auth cookie is absent.
+ * Rendered by the server component when the tool is locked.
+ *
+ * Props:
+ *  - userBlocked: true when the user has a Google session but is NOT in the
+ *    tool's ALLOWED_USERS whitelist. Shows PIN mode with an explanation.
  */
 export function ToolSecurityGate({
   toolId,
   toolName,
+  userBlocked = false,
 }: {
   toolId: string;
   toolName: string;
+  userBlocked?: boolean;
 }) {
   const { data: session } = useSession();
   const { unlock } = useSecurity();
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"choice" | "pin">("choice");
+  const [mode, setMode] = useState<"choice" | "pin">(userBlocked ? "pin" : "choice");
+  const [isBlocked, setIsBlocked] = useState(userBlocked);
   const router = useRouter();
 
   const handleSessionAccess = async () => {
     setLoading(true);
-    // Passing empty pin but toolId and type 'tool'
-    // The server will check for session
-    if (await unlock("", toolId, "tool")) {
+    const res = await fetch("/api/auth/unlock", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pin: "", toolId, type: "tool" }),
+    });
+
+    if (res.ok) {
       setLoading(false);
       router.refresh();
     } else {
+      const data = await res.json().catch(() => ({}));
       setLoading(false);
+      if (res.status === 403 && data?.reason === "not_allowed") {
+        setIsBlocked(true);
+        setMode("pin");
+      }
     }
   };
 
@@ -42,7 +58,6 @@ export function ToolSecurityGate({
     setLoading(true);
     setError(false);
 
-    // Type is "tool" for this specific utility
     if (await unlock(pin, toolId, "tool")) {
       setLoading(false);
       router.refresh();
@@ -53,17 +68,35 @@ export function ToolSecurityGate({
     }
   };
 
+  const handleBackToDashboard = () => {
+    router.push("/dashboard");
+  };
+
   return (
     <div className="min-h-[70vh] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-card p-10 rounded-[2.5rem] shadow-xl border border-border text-center">
-        <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8">
-          <Lock size={40} />
+      <div className="max-w-md w-full bg-card p-8 sm:p-10 rounded-[2.5rem] shadow-xl border border-border text-center">
+        <div
+          className={`w-16 h-16 sm:w-20 sm:h-20 rounded-3xl flex items-center justify-center mx-auto mb-6 ${
+            isBlocked
+              ? "bg-amber-500/10 text-amber-500"
+              : "bg-blue-500/10 text-blue-500"
+          }`}
+        >
+          {isBlocked ? <ShieldAlert size={36} /> : <Lock size={36} />}
         </div>
-        <h2 className="text-3xl font-extrabold text-card-foreground mb-2 tracking-tight">
+
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-card-foreground mb-2 tracking-tight">
           {toolName}
         </h2>
-        <p className="text-muted-foreground mb-10">
-          Inicia sesión para usar esta herramienta.
+
+        <p className="text-muted-foreground text-sm mb-8">
+          {isBlocked ? (
+            <>
+              Tu cuenta ({session?.user?.email || "Google"}) no tiene acceso directo. Introduce el PIN de la herramienta para entrar:
+            </>
+          ) : (
+            "Inicia sesión para usar esta herramienta."
+          )}
         </p>
 
         {mode === "choice" ? (
@@ -72,14 +105,14 @@ export function ToolSecurityGate({
               <button
                 onClick={handleSessionAccess}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-bold text-blue-700 hover:bg-blue-100 transition-all"
+                className="w-full flex items-center justify-center gap-3 px-6 py-3.5 bg-blue-500/10 border-2 border-blue-500/20 rounded-2xl font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 transition-all cursor-pointer"
               >
                 Acceder como {session.user?.name || "Usuario"}
               </button>
             ) : (
               <button
                 onClick={() => signIn("google")}
-                className="w-full flex items-center justify-center gap-3 px-6 py-4 border-2 border-border rounded-2xl font-bold text-foreground hover:bg-muted transition-all"
+                className="w-full flex items-center justify-center gap-3 px-6 py-3.5 border-2 border-border rounded-2xl font-bold text-foreground hover:bg-muted transition-all cursor-pointer"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -102,19 +135,28 @@ export function ToolSecurityGate({
                 Continuar con Google
               </button>
             )}
+
             <div className="relative py-2">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t border-border"></span>
               </div>
               <div className="relative flex justify-center text-[10px] uppercase tracking-widest text-muted-foreground bg-card px-3 font-bold">
-                o acceso directo
+                o acceso por pin
               </div>
             </div>
+
             <button
               onClick={() => setMode("pin")}
-              className="w-full py-4 bg-primary text-primary-foreground rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-lg"
+              className="w-full py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold hover:bg-primary/90 transition-all shadow-md cursor-pointer"
             >
               Acceso por PIN
+            </button>
+
+            <button
+              onClick={handleBackToDashboard}
+              className="w-full py-2.5 text-xs text-muted-foreground hover:text-foreground font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            >
+              <ArrowLeft size={14} /> Volver al Dashboard
             </button>
           </div>
         ) : (
@@ -125,39 +167,47 @@ export function ToolSecurityGate({
                 required
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
-                className={`block w-full px-4 py-5 bg-gray-100 dark:bg-gray-800 border-2 rounded-2xl focus:ring-4 focus:ring-blue-500/50 outline-none transition-all text-center text-4xl tracking-[0.5em] font-mono font-black ${
+                className={`block w-full px-4 py-4 bg-muted/50 border-2 rounded-2xl focus:ring-4 focus:ring-primary/40 outline-none transition-all text-center text-3xl tracking-[0.4em] font-mono font-black ${
                   error
-                    ? "border-red-500 text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 ring-2 ring-red-500"
-                    : "border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white"
+                    ? "border-destructive text-destructive bg-destructive/10 ring-2 ring-destructive/40"
+                    : "border-border text-foreground"
                 }`}
                 placeholder="****"
-                maxLength={4}
+                maxLength={6}
                 autoFocus
                 disabled={loading}
                 autoComplete="off"
               />
               {error && (
-                <p className="text-red-500 text-sm mt-4 font-bold">
-                  Código incorrecto
+                <p className="text-destructive text-sm mt-3 font-bold">
+                  PIN incorrecto. Inténtalo de nuevo.
                 </p>
               )}
             </div>
-            <div className="flex gap-4">
+
+            <div className="flex gap-3">
               <button
                 type="button"
-                onClick={() => setMode("choice")}
-                className="flex-1 py-4 bg-muted text-foreground rounded-2xl font-bold hover:opacity-80 transition-all"
+                onClick={isBlocked ? handleBackToDashboard : () => setMode("choice")}
+                className="flex-1 py-3.5 bg-muted text-foreground rounded-2xl font-bold hover:bg-muted/80 transition-all flex items-center justify-center gap-1.5 text-sm cursor-pointer"
               >
-                Atrás
+                <ArrowLeft size={16} /> {isBlocked ? "Dashboard" : "Atrás"}
               </button>
+
               <button
                 type="submit"
-                disabled={loading}
-                className="flex-[2] py-4 bg-primary text-primary-foreground rounded-2xl font-bold hover:bg-primary/90 active:scale-95 transition-all shadow-lg"
+                disabled={loading || !pin}
+                className="flex-[2] py-3.5 bg-primary text-primary-foreground rounded-2xl font-bold hover:bg-primary/90 active:scale-95 transition-all shadow-md text-sm cursor-pointer disabled:opacity-50"
               >
-                {loading ? "Entrando..." : "Verificar PIN"}
+                {loading ? "Verificando..." : "Verificar PIN"}
               </button>
             </div>
+
+            {isBlocked && (
+              <p className="text-[11px] text-muted-foreground text-center pt-2">
+                Si no conoces el PIN, pulsa en Dashboard para salir.
+              </p>
+            )}
           </form>
         )}
       </div>

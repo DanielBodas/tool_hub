@@ -54,26 +54,28 @@ export default function DashboardStore({ tools }: DashboardStoreProps) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   useEffect(() => {
-    try {
-      const storedFavs = localStorage.getItem("toolhub_favorites");
-      if (storedFavs) setFavorites(JSON.parse(storedFavs));
-    } catch (e) {
-      console.error("Error reading favorites from localStorage:", e);
-    }
-    try {
-      const storedPlays = localStorage.getItem("toolhub_plays");
-      if (storedPlays) setPlayCounts(JSON.parse(storedPlays));
-    } catch (e) {
-      console.error("Error reading play counts from localStorage:", e);
-    }
-    try {
-      const storedViewMode = localStorage.getItem("toolhub_view_mode");
-      if (storedViewMode === "grid" || storedViewMode === "list") {
-        setViewMode(storedViewMode);
+    window.requestAnimationFrame(() => {
+      try {
+        const storedFavs = localStorage.getItem("toolhub_favorites");
+        if (storedFavs) setFavorites(JSON.parse(storedFavs));
+      } catch (e) {
+        console.error("Error reading favorites from localStorage:", e);
       }
-    } catch (e) {
-      console.error("Error reading view mode from localStorage:", e);
-    }
+      try {
+        const storedPlays = localStorage.getItem("toolhub_plays");
+        if (storedPlays) setPlayCounts(JSON.parse(storedPlays));
+      } catch (e) {
+        console.error("Error reading play counts from localStorage:", e);
+      }
+      try {
+        const storedViewMode = localStorage.getItem("toolhub_view_mode");
+        if (storedViewMode === "grid" || storedViewMode === "list") {
+          setViewMode(storedViewMode);
+        }
+      } catch (e) {
+        console.error("Error reading view mode from localStorage:", e);
+      }
+    });
   }, []);
 
   const [searchQuery, setSearchQuery] = useState("");

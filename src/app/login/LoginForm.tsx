@@ -50,15 +50,15 @@ export function LoginForm() {
       setError("Código de acceso incorrecto");
       setLoading(false);
     } else {
-      // Also unlock the secondary dashboard cookie just in case (for compatibility)
+      // Also unlock the dashboard cookie just in case (for compatibility)
       try {
-        await fetch("/api/auth/secondary", {
+        await fetch("/api/auth/unlock", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pin: adminCode, type: "dashboard" }),
         });
       } catch (err) {
-        console.error("Secondary unlock failed", err);
+        console.error("Unlock failed", err);
       }
       
       router.push("/dashboard");
