@@ -10,6 +10,7 @@ import {
   Plus,
   ArrowUp,
   ArrowDown,
+  Database,
 } from "lucide-react";
 
 // Define TypeScript interfaces for our data structure
@@ -180,6 +181,7 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
 
 export function BabyLeavePlannerModule() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [globalData, setGlobalData] = useState<GlobalData>({
     events: [],
     balances: [],
@@ -292,6 +294,32 @@ export function BabyLeavePlannerModule() {
 
     return () => clearTimeout(timeout);
   }, [globalData, isLoaded]);
+
+  // Manual explicit MongoDB dates sync handler
+  const handleSyncDatesToMongo = async () => {
+    try {
+      setIsSyncing(true);
+      const res = await fetch("/api/baby-leave-planner", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(globalData),
+      });
+
+      if (res.ok) {
+        showAlert(
+          "Sincronización Completada 🚀",
+          `Se han guardado correctamente ${globalData.events.length} fecha(s) en la base de datos MongoDB (tabla 'events').`
+        );
+      } else {
+        showAlert("Error de Sincronización", "No se pudieron guardar las fechas en MongoDB.");
+      }
+    } catch (err) {
+      console.error(err);
+      showAlert("Error de Red", "Ocurrió un fallo al conectar con la base de datos.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // 15-Month Calendar Generation
   const monthsData = useMemo(() => {
@@ -1936,9 +1964,18 @@ export function BabyLeavePlannerModule() {
           {/* Header Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0 order-2 md:order-3">
             <button
+              onClick={handleSyncDatesToMongo}
+              disabled={isSyncing}
+              className="h-8 px-2.5 rounded-xl border border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 dark:hover:bg-indigo-900 text-indigo-700 dark:text-indigo-300 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 text-xs font-bold"
+              title="Guardar / Sincronizar fechas en la tabla MongoDB 'events'"
+            >
+              <Database size={14} className={isSyncing ? "animate-spin" : ""} />
+              <span className="hidden sm:inline">Guardar Fechas BD</span>
+            </button>
+            <button
               className="w-8 h-8 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-900/80 hover:bg-white dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-all cursor-pointer"
               onClick={handleRefresh}
-              title="Sincronizar"
+              title="Cargar / Recargar desde BD"
             >
               <RefreshCw size={14} />
             </button>
