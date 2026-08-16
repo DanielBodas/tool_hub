@@ -25,7 +25,8 @@ import {
   Activity,
   MapPin,
   Shirt,
-  Layers
+  Layers,
+  Check
 } from "lucide-react";
 
 interface WeightRecord {
@@ -84,6 +85,18 @@ export function BabyWeightTrackerModule() {
 
   const [newBlanketName, setNewBlanketName] = useState<string>("");
   const [newBlanketMargin, setNewBlanketMargin] = useState<string>("0.1");
+
+  // Inline editing states for config modal
+  const [editingSite, setEditingSite] = useState<string | null>(null);
+  const [editSiteValue, setEditSiteValue] = useState<string>("");
+
+  const [editingClothing, setEditingClothing] = useState<string | null>(null);
+  const [editClothingName, setEditClothingName] = useState<string>("");
+  const [editClothingMargin, setEditClothingMargin] = useState<string>("");
+
+  const [editingBlanket, setEditingBlanket] = useState<string | null>(null);
+  const [editBlanketName, setEditBlanketName] = useState<string>("");
+  const [editBlanketMargin, setEditBlanketMargin] = useState<string>("");
 
   // Filter & Navigation States
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
@@ -400,6 +413,49 @@ export function BabyWeightTrackerModule() {
     handleSaveConfig(updated, clothing, blankets);
   };
 
+  const handleStartEditSite = (siteName: string) => {
+    setEditingSite(siteName);
+    setEditSiteValue(siteName);
+  };
+
+  const handleCancelEditSite = () => {
+    setEditingSite(null);
+    setEditSiteValue("");
+  };
+
+  const handleSaveEditSite = (oldSiteName: string) => {
+    const trimmed = editSiteValue.trim();
+    if (!trimmed) {
+      alert("El nombre del sitio no puede estar vacío");
+      return;
+    }
+    if (trimmed !== oldSiteName && sites.includes(trimmed)) {
+      alert("Ya existe un sitio con ese nombre");
+      return;
+    }
+
+    const updatedSites = sites.map((s) => (s === oldSiteName ? trimmed : s));
+    setSites(updatedSites);
+
+    if (selectedSites.includes(oldSiteName)) {
+      setSelectedSites((prev) => prev.map((s) => (s === oldSiteName ? trimmed : s)));
+    }
+
+    if (scale === oldSiteName) {
+      setScale(trimmed);
+    }
+
+    if (trimmed !== oldSiteName) {
+      setRecords((prev) =>
+        prev.map((r) => (r.scale === oldSiteName ? { ...r, scale: trimmed } : r))
+      );
+    }
+
+    setEditingSite(null);
+    setEditSiteValue("");
+    handleSaveConfig(updatedSites, clothing, blankets);
+  };
+
   const handleAddClothing = () => {
     if (!newClothingName.trim() || !newClothingMargin) return;
     if (clothing.some((p) => pName(p.name) === pName(newClothingName))) {
@@ -428,6 +484,61 @@ export function BabyWeightTrackerModule() {
     handleSaveConfig(sites, updated, blankets);
   };
 
+  const handleStartEditClothing = (preset: ClothingPreset) => {
+    setEditingClothing(preset.name);
+    setEditClothingName(preset.name);
+    setEditClothingMargin(preset.margin.toString());
+  };
+
+  const handleCancelEditClothing = () => {
+    setEditingClothing(null);
+    setEditClothingName("");
+    setEditClothingMargin("");
+  };
+
+  const handleSaveEditClothing = (oldPresetName: string) => {
+    const trimmedName = editClothingName.trim();
+    if (!trimmedName) {
+      alert("El nombre del preset de vestimenta no puede estar vacío");
+      return;
+    }
+    const parsedMargin = parseFloat(editClothingMargin);
+    if (isNaN(parsedMargin) || parsedMargin < 0) {
+      alert("Por favor, introduce un margen válido");
+      return;
+    }
+
+    if (
+      pName(trimmedName) !== pName(oldPresetName) &&
+      clothing.some((c) => pName(c.name) === pName(trimmedName))
+    ) {
+      alert("Ya existe una vestimenta con ese nombre");
+      return;
+    }
+
+    const updatedPreset: ClothingPreset = {
+      name: trimmedName,
+      margin: parsedMargin,
+      label: `${trimmedName} (+${(parsedMargin * 1000).toFixed(0)}g)`
+    };
+
+    const updatedClothing = clothing.map((c) =>
+      pName(c.name) === pName(oldPresetName) ? updatedPreset : c
+    );
+
+    setClothing(updatedClothing);
+
+    if (clothes === oldPresetName) {
+      setClothes(trimmedName);
+      setMargin(parsedMargin.toString());
+    }
+
+    setEditingClothing(null);
+    setEditClothingName("");
+    setEditClothingMargin("");
+    handleSaveConfig(sites, updatedClothing, blankets);
+  };
+
   const handleAddBlanket = () => {
     if (!newBlanketName.trim() || !newBlanketMargin) return;
     if (blankets.some((p) => pName(p.name) === pName(newBlanketName))) {
@@ -454,6 +565,61 @@ export function BabyWeightTrackerModule() {
     const updated = blankets.filter((c) => pName(c.name) !== pName(presetName));
     setBlankets(updated);
     handleSaveConfig(sites, clothing, updated);
+  };
+
+  const handleStartEditBlanket = (preset: BlanketPreset) => {
+    setEditingBlanket(preset.name);
+    setEditBlanketName(preset.name);
+    setEditBlanketMargin(preset.margin.toString());
+  };
+
+  const handleCancelEditBlanket = () => {
+    setEditingBlanket(null);
+    setEditBlanketName("");
+    setEditBlanketMargin("");
+  };
+
+  const handleSaveEditBlanket = (oldPresetName: string) => {
+    const trimmedName = editBlanketName.trim();
+    if (!trimmedName) {
+      alert("El nombre del preset de manta/trapo no puede estar vacío");
+      return;
+    }
+    const parsedMargin = parseFloat(editBlanketMargin);
+    if (isNaN(parsedMargin) || parsedMargin < 0) {
+      alert("Por favor, introduce un margen válido");
+      return;
+    }
+
+    if (
+      pName(trimmedName) !== pName(oldPresetName) &&
+      blankets.some((b) => pName(b.name) === pName(trimmedName))
+    ) {
+      alert("Ya existe una manta o trapo con ese nombre");
+      return;
+    }
+
+    const updatedPreset: BlanketPreset = {
+      name: trimmedName,
+      margin: parsedMargin,
+      label: `${trimmedName} (+${(parsedMargin * 1000).toFixed(0)}g)`
+    };
+
+    const updatedBlankets = blankets.map((b) =>
+      pName(b.name) === pName(oldPresetName) ? updatedPreset : b
+    );
+
+    setBlankets(updatedBlankets);
+
+    if (blanket === oldPresetName) {
+      setBlanket(trimmedName);
+      setBlanketMargin(parsedMargin.toString());
+    }
+
+    setEditingBlanket(null);
+    setEditBlanketName("");
+    setEditBlanketMargin("");
+    handleSaveConfig(sites, clothing, updatedBlankets);
   };
 
   const pName = (name: string) => name.toLowerCase().trim();
@@ -1677,30 +1843,79 @@ export function BabyWeightTrackerModule() {
                   </div>
 
                   <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                    {sites.map((s, idx) => (
-                      <div
-                        key={s}
-                        className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition"
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (siteColors[s] || { hex: "#888" }).hex }} />
-                          <span className="truncate">{s}</span>
-                          {idx === 0 && (
-                            <span className="px-2 py-0.5 bg-primary/15 text-primary text-[9px] font-extrabold rounded-md uppercase tracking-wider shrink-0">
-                              Principal
-                            </span>
+                    {sites.map((s, idx) => {
+                      const isEditing = editingSite === s;
+                      return (
+                        <div
+                          key={s}
+                          className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition gap-2"
+                        >
+                          {isEditing ? (
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (siteColors[s] || { hex: "#888" }).hex }} />
+                              <input
+                                type="text"
+                                value={editSiteValue}
+                                onChange={(e) => setEditSiteValue(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleSaveEditSite(s);
+                                  } else if (e.key === "Escape") {
+                                    handleCancelEditSite();
+                                  }
+                                }}
+                                autoFocus
+                                className="flex-1 px-2 py-1 bg-card border border-primary rounded-lg text-xs font-bold outline-none"
+                              />
+                              <button
+                                onClick={() => handleSaveEditSite(s)}
+                                className="p-1.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 rounded-xl transition cursor-pointer shrink-0"
+                                title="Guardar cambios"
+                              >
+                                <Check size={14} />
+                              </button>
+                              <button
+                                onClick={handleCancelEditSite}
+                                className="p-1.5 text-muted-foreground hover:bg-muted rounded-xl transition cursor-pointer shrink-0"
+                                title="Cancelar"
+                              >
+                                <X size={14} />
+                              </button>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (siteColors[s] || { hex: "#888" }).hex }} />
+                                <span className="truncate">{s}</span>
+                                {idx === 0 && (
+                                  <span className="px-2 py-0.5 bg-primary/15 text-primary text-[9px] font-extrabold rounded-md uppercase tracking-wider shrink-0">
+                                    Principal
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <button
+                                  onClick={() => handleStartEditSite(s)}
+                                  className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition cursor-pointer"
+                                  title="Editar báscula"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveSite(s)}
+                                  disabled={sites.length <= 1}
+                                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition disabled:opacity-30 cursor-pointer"
+                                  title="Eliminar báscula"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleRemoveSite(s)}
-                          disabled={sites.length <= 1}
-                          className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition disabled:opacity-30 cursor-pointer shrink-0"
-                          title="Eliminar báscula"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Add site card container */}
@@ -1739,29 +1954,82 @@ export function BabyWeightTrackerModule() {
                   </span>
 
                   <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                    {clothing.map((preset) => (
-                      <div
-                        key={preset.name}
-                        className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Shirt size={14} className="text-primary/70 shrink-0" />
-                          <span>{preset.name}</span>
+                    {clothing.map((preset) => {
+                      const isEditing = editingClothing === preset.name;
+                      return (
+                        <div
+                          key={preset.name}
+                          className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition gap-2"
+                        >
+                          {isEditing ? (
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Shirt size={14} className="text-primary/70 shrink-0" />
+                                <input
+                                  type="text"
+                                  value={editClothingName}
+                                  onChange={(e) => setEditClothingName(e.target.value)}
+                                  placeholder="Nombre"
+                                  autoFocus
+                                  className="flex-1 px-2 py-1 bg-card border border-primary rounded-lg text-xs font-bold outline-none min-w-0"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <input
+                                  type="number"
+                                  step="0.005"
+                                  value={editClothingMargin}
+                                  onChange={(e) => setEditClothingMargin(e.target.value)}
+                                  placeholder="kg"
+                                  className="w-20 px-2 py-1 bg-card border border-primary rounded-lg text-xs font-mono font-bold outline-none"
+                                />
+                                <span className="text-[10px] text-muted-foreground font-mono">kg</span>
+                                <button
+                                  onClick={() => handleSaveEditClothing(preset.name)}
+                                  className="p-1.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 rounded-xl transition cursor-pointer shrink-0"
+                                  title="Guardar cambios"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={handleCancelEditClothing}
+                                  className="p-1.5 text-muted-foreground hover:bg-muted rounded-xl transition cursor-pointer shrink-0"
+                                  title="Cancelar"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Shirt size={14} className="text-primary/70 shrink-0" />
+                                <span className="truncate">{preset.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-mono font-extrabold text-[11px] rounded-full">
+                                  -{(preset.margin * 1000).toFixed(0)}g
+                                </span>
+                                <button
+                                  onClick={() => handleStartEditClothing(preset)}
+                                  className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition cursor-pointer"
+                                  title="Editar preset"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveClothing(preset.name)}
+                                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition cursor-pointer"
+                                  title="Eliminar preset"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-mono font-extrabold text-[11px] rounded-full">
-                            -{(preset.margin * 1000).toFixed(0)}g
-                          </span>
-                          <button
-                            onClick={() => handleRemoveClothing(preset.name)}
-                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition cursor-pointer"
-                            title="Eliminar preset"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Add clothing card container */}
@@ -1805,29 +2073,82 @@ export function BabyWeightTrackerModule() {
                   </span>
 
                   <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-                    {blankets.map((preset) => (
-                      <div
-                        key={preset.name}
-                        className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition"
-                      >
-                        <div className="flex items-center gap-2">
-                          <Layers size={14} className="text-primary/70 shrink-0" />
-                          <span>{preset.name}</span>
+                    {blankets.map((preset) => {
+                      const isEditing = editingBlanket === preset.name;
+                      return (
+                        <div
+                          key={preset.name}
+                          className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition gap-2"
+                        >
+                          {isEditing ? (
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-1 min-w-0">
+                                <Layers size={14} className="text-primary/70 shrink-0" />
+                                <input
+                                  type="text"
+                                  value={editBlanketName}
+                                  onChange={(e) => setEditBlanketName(e.target.value)}
+                                  placeholder="Nombre"
+                                  autoFocus
+                                  className="flex-1 px-2 py-1 bg-card border border-primary rounded-lg text-xs font-bold outline-none min-w-0"
+                                />
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                <input
+                                  type="number"
+                                  step="0.005"
+                                  value={editBlanketMargin}
+                                  onChange={(e) => setEditBlanketMargin(e.target.value)}
+                                  placeholder="kg"
+                                  className="w-20 px-2 py-1 bg-card border border-primary rounded-lg text-xs font-mono font-bold outline-none"
+                                />
+                                <span className="text-[10px] text-muted-foreground font-mono">kg</span>
+                                <button
+                                  onClick={() => handleSaveEditBlanket(preset.name)}
+                                  className="p-1.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 rounded-xl transition cursor-pointer shrink-0"
+                                  title="Guardar cambios"
+                                >
+                                  <Check size={14} />
+                                </button>
+                                <button
+                                  onClick={handleCancelEditBlanket}
+                                  className="p-1.5 text-muted-foreground hover:bg-muted rounded-xl transition cursor-pointer shrink-0"
+                                  title="Cancelar"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Layers size={14} className="text-primary/70 shrink-0" />
+                                <span className="truncate">{preset.name}</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-mono font-extrabold text-[11px] rounded-full">
+                                  -{(preset.margin * 1000).toFixed(0)}g
+                                </span>
+                                <button
+                                  onClick={() => handleStartEditBlanket(preset)}
+                                  className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition cursor-pointer"
+                                  title="Editar preset"
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveBlanket(preset.name)}
+                                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition cursor-pointer"
+                                  title="Eliminar preset"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </>
+                          )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="px-2.5 py-0.5 bg-primary/10 text-primary font-mono font-extrabold text-[11px] rounded-full">
-                            -{(preset.margin * 1000).toFixed(0)}g
-                          </span>
-                          <button
-                            onClick={() => handleRemoveBlanket(preset.name)}
-                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition cursor-pointer"
-                            title="Eliminar preset"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   {/* Add blanket card container */}
