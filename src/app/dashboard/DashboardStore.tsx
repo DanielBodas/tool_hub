@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -47,44 +47,34 @@ function getToolIcon(id: string) {
 export default function DashboardStore({ tools }: DashboardStoreProps) {
   const router = useRouter();
 
-  // Client-side states (lazy initialization)
-  const [favorites, setFavorites] = useState<string[]>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const storedFavs = localStorage.getItem("toolhub_favorites");
-        return storedFavs ? JSON.parse(storedFavs) : [];
-      } catch (e) {
-        console.error("Error reading favorites from localStorage:", e);
-      }
-    }
-    return [];
-  });
+  // Client-side states — always start with stable defaults to avoid hydration mismatch,
+  // then sync from localStorage after mount.
+  const [favorites, setFavorites] = useState<string[]>([]);
+  const [playCounts, setPlayCounts] = useState<Record<string, number>>({});
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  const [playCounts, setPlayCounts] = useState<Record<string, number>>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        const storedPlays = localStorage.getItem("toolhub_plays");
-        return storedPlays ? JSON.parse(storedPlays) : {};
-      } catch (e) {
-        console.error("Error reading play counts from localStorage:", e);
-      }
+  useEffect(() => {
+    try {
+      const storedFavs = localStorage.getItem("toolhub_favorites");
+      if (storedFavs) setFavorites(JSON.parse(storedFavs));
+    } catch (e) {
+      console.error("Error reading favorites from localStorage:", e);
     }
-    return {};
-  });
-
-  const [viewMode, setViewMode] = useState<"grid" | "list">((() => {
-    if (typeof window !== "undefined") {
-      try {
-        const storedViewMode = localStorage.getItem("toolhub_view_mode");
-        if (storedViewMode === "grid" || storedViewMode === "list") {
-          return storedViewMode;
-        }
-      } catch (e) {
-        console.error("Error reading view mode from localStorage:", e);
-      }
+    try {
+      const storedPlays = localStorage.getItem("toolhub_plays");
+      if (storedPlays) setPlayCounts(JSON.parse(storedPlays));
+    } catch (e) {
+      console.error("Error reading play counts from localStorage:", e);
     }
-    return "grid";
-  })());
+    try {
+      const storedViewMode = localStorage.getItem("toolhub_view_mode");
+      if (storedViewMode === "grid" || storedViewMode === "list") {
+        setViewMode(storedViewMode);
+      }
+    } catch (e) {
+      console.error("Error reading view mode from localStorage:", e);
+    }
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("ALL");
