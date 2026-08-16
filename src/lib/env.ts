@@ -1,16 +1,11 @@
 import fs from "fs";
 import path from "path";
 
-let loaded = false;
-
 /**
  * Automatically discovers all subdirectories under src/modules and loads
  * their individual .env files into process.env if they exist.
  */
 export function loadAllToolEnvs() {
-  if (loaded) return;
-  loaded = true;
-
   const modulesDir = path.join(process.cwd(), "src", "modules");
   if (!fs.existsSync(modulesDir)) return;
 
@@ -44,7 +39,7 @@ export function loadAllToolEnvs() {
             value = value.slice(1, -1);
           }
 
-          if (key && !(key in process.env)) {
+          if (key) {
             process.env[key] = value;
           }
         }

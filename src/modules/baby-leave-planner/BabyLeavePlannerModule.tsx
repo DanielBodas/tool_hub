@@ -1209,7 +1209,7 @@ export function BabyLeavePlannerModule() {
 
         #sidebar-mom {
           left: 0;
-          transform: translateX(-105%);
+          transform: translateX(-100%);
           border-right: 1px solid #e2e8f0;
         }
         .dark #sidebar-mom {
@@ -1221,7 +1221,7 @@ export function BabyLeavePlannerModule() {
 
         #sidebar-dad {
           right: 0;
-          transform: translateX(105%);
+          transform: translateX(100%);
           border-left: 1px solid #e2e8f0;
           flex-direction: row-reverse;
         }
@@ -1251,8 +1251,8 @@ export function BabyLeavePlannerModule() {
         }
 
         .sidebar-handle {
-          width: 38px;
-          height: 80px;
+          width: 44px;
+          height: 84px;
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
@@ -1261,22 +1261,27 @@ export function BabyLeavePlannerModule() {
           justify-content: center;
           cursor: pointer;
           color: white;
-          font-size: 1.1rem;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+          font-size: 1.35rem;
+          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
           z-index: 2001;
           user-select: none;
+          transition: width 0.2s, transform 0.2s;
         }
 
         #sidebar-mom .sidebar-handle {
-          right: -38px;
+          right: -44px;
           background: #be185d;
-          border-radius: 0 12px 12px 0;
+          border-radius: 0 16px 16px 0;
+          border: 1.5px solid rgba(255, 255, 255, 0.2);
+          border-left: none;
         }
 
         #sidebar-dad .sidebar-handle {
-          left: -38px;
-          background: #0369a1;
-          border-radius: 12px 0 0 12px;
+          left: -44px;
+          background: #0284c7;
+          border-radius: 16px 0 0 16px;
+          border: 1.5px solid rgba(255, 255, 255, 0.2);
+          border-right: none;
         }
 
         /* --- BARRA DE FILTROS --- */
@@ -1482,47 +1487,66 @@ export function BabyLeavePlannerModule() {
           left: 5px;
           font-size: 0.65rem;
           font-weight: 700;
-          color: #cbd5e1;
+          color: #64748b;
+          z-index: 5;
         }
         .dark .d-num {
-          color: #475569;
+          color: #94a3b8;
+        }
+
+        /* High contrast numbers on cells with any event */
+        .day-cell-fixed.bg-mom .d-num,
+        .day-cell-fixed.bg-dad .d-num,
+        .day-cell-fixed.bg-joint .d-num,
+        .day-cell-fixed.bg-holiday .d-num,
+        .dark .day-cell-fixed.bg-mom .d-num,
+        .dark .day-cell-fixed.bg-dad .d-num,
+        .dark .day-cell-fixed.bg-joint .d-num,
+        .dark .day-cell-fixed.bg-holiday .d-num {
+          color: #ffffff !important;
+          font-weight: 800;
+          text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
         }
 
         /* Colores Celdas */
+        /* MADRE: Rosa / Fucsia vivo */
         .bg-mom {
           background-color: var(--color-mom) !important;
           color: var(--text-mom) !important;
         }
         .dark .bg-mom {
-          background-color: #831843 !important;
-          color: #fce7f3 !important;
+          background-color: #be185d !important;
+          color: #ffffff !important;
         }
 
+        /* PADRE: Azul océano */
         .bg-dad {
           background-color: var(--color-dad) !important;
           color: var(--text-dad) !important;
         }
         .dark .bg-dad {
-          background-color: #0c4a6e !important;
-          color: #e0f2fe !important;
+          background-color: #0284c7 !important;
+          color: #ffffff !important;
         }
 
+        /* OBLIGATORIO (CONJUNTO): Púrpura / Índigo */
         .bg-joint {
           background-color: var(--color-joint) !important;
           color: var(--text-joint) !important;
         }
         .dark .bg-joint {
-          background-color: #581c87 !important;
-          color: #f3e8ff !important;
+          background-color: #7c3aed !important;
+          color: #ffffff !important;
         }
 
+        /* FESTIVOS: Ámbar / Dorado */
         .bg-holiday {
-          background-color: #fee2e2 !important;
-          color: #dc2626 !important;
+          background-color: #fef3c7 !important;
+          color: #b45309 !important;
         }
         .dark .bg-holiday {
-          background-color: #7f1d1d !important;
-          color: #fca5a5 !important;
+          background-color: #d97706 !important;
+          color: #ffffff !important;
         }
 
         .dot-festivo {
@@ -1531,7 +1555,7 @@ export function BabyLeavePlannerModule() {
           right: 4px;
           width: 5px;
           height: 5px;
-          background: #dc2626;
+          background: #f59e0b;
           border-radius: 50%;
         }
 
@@ -1814,23 +1838,31 @@ export function BabyLeavePlannerModule() {
             background: #1e293b;
           }
           .d-num {
-            color: #475569;
+            color: #94a3b8;
+          }
+          .day-cell-fixed.bg-mom .d-num,
+          .day-cell-fixed.bg-dad .d-num,
+          .day-cell-fixed.bg-joint .d-num,
+          .day-cell-fixed.bg-holiday .d-num {
+            color: #ffffff !important;
+            font-weight: 800;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
           }
           .bg-mom {
-            background-color: #831843 !important;
-            color: #fce7f3 !important;
+            background-color: #be185d !important;
+            color: #ffffff !important;
           }
           .bg-dad {
-            background-color: #0c4a6e !important;
-            color: #e0f2fe !important;
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
           }
           .bg-joint {
-            background-color: #581c87 !important;
-            color: #f3e8ff !important;
+            background-color: #7c3aed !important;
+            color: #ffffff !important;
           }
           .bg-holiday {
-            background-color: #7f1d1d !important;
-            color: #fca5a5 !important;
+            background-color: #d97706 !important;
+            color: #ffffff !important;
           }
           #floating-wrapper {
             background: rgba(15, 23, 42, 0.8);

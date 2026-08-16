@@ -63,7 +63,7 @@ export function SecurityProvider({
   ) => {
     const id = toolId || "dashboard";
     try {
-      const res = await fetch("/api/auth/secondary", {
+      const res = await fetch("/api/auth/unlock", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pin, toolId, type }),

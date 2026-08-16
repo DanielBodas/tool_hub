@@ -31,15 +31,28 @@ Tools are automatically discovered by scanning `src/modules/` at server runtime 
 - **Tool `.env`**: Located inside `src/modules/<tool-id>/.env`. Contains tool-specific variables (e.g. `FINANCE_TRACKER_PIN=4444`, `BABY_LEAVE_PLANNER_DB_NAME=baby_leave`).
 - **Automatic Loading**: `loadAllToolEnvs()` in `src/lib/env.ts` scans all module directories and injects tool `.env` values into `process.env` dynamically without modifying root config.
 
-### 🛡️ 2.4 Unified Authentication & Persistent Sessions
-1. **Master / Admin Access**:
-   - Logged in via Admin Code (`ADMIN_CODE` in root `.env`) or Google OAuth via NextAuth (`/login`).
-   - Grants global access to the Dashboard and **all** tools.
-   - Session duration is set to **30 days** (JWT).
-2. **Tool-Specific PIN Access**:
-   - Guests can unlock individual tools using the tool's specific PIN (`<TOOL_ID_UPPER>_PIN`).
+### 🛡️ 2.4 Unified Authentication & Access Control (Three-Tier Model)
+
+Access to every tool is controlled by three ordered tiers:
+
+1. **Admin Access** (unrestricted):
+   - Logged in via Admin Code (`ADMIN_CODE` in root `.env`) or Google OAuth with role `admin`.
+   - Bypasses all tool-level access restrictions.
+   - Session duration: **30 days** (JWT).
+
+2. **Per-Tool User Whitelist** (`<TOOL_ID_UPPER>_ALLOWED_USERS`):
+   - A comma-separated list of Google email addresses stored in the tool's `.env`.
+   - If the variable is **not defined or empty** → any Google session can access the tool (retrocompatible).
+   - If the variable **is defined** → only listed emails get direct access.
+   - Users with a valid Google session who are **NOT** on the whitelist are shown the PIN gate with a "no tienes acceso" message (`userBlocked=true`).
+   - Logic lives in `src/lib/toolAccess.ts` → `isUserAllowedForTool(toolId, email, role)`.
+
+3. **Emergency PIN Access** (`<TOOL_ID_UPPER>_PIN`):
+   - Any user (with or without a session) can enter the tool using its PIN.
    - Sets a 30-day persistent cookie (`auth_tool_<toolId>`) and updates `localStorage`.
-3. **Unified Logout (`/api/auth/logout`)**:
+   - API endpoint: `POST /api/auth/unlock` (formerly `secondary`).
+
+4. **Unified Logout (`/api/auth/logout`)**:
    - Calling `lock()` or `/api/auth/logout` clears all server HTTP cookies (`auth_dashboard`, `auth_tool_*`, NextAuth tokens) and client `localStorage`, then redirects to `/login`.
 
 ### 🎨 2.5 Maximized Full-Viewport UX (`ToolBaseLayout`)
@@ -77,8 +90,11 @@ Create `src/modules/<tool-id>/example.env`:
 INVOICE_GENERATOR_PIN=1234
 # Configuración de base de datos específica (opcional)
 INVOICE_GENERATOR_DB_NAME=invoices
+# Lista de emails de Google con acceso directo (separados por comas).
+# Si no se define o está vacío, cualquier sesión Google puede acceder.
+INVOICE_GENERATOR_ALLOWED_USERS=usuario1@gmail.com,usuario2@gmail.com
 ```
-Also create `src/modules/<tool-id>/.env` with local default values.
+Also create `src/modules/<tool-id>/.env` with local default values (set `ALLOWED_USERS=` empty to allow all sessions during development).
 
 ### Step 4: Create the Module Component
 Create `src/modules/<tool-id>/InvoiceGeneratorModule.tsx`:
@@ -189,7 +205,8 @@ tool_hub/
 │   ├── lib/
 │   │   ├── auth.ts                   # NextAuth configuration
 │   │   ├── env.ts                    # Dynamic .env loader for submodules
-│   │   └── mongodb.ts                # Shared MongoDB MongoClient promise
+│   │   ├── mongodb.ts                # Shared MongoDB MongoClient promise
+│   │   └── toolAccess.ts             # Per-tool user whitelist checker (isUserAllowedForTool)
 │   └── modules/                      # Isolated mini-tool packages
 │       ├── baby-leave-planner/
 │       └── finance-tracker/
