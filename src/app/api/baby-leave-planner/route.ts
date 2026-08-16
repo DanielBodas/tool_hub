@@ -98,6 +98,20 @@ export async function GET() {
       );
     }
 
+    // Map allowances to balances if balances is missing/empty
+    let balances = Array.isArray(settingsDoc?.balances) && settingsDoc.balances.length > 0
+      ? settingsDoc.balances
+      : [];
+
+    if (balances.length === 0 && Array.isArray(settingsDoc?.allowances) && settingsDoc.allowances.length > 0) {
+      balances = settingsDoc.allowances.map((a: { parent?: string; name?: string; totalDays?: number | string; consumptionMode?: string }) => ({
+        person: a.parent === "mother" ? "Madre" : "Padre",
+        type: a.name || "Permiso",
+        total: Number(a.totalDays) || 0,
+        frecuencia: a.consumptionMode === "weeks" ? "Semanal" : "Diario",
+      }));
+    }
+
     // If events collection was empty but settings had legacy events, fallback gracefully
     const finalEvents =
       events.length > 0
@@ -108,11 +122,8 @@ export async function GET() {
 
     return NextResponse.json({
       birthDate: settingsDoc?.birthDate || null,
-      balances: settingsDoc?.balances || [],
+      balances: balances,
       festivos: festivos,
-      holidays: settingsDoc?.holidays || [],
-      allowances: settingsDoc?.allowances || [],
-      flexibleBlocks: settingsDoc?.flexibleBlocks || [],
       events: finalEvents,
     });
   } catch (e) {

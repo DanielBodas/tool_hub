@@ -38,25 +38,11 @@ interface GlobalData {
   birthDate: string | null;
 }
 
-interface LegacyData {
+interface LoadedPlannerData {
   birthDate?: string | null;
   events?: EventItem[];
   balances?: BalanceItem[];
   festivos?: FestivoItem[];
-  holidays?: string[];
-  allowances?: Array<{
-    id: string;
-    name?: string;
-    totalDays: number | string;
-    parent: "mother" | "father";
-    consumptionMode: "weeks" | "days" | "all";
-  }>;
-  flexibleBlocks?: Array<{
-    startDate: string | Date;
-    endDate: string | Date;
-    parent: "mother" | "father";
-    allowanceId: string;
-  }>;
 }
 
 // Formatting helper
@@ -92,8 +78,8 @@ function syncBalancesSymmetry(balances: BalanceItem[]): BalanceItem[] {
   return result;
 }
 
-// Migration Helper
-function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
+// Data Normalization Helper
+function normalizeData(loadedData: LoadedPlannerData | null | undefined): GlobalData {
   const defaultBalances: BalanceItem[] = [
     { person: "Madre", type: "Permiso Nacimiento", total: 19, frecuencia: "Semanal" },
     { person: "Madre", type: "Lactancia", total: 15, frecuencia: "Diario" },
@@ -110,60 +96,25 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
     };
   }
 
-  // 1. Process Balances
-  let finalBalances: BalanceItem[] = [];
-  if (Array.isArray(loadedData.balances) && loadedData.balances.length > 0) {
-    finalBalances = loadedData.balances.map((b) => ({
-      person: b.person,
-      type: b.type,
-      total: Number(b.total) || 0,
-      frecuencia: b.frecuencia || "Diario",
-    }));
-  } else if (Array.isArray(loadedData.allowances) && loadedData.allowances.length > 0) {
-    finalBalances = loadedData.allowances.map((a) => ({
-      person: a.parent === "mother" ? "Madre" : "Padre",
-      type: a.name || "Permiso",
-      total: Number(a.totalDays) || 0,
-      frecuencia: a.consumptionMode === "weeks" ? "Semanal" : "Diario",
-    }));
-  } else {
-    finalBalances = defaultBalances;
-  }
+  const finalBalances: BalanceItem[] =
+    Array.isArray(loadedData.balances) && loadedData.balances.length > 0
+      ? loadedData.balances.map((b) => ({
+          person: b.person,
+          type: b.type,
+          total: Number(b.total) || 0,
+          frecuencia: b.frecuencia || "Diario",
+        }))
+      : defaultBalances;
 
-  // 2. Process Festivos / Holidays
-  let finalFestivos: FestivoItem[] = [];
-  if (Array.isArray(loadedData.festivos) && loadedData.festivos.length > 0) {
-    finalFestivos = loadedData.festivos;
-  } else if (Array.isArray(loadedData.holidays) && loadedData.holidays.length > 0) {
-    finalFestivos = loadedData.holidays.map((hStr: string) => ({
-      date: typeof hStr === "string" ? hStr : (hStr as unknown as { date: string }).date || "",
-      nombre: typeof hStr === "string" ? "Festivo" : (hStr as unknown as { nombre: string }).nombre || "Festivo",
-    })).filter((f) => f.date);
-  }
+  const finalFestivos: FestivoItem[] =
+    Array.isArray(loadedData.festivos) && loadedData.festivos.length > 0
+      ? loadedData.festivos
+      : [];
 
-  // 3. Process Events
-  let finalEvents: EventItem[] = [];
-  if (Array.isArray(loadedData.events) && loadedData.events.length > 0) {
-    finalEvents = loadedData.events;
-  } else if (Array.isArray(loadedData.flexibleBlocks) && loadedData.birthDate) {
-    loadedData.flexibleBlocks.forEach((block) => {
-      const start = new Date(block.startDate);
-      const end = new Date(block.endDate);
-      const person = block.parent === "mother" ? "Madre" : "Padre";
-      const allowance = loadedData.allowances?.find((a) => a.id === block.allowanceId);
-      const type = allowance?.name || "Permiso";
-
-      const current = new Date(start);
-      while (current <= end) {
-        finalEvents.push({
-          date: formatDateStr(current),
-          person,
-          type,
-        });
-        current.setDate(current.getDate() + 1);
-      }
-    });
-  }
+  const finalEvents: EventItem[] =
+    Array.isArray(loadedData.events) && loadedData.events.length > 0
+      ? loadedData.events
+      : [];
 
   return {
     birthDate: loadedData.birthDate || null,
@@ -255,15 +206,15 @@ export function BabyLeavePlannerModule() {
   const [showConfigModal, setShowConfigModal] = useState(false);
   const [configBirthDate, setConfigBirthDate] = useState("");
 
-  // Migration and Data Loading
+  // Data Loading
   useEffect(() => {
     fetch("/api/baby-leave-planner")
       .then((res) => res.json())
       .then((data) => {
-        const migrated = migrateData(data);
-        setGlobalData(migrated);
-        if (migrated.birthDate) {
-          setConfigBirthDate(migrated.birthDate);
+        const normalized = normalizeData(data);
+        setGlobalData(normalized);
+        if (normalized.birthDate) {
+          setConfigBirthDate(normalized.birthDate);
         }
         setIsLoaded(true);
       })
@@ -767,7 +718,7 @@ export function BabyLeavePlannerModule() {
     fetch("/api/baby-leave-planner")
       .then((res) => res.json())
       .then((data) => {
-        setGlobalData(migrateData(data));
+        setGlobalData(normalizeData(data));
         setIsLoaded(true);
       })
       .catch((err) => {
