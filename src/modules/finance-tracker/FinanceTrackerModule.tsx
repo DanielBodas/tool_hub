@@ -12,18 +12,18 @@ import {
   Lock,
   Unlock,
   ShieldAlert,
-  CheckCircle2,
+  ShieldCheck,
   RefreshCw,
   Coins,
   X,
   Settings as SettingsIcon,
   Calculator,
-  ChevronLeft,
   ChevronRight,
-  ShieldCheck,
   Gift,
+  Building2,
   ArrowUpRight,
-  Zap,
+  Sparkles,
+  Info,
 } from "lucide-react";
 
 // --- TYPES ---
@@ -64,15 +64,8 @@ export interface Settings {
 
 const LOCAL_STORAGE_KEY = "finance_tracker_data_v2";
 
-const SECTIONS = [
-  { id: "dashboard", label: "Dashboard", icon: PieChart },
-  { id: "liquidity", label: "Liquidez", icon: Wallet },
-  { id: "airbus", label: "Airbus ESOP", icon: Plane },
-  { id: "other", label: "Otras Invers.", icon: TrendingUp },
-] as const;
-
 export function FinanceTrackerModule() {
-  const [sectionIndex, setSectionIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "airbus" | "other">("dashboard");
 
   // State
   const [liquidity, setLiquidity] = useState<LiquidData>({
@@ -80,9 +73,7 @@ export function FinanceTrackerModule() {
     monthlyExpenses: 2000,
   });
   const [airbusPackages, setAirbusPackages] = useState<AirbusPackage[]>([]);
-  const [otherInvestments, setOtherInvestments] = useState<OtherInvestment[]>(
-    []
-  );
+  const [otherInvestments, setOtherInvestments] = useState<OtherInvestment[]>([]);
   const [settings, setSettings] = useState<Settings>({
     targetInvestmentRatio: 60,
     taxRate: 19,
@@ -183,7 +174,7 @@ export function FinanceTrackerModule() {
             console.error("Error parsing local storage:", e);
           }
         } else {
-          // Pre-seed mock data
+          // Pre-seed sample data
           const sampleAirbus: AirbusPackage[] = [
             {
               id: "a1",
@@ -195,7 +186,7 @@ export function FinanceTrackerModule() {
               marketPrice: 142.5,
               yearGranted: 2021,
               sold: false,
-              notes: "Añada 2021",
+              notes: "Plan ESOP 2021",
             },
             {
               id: "a2",
@@ -207,7 +198,7 @@ export function FinanceTrackerModule() {
               marketPrice: 142.5,
               yearGranted: 2022,
               sold: false,
-              notes: "Añada 2022",
+              notes: "Plan ESOP 2022",
             },
             {
               id: "a3",
@@ -219,7 +210,7 @@ export function FinanceTrackerModule() {
               marketPrice: 142.5,
               yearGranted: 2023,
               sold: false,
-              notes: "Añada 2023",
+              notes: "Plan ESOP 2023",
             },
             {
               id: "a4",
@@ -231,7 +222,7 @@ export function FinanceTrackerModule() {
               marketPrice: 142.5,
               yearGranted: 2024,
               sold: false,
-              notes: "Añada 2024",
+              notes: "Plan ESOP 2024",
             },
           ];
           const sampleOther: OtherInvestment[] = [
@@ -459,14 +450,6 @@ export function FinanceTrackerModule() {
   }, [airbusPackages, airbusSimMode, simMarketPriceOverride, settings, currentYear]);
 
   // --- HANDLERS ---
-  const handleNextSection = () => {
-    setSectionIndex((prev) => (prev + 1) % SECTIONS.length);
-  };
-
-  const handlePrevSection = () => {
-    setSectionIndex((prev) => (prev - 1 + SECTIONS.length) % SECTIONS.length);
-  };
-
   const handleOpenLiquidityModal = () => {
     setLiquidityForm({
       totalLiquidity: String(liquidity.totalLiquidity),
@@ -684,406 +667,434 @@ export function FinanceTrackerModule() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3">
-        <RefreshCw className="w-8 h-8 text-blue-600 animate-spin" />
-        <p className="text-xs text-muted-foreground font-medium">Cargando...</p>
+        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
+        <p className="text-xs text-muted-foreground font-medium">Cargando Gestor Financiero...</p>
       </div>
     );
   }
 
-  const activeSection = SECTIONS[sectionIndex];
-  const IconComponent = activeSection.icon;
-
   return (
-    <div className="space-y-4 pb-24 relative">
-      {/* MOBILE-NATIVE HEADER */}
-      <div className="flex justify-between items-center bg-slate-900 text-white p-4 rounded-2xl shadow-md border border-slate-800">
-        <div className="flex items-center gap-2">
-          <Coins className="text-indigo-400" size={20} />
-          <div>
-            <h1 className="text-base font-black tracking-tight leading-none">
-              Gestor Financiero
-            </h1>
-            <span className="text-[10px] text-slate-400 font-bold">
-              {syncStatus === "synced" ? "● BD Conectada" : "● Modo Local"}
-            </span>
+    <div className="space-y-3 md:space-y-4 pb-12">
+      {/* HEADER BAR */}
+      <div className="bg-card border border-border/80 p-3 md:p-4 rounded-3xl shadow-xs space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
+              <Coins size={20} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-sm sm:text-base md:text-lg font-black text-foreground tracking-tight leading-none">
+                Gestor Financiero
+              </h1>
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-semibold mt-1">
+                <span className="inline-flex items-center gap-1 font-bold">
+                  <span className={`w-2 h-2 rounded-full ${syncStatus === "synced" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                  {syncStatus === "synced" ? "BD Conectada" : "Modo Local"}
+                </span>
+                <span>•</span>
+                <span>Patrimonio: <strong className="text-foreground">{formatEUR(calculations.totalNetWorth)}</strong></span>
+              </div>
+            </div>
           </div>
+
+          <button
+            onClick={handleOpenSettings}
+            className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold shrink-0"
+            title="Ajustes de Prudencia e IRPF"
+          >
+            <SettingsIcon size={16} />
+            <span className="hidden sm:inline">Ajustes</span>
+          </button>
         </div>
 
-        <button
-          onClick={handleOpenSettings}
-          className="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl transition cursor-pointer flex items-center gap-1 text-xs font-bold border border-slate-700"
-        >
-          <SettingsIcon size={14} />
-          <span className="hidden sm:inline">Ajustes</span>
-        </button>
+        {/* TOP SEGMENTED TABS */}
+        <div className="grid grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "dashboard"
+                ? "bg-card text-foreground shadow-xs border border-border/40"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <PieChart size={14} className="shrink-0 text-blue-500" />
+            <span className="truncate">Resumen</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("liquidity")}
+            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "liquidity"
+                ? "bg-card text-foreground shadow-xs border border-border/40"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Wallet size={14} className="shrink-0 text-emerald-500" />
+            <span className="truncate">Liquidez</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("airbus")}
+            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "airbus"
+                ? "bg-card text-foreground shadow-xs border border-border/40"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Plane size={14} className="shrink-0 text-indigo-500" />
+            <span className="truncate">Airbus ESOP</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("other")}
+            className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "other"
+                ? "bg-card text-foreground shadow-xs border border-border/40"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <TrendingUp size={14} className="shrink-0 text-purple-500" />
+            <span className="truncate">Otras Invers.</span>
+          </button>
+        </div>
       </div>
 
-      {/* FIXED SCREEN CAROUSEL CONTAINER (NO PAGE SCROLL) */}
-      <div className="min-h-[60vh] flex flex-col justify-between">
-        {/* SECTION 1: WEALTH DASHBOARD */}
-        {activeSection.id === "dashboard" && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            {/* NET WORTH HERO CARD */}
-            <div className="bg-card p-5 rounded-3xl border border-border shadow-xs space-y-3">
-              <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-                Patrimonio Neto Total
+      {/* TABS CONTENT */}
+      {/* TAB 1: EXECUTIVE DASHBOARD */}
+      {activeTab === "dashboard" && (
+        <div className="space-y-3 animate-fade-in">
+          {/* NET WORTH HERO CARD */}
+          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-3">
+            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+              Patrimonio Neto Total
+            </span>
+            <p className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
+              {formatEUR(calculations.totalNetWorth)}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+              <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Liquidez Disponible</span>
+                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatEUR(calculations.totalLiquidity)}</p>
+                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold">{calculations.liquidityRatio.toFixed(0)}% del patrimonio</p>
+              </div>
+
+              <div className="bg-purple-500/10 p-3 rounded-2xl border border-purple-500/20">
+                <span className="text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase">Total Invertido</span>
+                <p className="text-lg font-black text-purple-600 dark:text-purple-400">{formatEUR(calculations.totalInvestments)}</p>
+                <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80 font-bold">{calculations.investmentRatio.toFixed(0)}% del patrimonio</p>
+              </div>
+            </div>
+          </div>
+
+          {/* ASSET ALLOCATION BAR & PRUDENCE GAUGE */}
+          <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3">
+            <div className="flex justify-between items-center text-xs font-extrabold">
+              <span className="flex items-center gap-1.5 text-foreground">
+                <PieChart size={15} className="text-blue-500" /> Distribución y Control de Riesgo
               </span>
-              <p className="text-4xl font-black tracking-tight text-foreground">
-                {formatEUR(calculations.totalNetWorth)}
-              </p>
-
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border">
-                <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase">Liquidez</span>
-                  <p className="text-base font-extrabold text-emerald-600">{formatEUR(calculations.totalLiquidity)}</p>
-                  <p className="text-[10px] text-emerald-600/80 font-bold">{calculations.liquidityRatio.toFixed(0)}% patrimonio</p>
-                </div>
-
-                <div className="bg-purple-500/10 p-2.5 rounded-xl border border-purple-500/20">
-                  <span className="text-[10px] font-bold text-purple-600 uppercase">Invertido</span>
-                  <p className="text-base font-extrabold text-purple-600">{formatEUR(calculations.totalInvestments)}</p>
-                  <p className="text-[10px] text-purple-600/80 font-bold">{calculations.investmentRatio.toFixed(0)}% patrimonio</p>
-                </div>
-              </div>
+              <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full text-[10px] font-black">
+                Máx Inversión: {settings.targetInvestmentRatio}%
+              </span>
             </div>
 
-            {/* ASSET ALLOCATION BAR & PRUDENCE GAUGE */}
-            <div className="bg-card p-4 rounded-3xl border border-border shadow-xs space-y-3">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="flex items-center gap-1 text-foreground">
-                  <PieChart size={14} className="text-blue-600" /> Distribución y Prudencia
-                </span>
-                <span className="text-blue-600 bg-blue-500/10 px-2 py-0.5 rounded-lg text-[10px]">
-                  Máx Inversión: {settings.targetInvestmentRatio}%
-                </span>
-              </div>
-
-              <div className="relative w-full h-5 bg-muted rounded-full overflow-hidden flex p-0.5 border border-border">
-                <div
-                  className="bg-emerald-500 h-full rounded-l-full transition-all duration-300"
-                  style={{ width: `${Math.max(2, calculations.liquidityRatio)}%` }}
-                  title={`Liquidez ${calculations.liquidityRatio.toFixed(0)}%`}
-                />
-                <div
-                  className="bg-indigo-600 h-full transition-all duration-300"
-                  style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
-                  title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
-                />
-                <div
-                  className="bg-purple-600 h-full rounded-r-full transition-all duration-300"
-                  style={{ width: `${Math.max(2, calculations.otherShareRatio)}%` }}
-                  title={`Otras Inversiones ${calculations.otherShareRatio.toFixed(0)}%`}
-                />
-                <div
-                  className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10"
-                  style={{ left: `${settings.targetInvestmentRatio}%` }}
-                />
-              </div>
-
-              <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
-                <span className="text-emerald-600">● Liquidez ({calculations.liquidityRatio.toFixed(0)}%)</span>
-                <span className="text-indigo-600">● Airbus ({calculations.airbusShareRatio.toFixed(0)}%)</span>
-                <span className="text-purple-600">● Otras ({calculations.otherShareRatio.toFixed(0)}%)</span>
-              </div>
-
-              {calculations.healthStatus === "warning" && (
-                <div className="p-2 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-700 dark:text-rose-300 text-[11px] font-bold flex items-center gap-1.5">
-                  <ShieldAlert size={14} className="shrink-0 text-rose-600" />
-                  <span>Atención: Has superado el límite de prudencia fijado ({settings.targetInvestmentRatio}%).</span>
-                </div>
-              )}
-              {calculations.healthStatus === "safe" && (
-                <div className="p-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-1.5">
-                  <ShieldCheck size={14} className="shrink-0 text-emerald-600" />
-                  <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses.</span>
-                </div>
-              )}
+            <div className="relative w-full h-5 bg-muted rounded-full overflow-hidden flex p-0.5 border border-border">
+              <div
+                className="bg-emerald-500 h-full rounded-l-full transition-all duration-300"
+                style={{ width: `${Math.max(2, calculations.liquidityRatio)}%` }}
+                title={`Liquidez ${calculations.liquidityRatio.toFixed(0)}%`}
+              />
+              <div
+                className="bg-indigo-600 h-full transition-all duration-300"
+                style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
+                title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
+              />
+              <div
+                className="bg-purple-600 h-full rounded-r-full transition-all duration-300"
+                style={{ width: `${Math.max(2, calculations.otherShareRatio)}%` }}
+                title={`Otras Inversiones ${calculations.otherShareRatio.toFixed(0)}%`}
+              />
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10"
+                style={{ left: `${settings.targetInvestmentRatio}%` }}
+              />
             </div>
 
-            {/* QUICK ACTIONS */}
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={() => setSectionIndex(1)}
-                className="p-3 bg-card hover:bg-muted/50 rounded-2xl border border-border flex items-center justify-between text-xs font-bold transition cursor-pointer"
-              >
-                <span className="flex items-center gap-1.5"><Wallet size={15} className="text-emerald-600" /> Ajustar Liquidez</span>
-                <ChevronRight size={14} className="text-muted-foreground" />
-              </button>
-              <button
-                onClick={() => setSectionIndex(2)}
-                className="p-3 bg-card hover:bg-muted/50 rounded-2xl border border-border flex items-center justify-between text-xs font-bold transition cursor-pointer"
-              >
-                <span className="flex items-center gap-1.5"><Plane size={15} className="text-indigo-600" /> Ver Airbus ESOP</span>
-                <ChevronRight size={14} className="text-muted-foreground" />
-              </button>
+            <div className="flex justify-between text-[10px] font-bold">
+              <span className="text-emerald-600 dark:text-emerald-400">● Liquidez ({calculations.liquidityRatio.toFixed(0)}%)</span>
+              <span className="text-indigo-600 dark:text-indigo-400">● Airbus ({calculations.airbusShareRatio.toFixed(0)}%)</span>
+              <span className="text-purple-600 dark:text-purple-400">● Otras ({calculations.otherShareRatio.toFixed(0)}%)</span>
             </div>
+
+            {calculations.healthStatus === "warning" && (
+              <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-700 dark:text-rose-300 text-[11px] font-bold flex items-center gap-2">
+                <ShieldAlert size={16} className="shrink-0 text-rose-600 dark:text-rose-400" />
+                <span>Atención: Has superado el límite de prudencia fijado ({settings.targetInvestmentRatio}%).</span>
+              </div>
+            )}
+            {calculations.healthStatus === "safe" && (
+              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-2">
+                <ShieldCheck size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+                <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses.</span>
+              </div>
+            )}
           </div>
-        )}
 
-        {/* SECTION 2: EFFORTLESS LIQUIDITY */}
-        {activeSection.id === "liquidity" && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-card p-5 rounded-3xl border border-border shadow-xs space-y-4">
-              <div className="flex justify-between items-center border-b border-border pb-2">
-                <h2 className="text-sm font-extrabold flex items-center gap-1.5">
-                  <Wallet className="text-emerald-600" size={16} /> Liquidez y Fondo de Seguridad
-                </h2>
-                <button
-                  onClick={handleOpenLiquidityModal}
-                  className="px-3 py-1 bg-emerald-600 text-white rounded-xl font-bold text-xs cursor-pointer hover:bg-emerald-700"
-                >
-                  <Edit2 size={12} className="inline mr-1" /> Editar
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
-                  <span className="text-[10px] font-bold text-emerald-600 uppercase">Fondo Líquido Disponible</span>
-                  <p className="text-3xl font-black text-emerald-600 mt-0.5">{formatEUR(liquidity.totalLiquidity)}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-muted/50 p-3 rounded-xl border border-border">
-                    <span className="text-[10px] text-muted-foreground font-semibold">Gastos Fijos / Mes</span>
-                    <p className="font-extrabold text-foreground mt-0.5">{formatEUR(liquidity.monthlyExpenses)}</p>
-                  </div>
-                  <div className="bg-blue-500/10 p-3 rounded-xl border border-blue-500/20">
-                    <span className="text-[10px] font-bold text-blue-600">Colchón Cubierto</span>
-                    <p className="font-black text-blue-600 mt-0.5">{calculations.runwayMonths.toFixed(1)} meses</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* QUICK LINKS */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setActiveTab("liquidity")}
+              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5"><Wallet size={16} className="text-emerald-500" /> Ajustar Liquidez</span>
+              <ChevronRight size={14} className="text-muted-foreground" />
+            </button>
+            <button
+              onClick={() => setActiveTab("airbus")}
+              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5"><Plane size={16} className="text-indigo-500" /> Ver Airbus ESOP</span>
+              <ChevronRight size={14} className="text-muted-foreground" />
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* SECTION 3: AIRBUS ESOP WEALTH TERMINAL */}
-        {activeSection.id === "airbus" && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="bg-card p-4 rounded-3xl border border-border shadow-xs space-y-3">
-              <div className="flex justify-between items-center border-b border-border pb-2">
-                <h2 className="text-sm font-extrabold flex items-center gap-1.5">
-                  <Plane className="text-indigo-600" size={16} /> Cartera Airbus ESOP
-                </h2>
-                <button
-                  onClick={handleOpenAddAirbus}
-                  className="px-2.5 py-1 bg-indigo-600 text-white rounded-xl font-bold text-xs cursor-pointer hover:bg-indigo-700"
-                >
-                  + Nueva Añada
-                </button>
-              </div>
-
-              {/* HIGH DENSITY AIRBUS METRICS */}
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-muted/40 p-2.5 rounded-xl border border-border">
-                  <span className="text-[10px] text-muted-foreground font-semibold">Acciones Totales</span>
-                  <p className="font-extrabold text-foreground">{calculations.totalAirbusShares} uds ({calculations.totalAirbusPurchasedShares} + {calculations.totalAirbusBonusShares} bonus)</p>
-                  <p className="text-[10px] text-muted-foreground">Invertido: {formatEUR(calculations.totalAirbusPaidOutOfPocket)}</p>
-                </div>
-
-                <div className="bg-indigo-500/10 p-2.5 rounded-xl border border-indigo-500/20">
-                  <span className="text-[10px] text-indigo-600 font-bold">Valor Mercado</span>
-                  <p className="font-extrabold text-indigo-600">{formatEUR(calculations.totalAirbusMarketValue)}</p>
-                  <p className="text-[10px] text-indigo-600 font-semibold">Regalo Bonus: +{formatEUR(calculations.totalAirbusBonusValue)}</p>
-                </div>
-
-                <div className="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
-                  <span className="text-[10px] text-amber-600 font-bold">Base Fiscal e IRPF</span>
-                  <p className="font-extrabold text-amber-600">{formatEUR(calculations.totalAirbusTaxableMargin)}</p>
-                  <p className="text-[10px] text-amber-600">IRPF ({settings.taxRate}%): -{formatEUR(calculations.totalAirbusEstimatedTax)}</p>
-                </div>
-
-                <div className="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
-                  <span className="text-[10px] text-emerald-600 font-bold">Ganancia Neta Limpia</span>
-                  <p className="font-extrabold text-emerald-600">{formatEUR(calculations.totalAirbusNetProfitIfSold)}</p>
-                  <p className="text-[10px] text-emerald-600 font-bold">ROI Neto: {calculations.totalAirbusPaidOutOfPocket > 0 ? `+${((calculations.totalAirbusNetProfitIfSold / calculations.totalAirbusPaidOutOfPocket) * 100).toFixed(0)}%` : "0%"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* 3-YEAR LOCKUP TIMELINE CARDS */}
-            <div className="space-y-2">
-              <span className="text-xs font-extrabold text-foreground px-1">Planes / Añadas Anuales</span>
-
-              <div className="space-y-2 max-h-[30vh] overflow-y-auto pr-1">
-                {airbusPackages.map((pkg) => {
-                  const totalShares = pkg.purchasedShares + pkg.bonusShares;
-                  const paid = pkg.purchasedShares * pkg.purchasePrice;
-                  const officialBasis = totalShares * pkg.officialPrice;
-                  const mktValue = totalShares * (pkg.sold && pkg.soldPrice ? pkg.soldPrice : pkg.marketPrice);
-                  const taxableMargin = Math.max(0, mktValue - officialBasis);
-                  const estTax = taxableMargin * (settings.taxRate / 100);
-                  const netProfit = mktValue - paid - estTax;
-                  const yearsElapsed = currentYear - pkg.yearGranted;
-                  const isLocked = yearsElapsed < 3;
-
-                  return (
-                    <div key={pkg.id} className="bg-card p-3 rounded-2xl border border-border shadow-xs text-xs space-y-2">
-                      <div className="flex justify-between items-center border-b border-border pb-1.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-extrabold text-sm">Añada {pkg.year}</span>
-                          <span className="text-[10px] text-muted-foreground">({totalShares} uds)</span>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          {pkg.sold ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600">Vendida</span>
-                          ) : isLocked ? (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-500/10 text-amber-600 flex items-center gap-1">
-                              <Lock size={10} /> Bloqueada ({3 - yearsElapsed}a)
-                            </span>
-                          ) : (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-600 flex items-center gap-1">
-                              <Unlock size={10} /> Liquidable
-                            </span>
-                          )}
-
-                          <button onClick={() => handleOpenEditAirbus(pkg)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer">
-                            <Edit2 size={12} />
-                          </button>
-                          <button onClick={() => handleDeleteAirbus(pkg.id)} className="p-1 text-muted-foreground hover:text-rose-600 cursor-pointer">
-                            <Trash2 size={12} />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-1.5 text-[11px]">
-                        <div>
-                          <span className="text-[10px] text-muted-foreground">Invertido</span>
-                          <p className="font-bold">{formatEUR(paid)}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-foreground">Mercado</span>
-                          <p className="font-bold text-indigo-600">{formatEUR(mktValue)}</p>
-                        </div>
-                        <div>
-                          <span className="text-[10px] text-muted-foreground">Neto Limpio</span>
-                          <p className="font-bold text-emerald-600">{formatEUR(netProfit)}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* SIMULATOR ACCORDION */}
-            <div className="bg-card p-4 rounded-2xl border border-border shadow-xs space-y-2 text-xs">
-              <div className="flex justify-between items-center border-b border-border pb-1.5">
-                <span className="font-extrabold flex items-center gap-1">
-                  <Calculator size={14} className="text-indigo-600" /> Simulador Venta
-                </span>
-                <div className="flex gap-1 text-[10px]">
-                  <button
-                    onClick={() => setAirbusSimMode("unlocked")}
-                    className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer ${airbusSimMode === "unlocked" ? "bg-indigo-600 text-white" : "bg-muted"}`}
-                  >
-                    Desbloqueadas
-                  </button>
-                  <button
-                    onClick={() => setAirbusSimMode("all")}
-                    className={`px-2 py-0.5 rounded-lg font-bold cursor-pointer ${airbusSimMode === "all" ? "bg-indigo-600 text-white" : "bg-muted"}`}
-                  >
-                    Todas
-                  </button>
-                </div>
-              </div>
-
-              <div className="flex justify-between items-center bg-indigo-500/10 p-2.5 rounded-xl border border-indigo-500/20">
-                <div>
-                  <span className="text-[10px] text-muted-foreground">Acciones ({simulation.totalSimShares} uds)</span>
-                  <p className="font-black text-sm text-indigo-600">Venta Bruta: {formatEUR(simulation.totalSimGrossProceeds)}</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-rose-600 font-bold">IRPF ({settings.taxRate}%): -{formatEUR(simulation.simTax)}</span>
-                  <p className="font-black text-sm text-emerald-600">Ingreso Neto: {formatEUR(simulation.simNetProceeds)}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* SECTION 4: OTRAS INVERSIONES */}
-        {activeSection.id === "other" && (
-          <div className="space-y-4 animate-in fade-in duration-200">
-            <div className="flex justify-between items-center bg-card p-4 rounded-3xl border border-border shadow-xs">
-              <h2 className="text-sm font-extrabold flex items-center gap-1.5">
-                <TrendingUp className="text-purple-600" size={16} /> Otras Inversiones
+      {/* TAB 2: EFFORTLESS LIQUIDITY */}
+      {activeTab === "liquidity" && (
+        <div className="space-y-3 animate-fade-in">
+          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3">
+              <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
+                <Wallet className="text-emerald-500" size={18} /> Liquidez y Fondo de Seguridad
               </h2>
               <button
-                onClick={handleOpenAddOther}
-                className="px-2.5 py-1 bg-purple-600 text-white rounded-xl font-bold text-xs cursor-pointer hover:bg-purple-700"
+                onClick={handleOpenLiquidityModal}
+                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
               >
-                + Añadir
+                <Edit2 size={13} className="inline mr-1" /> Editar Saldo
               </button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              {otherInvestments.map((item) => {
-                const gain = item.currentValue - item.initialValue;
+            <div className="space-y-3">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Fondo Líquido Disponible</span>
+                <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatEUR(liquidity.totalLiquidity)}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-muted/40 p-3 rounded-2xl border border-border/60">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase">Gastos Mensuales</span>
+                  <p className="font-extrabold text-foreground text-sm mt-0.5">{formatEUR(liquidity.monthlyExpenses)}</p>
+                </div>
+                <div className="bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20">
+                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">Colchón Cubierto</span>
+                  <p className="font-black text-blue-600 dark:text-blue-400 text-sm mt-0.5">{calculations.runwayMonths.toFixed(1)} meses</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: AIRBUS ESOP WEALTH TERMINAL */}
+      {activeTab === "airbus" && (
+        <div className="space-y-3 animate-fade-in">
+          <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2.5">
+              <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
+                <Plane className="text-indigo-500" size={18} /> Cartera Airbus ESOP
+              </h2>
+              <button
+                onClick={handleOpenAddAirbus}
+                className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
+              >
+                + Nueva Añada
+              </button>
+            </div>
+
+            {/* AIRBUS METRICS GRID */}
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              <div className="bg-muted/40 p-3 rounded-2xl border border-border/60">
+                <span className="text-[10px] text-muted-foreground font-bold uppercase">Acciones Totales</span>
+                <p className="font-extrabold text-foreground text-sm">{calculations.totalAirbusShares} uds</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Invertido: {formatEUR(calculations.totalAirbusPaidOutOfPocket)}</p>
+              </div>
+
+              <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20">
+                <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase">Valor Mercado</span>
+                <p className="font-extrabold text-indigo-600 dark:text-indigo-400 text-sm">{formatEUR(calculations.totalAirbusMarketValue)}</p>
+                <p className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-bold mt-0.5">Bonus: +{formatEUR(calculations.totalAirbusBonusValue)}</p>
+              </div>
+
+              <div className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/20">
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase">Base Fiscal IRPF</span>
+                <p className="font-extrabold text-amber-600 dark:text-amber-400 text-sm">{formatEUR(calculations.totalAirbusTaxableMargin)}</p>
+                <p className="text-[10px] text-amber-600/80 dark:text-amber-400/80 mt-0.5 font-bold">Retención ({settings.taxRate}%): -{formatEUR(calculations.totalAirbusEstimatedTax)}</p>
+              </div>
+
+              <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase">Beneficio Neto Limpio</span>
+                <p className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{formatEUR(calculations.totalAirbusNetProfitIfSold)}</p>
+                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold mt-0.5">
+                  ROI Neto: {calculations.totalAirbusPaidOutOfPocket > 0 ? `+${((calculations.totalAirbusNetProfitIfSold / calculations.totalAirbusPaidOutOfPocket) * 100).toFixed(0)}%` : "0%"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* 3-YEAR LOCKUP CARDS LIST */}
+          <div className="space-y-2">
+            <span className="text-xs font-black text-foreground px-1 uppercase tracking-wider text-muted-foreground block">
+              Planes y Añadas Anuales
+            </span>
+
+            <div className="space-y-2">
+              {airbusPackages.map((pkg) => {
+                const totalShares = pkg.purchasedShares + pkg.bonusShares;
+                const paid = pkg.purchasedShares * pkg.purchasePrice;
+                const officialBasis = totalShares * pkg.officialPrice;
+                const mktValue = totalShares * (pkg.sold && pkg.soldPrice ? pkg.soldPrice : pkg.marketPrice);
+                const taxableMargin = Math.max(0, mktValue - officialBasis);
+                const estTax = taxableMargin * (settings.taxRate / 100);
+                const netProfit = mktValue - paid - estTax;
+                const yearsElapsed = currentYear - pkg.yearGranted;
+                const isLocked = yearsElapsed < 3;
 
                 return (
-                  <div key={item.id} className="bg-card p-3.5 rounded-2xl border border-border shadow-xs flex justify-between items-center text-xs">
-                    <div>
-                      <span className="text-[9px] font-bold uppercase text-purple-600">{item.category}</span>
-                      <h3 className="font-bold text-foreground">{item.name}</h3>
-                      <p className="text-base font-extrabold text-purple-600 mt-0.5">{formatEUR(item.currentValue)}</p>
+                  <div key={pkg.id} className="bg-card p-3.5 rounded-2xl border border-border/70 shadow-xs text-xs space-y-2">
+                    <div className="flex justify-between items-center border-b border-border/50 pb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-black text-sm text-foreground">Añada {pkg.year}</span>
+                        <span className="text-[10px] text-muted-foreground font-mono">({totalShares} uds)</span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {pkg.sold ? (
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">Vendida</span>
+                        ) : isLocked ? (
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 flex items-center gap-1">
+                            <Lock size={10} /> Bloqueada ({3 - yearsElapsed}a)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] px-2.5 py-0.5 rounded-full font-bold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 flex items-center gap-1">
+                            <Unlock size={10} /> Liquidable
+                          </span>
+                        )}
+
+                        <button onClick={() => handleOpenEditAirbus(pkg)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer">
+                          <Edit2 size={13} />
+                        </button>
+                        <button onClick={() => handleDeleteAirbus(pkg.id)} className="p-1 text-muted-foreground hover:text-rose-600 cursor-pointer">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${gain >= 0 ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
-                        {gain >= 0 ? "+" : ""}{formatEUR(gain)}
-                      </span>
-                      <button onClick={() => handleOpenEditOther(item)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer">
-                        <Edit2 size={12} />
-                      </button>
-                      <button onClick={() => handleDeleteOther(item.id)} className="p-1 text-muted-foreground hover:text-rose-600 cursor-pointer">
-                        <Trash2 size={12} />
-                      </button>
+
+                    <div className="grid grid-cols-3 gap-2 text-[11px] bg-muted/30 p-2.5 rounded-xl">
+                      <div>
+                        <span className="text-[10px] text-muted-foreground block">Invertido ({pkg.purchasedShares}x)</span>
+                        <p className="font-bold text-foreground">{formatEUR(paid)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block font-semibold">Mercado</span>
+                        <p className="font-bold text-indigo-600 dark:text-indigo-400">{formatEUR(mktValue)}</p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-semibold">Neto Limpio</span>
+                        <p className="font-bold text-emerald-600 dark:text-emerald-400">{formatEUR(netProfit)}</p>
+                      </div>
                     </div>
                   </div>
                 );
               })}
             </div>
           </div>
-        )}
-      </div>
 
-      {/* FLOATING MOBILE CAPSULE NAVIGATION BAR (0 PAGE SCROLL) */}
-      <div className="fixed bottom-3 left-3 right-3 z-40 max-w-md mx-auto">
-        <div className="bg-slate-900/95 text-white backdrop-blur-md p-1.5 rounded-2xl border border-slate-800 shadow-2xl flex items-center justify-between">
-          <button
-            onClick={handlePrevSection}
-            className="p-2.5 bg-slate-800/80 hover:bg-slate-700 text-slate-200 rounded-xl transition cursor-pointer"
-            title="Anterior"
-          >
-            <ChevronLeft size={18} />
-          </button>
+          {/* SIMULATOR ACCORDION */}
+          <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3 text-xs">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
+              <span className="font-extrabold flex items-center gap-1.5 text-foreground">
+                <Calculator size={16} className="text-indigo-500" /> Simulador de Liquidación IRPF
+              </span>
+              <div className="flex gap-1 text-[10px]">
+                <button
+                  onClick={() => setAirbusSimMode("unlocked")}
+                  className={`px-2.5 py-1 rounded-xl font-bold cursor-pointer border ${airbusSimMode === "unlocked" ? "bg-indigo-600 text-white border-indigo-600" : "bg-muted border-border/50 text-muted-foreground"}`}
+                >
+                  Desbloqueadas
+                </button>
+                <button
+                  onClick={() => setAirbusSimMode("all")}
+                  className={`px-2.5 py-1 rounded-xl font-bold cursor-pointer border ${airbusSimMode === "all" ? "bg-indigo-600 text-white border-indigo-600" : "bg-muted border-border/50 text-muted-foreground"}`}
+                >
+                  Todas
+                </button>
+              </div>
+            </div>
 
-          <div className="flex items-center gap-2 px-2">
-            <IconComponent size={18} className="text-indigo-400" />
-            <span className="text-xs font-black text-white">{activeSection.label}</span>
-            <span className="text-[10px] font-bold text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-              {sectionIndex + 1}/{SECTIONS.length}
-            </span>
+            <div className="flex justify-between items-center bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20">
+              <div>
+                <span className="text-[10px] text-muted-foreground font-semibold">Acciones Simuladas ({simulation.totalSimShares} uds)</span>
+                <p className="font-black text-sm text-indigo-600 dark:text-indigo-400">Venta Bruta: {formatEUR(simulation.totalSimGrossProceeds)}</p>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">IRPF ({settings.taxRate}%): -{formatEUR(simulation.simTax)}</span>
+                <p className="font-black text-sm text-emerald-600 dark:text-emerald-400">Neto: {formatEUR(simulation.simNetProceeds)}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: OTRAS INVERSIONES */}
+      {activeTab === "other" && (
+        <div className="space-y-3 animate-fade-in">
+          <div className="flex justify-between items-center bg-card p-4 rounded-3xl border border-border/80 shadow-xs">
+            <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
+              <TrendingUp className="text-purple-500" size={18} /> Otras Inversiones
+            </h2>
+            <button
+              onClick={handleOpenAddOther}
+              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
+            >
+              + Añadir
+            </button>
           </div>
 
-          <button
-            onClick={handleNextSection}
-            className="p-2.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl transition cursor-pointer shadow-md"
-            title="Siguiente"
-          >
-            <ChevronRight size={18} />
-          </button>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {otherInvestments.map((item) => {
+              const gain = item.currentValue - item.initialValue;
+
+              return (
+                <div key={item.id} className="bg-card p-3.5 rounded-2xl border border-border/70 shadow-xs flex justify-between items-center text-xs">
+                  <div>
+                    <span className="text-[9px] font-extrabold uppercase text-purple-600 dark:text-purple-400 tracking-wider block">{item.category}</span>
+                    <h3 className="font-black text-foreground text-sm mt-0.5">{item.name}</h3>
+                    <p className="text-base font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">{formatEUR(item.currentValue)}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${gain >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"}`}>
+                      {gain >= 0 ? "+" : ""}{formatEUR(gain)}
+                    </span>
+                    <button onClick={() => handleOpenEditOther(item)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer">
+                      <Edit2 size={13} />
+                    </button>
+                    <button onClick={() => handleDeleteOther(item.id)} className="p-1 text-muted-foreground hover:text-rose-600 cursor-pointer">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* --- MODAL: LIQUIDITY --- */}
       {showLiquidityModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-xl max-w-sm w-full space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-2">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
               <h3 className="font-extrabold text-sm">Actualizar Liquidez y Gastos</h3>
-              <button onClick={() => setShowLiquidityModal(false)} className="text-muted-foreground">
+              <button onClick={() => setShowLiquidityModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
             </div>
@@ -1099,7 +1110,7 @@ export function FinanceTrackerModule() {
                   required
                   value={liquidityForm.totalLiquidity}
                   onChange={(e) => setLiquidityForm({ ...liquidityForm, totalLiquidity: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl font-mono text-sm font-bold"
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-sm font-bold outline-none"
                 />
               </div>
 
@@ -1113,19 +1124,19 @@ export function FinanceTrackerModule() {
                   required
                   value={liquidityForm.monthlyExpenses}
                   onChange={(e) => setLiquidityForm({ ...liquidityForm, monthlyExpenses: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl font-mono"
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
                   type="button"
                   onClick={() => setShowLiquidityModal(false)}
-                  className="px-3 py-1.5 bg-muted rounded-xl font-semibold"
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl font-bold">
+                <button type="submit" className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer">
                   Guardar
                 </button>
               </div>
@@ -1136,13 +1147,13 @@ export function FinanceTrackerModule() {
 
       {/* --- MODAL: AIRBUS PACKAGE --- */}
       {showAirbusModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-xl max-w-sm w-full space-y-4 max-h-[85dvh] overflow-y-auto my-auto">
-            <div className="flex justify-between items-center border-b border-border pb-2">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 overflow-y-auto animate-fade-in">
+          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4 max-h-[85dvh] overflow-y-auto my-auto">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
               <h3 className="font-extrabold text-sm">
                 {editingAirbus ? "Editar Plan Airbus" : "Registrar Plan Airbus"}
               </h3>
-              <button onClick={() => setShowAirbusModal(false)} className="text-muted-foreground">
+              <button onClick={() => setShowAirbusModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
             </div>
@@ -1162,7 +1173,7 @@ export function FinanceTrackerModule() {
                         yearGranted: e.target.value,
                       })
                     }
-                    className="w-full px-3 py-1.5 bg-background border border-border rounded-xl font-mono"
+                    className="w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                   />
                 </div>
                 <div>
@@ -1172,7 +1183,7 @@ export function FinanceTrackerModule() {
                     required
                     value={airbusForm.yearGranted}
                     onChange={(e) => setAirbusForm({ ...airbusForm, yearGranted: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-background border border-border rounded-xl font-mono"
+                    className="w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                   />
                 </div>
               </div>
@@ -1185,42 +1196,42 @@ export function FinanceTrackerModule() {
                     required
                     value={airbusForm.purchasedShares}
                     onChange={(e) => setAirbusForm({ ...airbusForm, purchasedShares: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-background border border-border rounded-xl font-mono"
+                    className="w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Bonus (Y)</label>
+                  <label className="block font-bold text-muted-foreground mb-1">Bonus Regalo (Y)</label>
                   <input
                     type="number"
                     required
                     value={airbusForm.bonusShares}
                     onChange={(e) => setAirbusForm({ ...airbusForm, bonusShares: e.target.value })}
-                    className="w-full px-3 py-1.5 bg-background border border-border rounded-xl font-mono"
+                    className="w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-2">
                 <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Precio Compra</label>
+                  <label className="block font-bold text-muted-foreground mb-1">P. Compra</label>
                   <input
                     type="number"
                     step="0.01"
                     required
                     value={airbusForm.purchasePrice}
                     onChange={(e) => setAirbusForm({ ...airbusForm, purchasePrice: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-background border border-border rounded-xl font-mono text-[11px]"
+                    className="w-full px-2 py-1.5 bg-muted/60 border border-border rounded-xl font-mono text-[11px] outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Precio Oficial</label>
+                  <label className="block font-bold text-muted-foreground mb-1">P. Oficial</label>
                   <input
                     type="number"
                     step="0.01"
                     required
                     value={airbusForm.officialPrice}
                     onChange={(e) => setAirbusForm({ ...airbusForm, officialPrice: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-background border border-border rounded-xl font-mono text-[11px]"
+                    className="w-full px-2 py-1.5 bg-muted/60 border border-border rounded-xl font-mono text-[11px] outline-none"
                   />
                 </div>
                 <div>
@@ -1231,7 +1242,7 @@ export function FinanceTrackerModule() {
                     required
                     value={airbusForm.marketPrice}
                     onChange={(e) => setAirbusForm({ ...airbusForm, marketPrice: e.target.value })}
-                    className="w-full px-2 py-1.5 bg-background border border-border rounded-xl font-mono text-[11px]"
+                    className="w-full px-2 py-1.5 bg-muted/60 border border-border rounded-xl font-mono text-[11px] outline-none"
                   />
                 </div>
               </div>
@@ -1248,15 +1259,15 @@ export function FinanceTrackerModule() {
                 </label>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
                   type="button"
                   onClick={() => setShowAirbusModal(false)}
-                  className="px-3 py-1.5 bg-muted rounded-xl font-semibold"
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold">
+                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer">
                   Guardar
                 </button>
               </div>
@@ -1267,11 +1278,11 @@ export function FinanceTrackerModule() {
 
       {/* --- MODAL: OTHER INVESTMENT --- */}
       {showOtherModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-xl max-w-sm w-full space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-2">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
               <h3 className="font-extrabold text-sm">{editingOther ? "Editar Inversión" : "Añadir Inversión"}</h3>
-              <button onClick={() => setShowOtherModal(false)} className="text-muted-foreground">
+              <button onClick={() => setShowOtherModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
             </div>
@@ -1284,7 +1295,7 @@ export function FinanceTrackerModule() {
                   required
                   value={otherForm.name}
                   onChange={(e) => setOtherForm({ ...otherForm, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl"
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
                 />
               </div>
 
@@ -1293,7 +1304,7 @@ export function FinanceTrackerModule() {
                 <select
                   value={otherForm.category}
                   onChange={(e) => setOtherForm({ ...otherForm, category: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl"
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
                 >
                   <option value="funds">Fondo Indexado / ETF</option>
                   <option value="crypto">Criptomonedas</option>
@@ -1312,7 +1323,7 @@ export function FinanceTrackerModule() {
                     required
                     value={otherForm.initialValue}
                     onChange={(e) => setOtherForm({ ...otherForm, initialValue: e.target.value })}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-xl font-mono"
+                    className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                   />
                 </div>
                 <div>
@@ -1323,20 +1334,20 @@ export function FinanceTrackerModule() {
                     required
                     value={otherForm.currentValue}
                     onChange={(e) => setOtherForm({ ...otherForm, currentValue: e.target.value })}
-                    className="w-full px-3 py-2 bg-background border border-border rounded-xl font-mono"
+                    className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
                   type="button"
                   onClick={() => setShowOtherModal(false)}
-                  className="px-3 py-1.5 bg-muted rounded-xl font-semibold"
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-purple-600 text-white rounded-xl font-bold">
+                <button type="submit" className="px-4 py-1.5 bg-purple-600 text-white rounded-xl font-bold cursor-pointer">
                   Guardar
                 </button>
               </div>
@@ -1347,11 +1358,11 @@ export function FinanceTrackerModule() {
 
       {/* --- MODAL: SETTINGS --- */}
       {showSettingsModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 z-50">
-          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-xl max-w-sm w-full space-y-4">
-            <div className="flex justify-between items-center border-b border-border pb-2">
-              <h3 className="font-extrabold text-sm">⚙️ Ajustes de Prudencia e IRPF</h3>
-              <button onClick={() => setShowSettingsModal(false)} className="text-muted-foreground">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
+              <h3 className="font-extrabold text-sm">Ajustes de Prudencia e IRPF</h3>
+              <button onClick={() => setShowSettingsModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
             </div>
@@ -1359,7 +1370,7 @@ export function FinanceTrackerModule() {
             <form onSubmit={handleSaveSettings} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-muted-foreground mb-1">
-                  Máximo % Invertido Objetivo
+                  Límite Máximo Invertido (%)
                 </label>
                 <input
                   type="number"
@@ -1368,7 +1379,7 @@ export function FinanceTrackerModule() {
                   required
                   value={settingsForm.targetInvestmentRatio}
                   onChange={(e) => setSettingsForm({ ...settingsForm, targetInvestmentRatio: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl font-mono"
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                 />
               </div>
 
@@ -1384,19 +1395,19 @@ export function FinanceTrackerModule() {
                   required
                   value={settingsForm.taxRate}
                   onChange={(e) => setSettingsForm({ ...settingsForm, taxRate: e.target.value })}
-                  className="w-full px-3 py-2 bg-background border border-border rounded-xl font-mono"
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-border">
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
                   type="button"
                   onClick={() => setShowSettingsModal(false)}
-                  className="px-3 py-1.5 bg-muted rounded-xl font-semibold"
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-blue-600 text-white rounded-xl font-bold">
+                <button type="submit" className="px-4 py-1.5 bg-primary text-primary-foreground rounded-xl font-bold cursor-pointer">
                   Guardar
                 </button>
               </div>
