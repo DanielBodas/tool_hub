@@ -1,0 +1,44 @@
+[
+  {
+    "_id": "414762ba-5e9e-4404-9d04-80f49729ca70",
+    "userId": "default_baby",
+    "date": "2026-08-01",
+    "time": "20:19",
+    "weight": 3.2,
+    "margin": 0.01,
+    "blanket": "Sin cobertor",
+    "blanketMargin": 0.005,
+    "scale": "Báscula Dormitorio Principal",
+    "clothes": "Desnudo completo",
+    "notes": "",
+    "updatedAt": "2026-08-17T20:19:37.867Z"
+  },
+  {
+    "_id": "5fb3103f-a053-4d77-9b10-51fe8ad069d8",
+    "userId": "default_baby",
+    "date": "2026-08-10",
+    "time": "20:19",
+    "weight": 3.5,
+    "margin": 0.01,
+    "blanket": "Sin cobertor",
+    "blanketMargin": 0.005,
+    "scale": "Báscula Dormitorio Principal",
+    "clothes": "Desnudo completo",
+    "notes": "",
+    "updatedAt": "2026-08-17T20:19:39.667Z"
+  },
+  {
+    "_id": "28f689c8-cf96-4395-961c-0bb26ff73f60",
+    "userId": "default_baby",
+    "date": "2026-08-17",
+    "time": "20:19",
+    "weight": 3.75,
+    "margin": 0.01,
+    "blanket": "Sin cobertor",
+    "blanketMargin": 0.005,
+    "scale": "Báscula Dormitorio Principal",
+    "clothes": "Desnudo completo",
+    "notes": "",
+    "updatedAt": "2026-08-17T20:19:41.487Z"
+  }
+]

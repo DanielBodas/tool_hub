@@ -1262,14 +1262,14 @@ export function BabyWeightTrackerModule() {
             </div>
           </div>
 
-          {/* Site Filter Pills with 1-click isolation and Todas button */}
+          {/* Site Filter Pills supporting both multi-selection group toggle and 1-click single site isolation */}
           <div className="bg-card border border-border/60 p-2.5 rounded-2xl shadow-xs space-y-1.5">
             <div className="flex items-center justify-between">
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
                 Filtrar por sitio:
               </span>
               <span className="text-[9px] text-muted-foreground">
-                Toca para aislar sitio con 1 clic
+                Toca para activar/desactivar varios | usa &quot;solo&quot; para aislar 1
               </span>
             </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
@@ -1283,27 +1283,50 @@ export function BabyWeightTrackerModule() {
               >
                 Todas ({sites.length})
               </button>
+
               {sites.map((site) => {
-                const isOnlySelected = selectedSites.length === 1 && selectedSites[0] === site;
                 const isChecked = selectedSites.includes(site);
                 const color = siteColors[site] || { hex: "#888" };
                 return (
-                  <button
+                  <div
                     key={site}
-                    onClick={() => handleSelectOnlySite(site)}
-                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 flex items-center gap-1 border ${
-                      isOnlySelected
-                        ? "bg-muted text-foreground border-2 shadow-xs"
-                        : isChecked
-                        ? "bg-muted/40 text-foreground border-border"
+                    className={`inline-flex items-center rounded-xl text-[10px] font-bold transition border shrink-0 overflow-hidden ${
+                      isChecked
+                        ? "bg-muted/50 text-foreground border-border"
                         : "bg-transparent border-border/30 text-muted-foreground opacity-50"
                     }`}
-                    style={isChecked ? { borderColor: color.hex, color: color.hex } : {}}
-                    title="Toca para ver solo esta báscula"
+                    style={isChecked ? { borderColor: color.hex } : {}}
                   >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
-                    <span className="truncate max-w-[110px]">{site}</span>
-                  </button>
+                    {/* Main toggle pill for multi-selection */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSiteFilter(site)}
+                      className="px-2.5 py-1 flex items-center gap-1.5 hover:bg-muted/80 cursor-pointer"
+                      title="Activar/desactivar este sitio"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                      <span className="truncate max-w-[110px]" style={isChecked ? { color: color.hex } : {}}>
+                        {site}
+                      </span>
+                    </button>
+
+                    {/* Quick "solo" button to isolate this single scale in 1 click */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectOnlySite(site);
+                      }}
+                      className={`px-1.5 py-1 text-[8px] uppercase tracking-wider font-black border-l border-border/40 hover:bg-primary/20 hover:text-primary cursor-pointer transition ${
+                        selectedSites.length === 1 && selectedSites[0] === site
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Ver solo este sitio de pesaje"
+                    >
+                      solo
+                    </button>
+                  </div>
                 );
               })}
             </div>
