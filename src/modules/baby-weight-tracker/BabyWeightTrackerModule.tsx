@@ -112,6 +112,8 @@ export function BabyWeightTrackerModule() {
   const [calcStartId, setCalcStartId] = useState<string>("");
   const [calcEndId, setCalcEndId] = useState<string>("");
   const [selectedCalcRecordIds, setSelectedCalcRecordIds] = useState<string[]>([]);
+  const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState<boolean>(false);
 
   // Local helper date initializers
   const getTodayDateString = () => {
@@ -634,7 +636,21 @@ export function BabyWeightTrackerModule() {
 
   const pName = (name: string) => name.toLowerCase().trim();
 
-  // Multi-site filter toggle helper
+  // Site filter helpers for chart
+  const handleSelectAllSites = () => {
+    setSelectedSites([...sites]);
+  };
+
+  const handleSelectOnlySite = (site: string) => {
+    if (selectedSites.length === 1 && selectedSites[0] === site) {
+      // Tapping sole active site resets to all sites
+      setSelectedSites([...sites]);
+    } else {
+      // Tapping a site isolates the chart to ONLY that site in 1 click
+      setSelectedSites([site]);
+    }
+  };
+
   const handleToggleSiteFilter = (site: string) => {
     if (selectedSites.includes(site)) {
       if (selectedSites.length === 1) return; // Leave at least one checked
@@ -1246,25 +1262,44 @@ export function BabyWeightTrackerModule() {
             </div>
           </div>
 
-          {/* Site Filter Pills */}
+          {/* Site Filter Pills with 1-click isolation and Todas button */}
           <div className="bg-card border border-border/60 p-2.5 rounded-2xl shadow-xs space-y-1.5">
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-              Filtrar por sitio:
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                Filtrar por sitio:
+              </span>
+              <span className="text-[9px] text-muted-foreground">
+                Toca para aislar sitio con 1 clic
+              </span>
+            </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={handleSelectAllSites}
+                className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 border ${
+                  selectedSites.length === sites.length
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-muted/60 text-muted-foreground border-border/40 hover:text-foreground"
+                }`}
+              >
+                Todas ({sites.length})
+              </button>
               {sites.map((site) => {
+                const isOnlySelected = selectedSites.length === 1 && selectedSites[0] === site;
                 const isChecked = selectedSites.includes(site);
                 const color = siteColors[site] || { hex: "#888" };
                 return (
                   <button
                     key={site}
-                    onClick={() => handleToggleSiteFilter(site)}
+                    onClick={() => handleSelectOnlySite(site)}
                     className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 flex items-center gap-1 border ${
-                      isChecked
-                        ? "bg-muted text-foreground border-border"
-                        : "bg-transparent border-border/40 text-muted-foreground opacity-60"
+                      isOnlySelected
+                        ? "bg-muted text-foreground border-2 shadow-xs"
+                        : isChecked
+                        ? "bg-muted/40 text-foreground border-border"
+                        : "bg-transparent border-border/30 text-muted-foreground opacity-50"
                     }`}
                     style={isChecked ? { borderColor: color.hex, color: color.hex } : {}}
+                    title="Toca para ver solo esta báscula"
                   >
                     <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
                     <span className="truncate max-w-[110px]">{site}</span>
@@ -1737,98 +1772,9 @@ export function BabyWeightTrackerModule() {
                     </p>
                   </div>
                 ) : calcMode === "pairwise" ? (
-                  /* PAIRWISE COMPARISON MODE WITH VISUAL SELECTION CARDS */
+                  /* PAIRWISE COMPARISON MODE WITH VISUAL SELECTION CARDS IN COLLAPSIBLE ACCORDION */
                   <div className="space-y-3.5">
-                    {/* Visual Card Selection Display */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                      {/* Start Record Card Picker */}
-                      <div className="space-y-1.5 bg-muted/20 p-3 rounded-2xl border border-border/50">
-                        <span className="font-black text-[10px] text-muted-foreground uppercase block tracking-wider">
-                          1️⃣ Pesaje Inicial (A)
-                        </span>
-                        <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
-                          {calcAvailableRecords.map((r) => {
-                            const net = r.weight - r.margin - (r.blanketMargin || 0);
-                            const color = siteColors[r.scale] || { hex: "#888" };
-                            const isSelected = r._id === calcStartId;
-                            return (
-                              <button
-                                key={r._id}
-                                type="button"
-                                onClick={() => setCalcStartId(r._id)}
-                                className={`w-full text-left p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
-                                  isSelected
-                                    ? "bg-card border-primary ring-2 ring-primary/20 text-foreground shadow-xs"
-                                    : "bg-card/50 border-border/40 text-muted-foreground hover:bg-card"
-                                }`}
-                              >
-                                <div className="min-w-0 pr-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
-                                    <span className="font-extrabold text-foreground text-xs">{r.date}</span>
-                                    <span className="text-[10px] font-mono text-muted-foreground">{r.time}</span>
-                                  </div>
-                                  <span className="text-[9px] text-muted-foreground truncate block mt-0.5">
-                                    {r.scale}
-                                  </span>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <span className={`font-mono font-black text-xs block ${isSelected ? "text-primary" : "text-foreground"}`}>
-                                    {net.toFixed(3)} kg
-                                  </span>
-                                  <span className="text-[8px] text-muted-foreground">Neto</span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* End Record Card Picker */}
-                      <div className="space-y-1.5 bg-muted/20 p-3 rounded-2xl border border-border/50">
-                        <span className="font-black text-[10px] text-muted-foreground uppercase block tracking-wider">
-                          2️⃣ Pesaje Final (B)
-                        </span>
-                        <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
-                          {calcAvailableRecords.map((r) => {
-                            const net = r.weight - r.margin - (r.blanketMargin || 0);
-                            const color = siteColors[r.scale] || { hex: "#888" };
-                            const isSelected = r._id === calcEndId;
-                            return (
-                              <button
-                                key={r._id}
-                                type="button"
-                                onClick={() => setCalcEndId(r._id)}
-                                className={`w-full text-left p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
-                                  isSelected
-                                    ? "bg-card border-primary ring-2 ring-primary/20 text-foreground shadow-xs"
-                                    : "bg-card/50 border-border/40 text-muted-foreground hover:bg-card"
-                                }`}
-                              >
-                                <div className="min-w-0 pr-2">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
-                                    <span className="font-extrabold text-foreground text-xs">{r.date}</span>
-                                    <span className="text-[10px] font-mono text-muted-foreground">{r.time}</span>
-                                  </div>
-                                  <span className="text-[9px] text-muted-foreground truncate block mt-0.5">
-                                    {r.scale}
-                                  </span>
-                                </div>
-                                <div className="text-right shrink-0">
-                                  <span className={`font-mono font-black text-xs block ${isSelected ? "text-primary" : "text-foreground"}`}>
-                                    {net.toFixed(3)} kg
-                                  </span>
-                                  <span className="text-[8px] text-muted-foreground">Neto</span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Pairwise Calculation Results Card */}
+                    {/* Pairwise Calculation Summary Results Card (PRIMARY FOCUS) */}
                     {comparativePairResult && (
                       <div className="bg-card border-2 border-primary/30 rounded-3xl p-4 space-y-3.5 shadow-sm">
                         <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-extrabold text-foreground border-b border-border/50 pb-2.5">
@@ -1910,64 +1856,118 @@ export function BabyWeightTrackerModule() {
                         )}
                       </div>
                     )}
-                  </div>
-                ) : (
-                  /* MULTI RECORD COMPARISON MODE WITH VISUAL CARDS */
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
-                      <span>Selecciona 2 o más pesajes para analizar la secuencia:</span>
-                      <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-black">
-                        {selectedCalcRecordIds.filter((id) => calcAvailableRecords.some((r) => r._id === id)).length} seleccionados
-                      </span>
-                    </div>
 
-                    {/* Selection Visual Card list */}
-                    <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 border border-border/40 rounded-2xl p-2 bg-muted/20">
-                      {calcAvailableRecords.map((r) => {
-                        const net = r.weight - r.margin - (r.blanketMargin || 0);
-                        const isChecked = selectedCalcRecordIds.includes(r._id);
-                        const color = siteColors[r.scale] || { hex: "#888" };
-                        return (
-                          <div
-                            key={r._id}
-                            onClick={() => toggleMultiSelectRecord(r._id)}
-                            className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
-                              isChecked
-                                ? "bg-card border-primary/50 text-foreground shadow-xs"
-                                : "bg-card/40 border-border/30 text-muted-foreground hover:bg-card/80"
-                            }`}
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() => {}} // Handled by div click
-                                className="rounded text-primary focus:ring-primary/30 shrink-0"
-                              />
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
-                              <div className="truncate">
-                                <span className="font-extrabold text-xs text-foreground block leading-tight">
-                                  {r.date} <span className="text-[10px] font-mono text-muted-foreground">({r.time})</span>
-                                </span>
-                                <span className="text-[9px] text-muted-foreground truncate block">
-                                  {r.scale}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <span className="font-mono font-black text-xs text-foreground block">
-                                {net.toFixed(3)} kg
-                              </span>
-                              <span className="text-[8px] text-muted-foreground">Neto</span>
+                    {/* Collapsible Record Picker Accordion */}
+                    <div className="bg-muted/20 border border-border/60 rounded-2xl overflow-hidden">
+                      <button
+                        type="button"
+                        onClick={() => setIsPickerOpen(!isPickerOpen)}
+                        className="w-full p-3 flex items-center justify-between font-extrabold text-xs text-foreground bg-muted/30 hover:bg-muted/60 transition cursor-pointer"
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Sliders size={14} className="text-primary" />
+                          <span>📋 Cambiar Selección de Pesajes Inicial / Final</span>
+                        </span>
+                        {isPickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+
+                      {isPickerOpen && (
+                        <div className="p-3 border-t border-border/40 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs animate-fade-in">
+                          {/* Start Record Card Picker */}
+                          <div className="space-y-1.5 bg-card/60 p-2.5 rounded-xl border border-border/40">
+                            <span className="font-black text-[10px] text-muted-foreground uppercase block tracking-wider">
+                              1️⃣ Pesaje Inicial (A)
+                            </span>
+                            <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
+                              {calcAvailableRecords.map((r) => {
+                                const net = r.weight - r.margin - (r.blanketMargin || 0);
+                                const color = siteColors[r.scale] || { hex: "#888" };
+                                const isSelected = r._id === calcStartId;
+                                return (
+                                  <button
+                                    key={r._id}
+                                    type="button"
+                                    onClick={() => setCalcStartId(r._id)}
+                                    className={`w-full text-left p-2 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                                      isSelected
+                                        ? "bg-card border-primary ring-2 ring-primary/20 text-foreground shadow-xs"
+                                        : "bg-muted/30 border-border/30 text-muted-foreground hover:bg-card"
+                                    }`}
+                                  >
+                                    <div className="min-w-0 pr-2">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                                        <span className="font-extrabold text-foreground text-xs">{r.date}</span>
+                                        <span className="text-[10px] font-mono text-muted-foreground">{r.time}</span>
+                                      </div>
+                                      <span className="text-[9px] text-muted-foreground truncate block mt-0.5">
+                                        {r.scale}
+                                      </span>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className={`font-mono font-black text-xs block ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                        {net.toFixed(3)} kg
+                                      </span>
+                                      <span className="text-[8px] text-muted-foreground">Neto</span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </div>
-                        );
-                      })}
-                    </div>
 
+                          {/* End Record Card Picker */}
+                          <div className="space-y-1.5 bg-card/60 p-2.5 rounded-xl border border-border/40">
+                            <span className="font-black text-[10px] text-muted-foreground uppercase block tracking-wider">
+                              2️⃣ Pesaje Final (B)
+                            </span>
+                            <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
+                              {calcAvailableRecords.map((r) => {
+                                const net = r.weight - r.margin - (r.blanketMargin || 0);
+                                const color = siteColors[r.scale] || { hex: "#888" };
+                                const isSelected = r._id === calcEndId;
+                                return (
+                                  <button
+                                    key={r._id}
+                                    type="button"
+                                    onClick={() => setCalcEndId(r._id)}
+                                    className={`w-full text-left p-2 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                                      isSelected
+                                        ? "bg-card border-primary ring-2 ring-primary/20 text-foreground shadow-xs"
+                                        : "bg-muted/30 border-border/30 text-muted-foreground hover:bg-card"
+                                    }`}
+                                  >
+                                    <div className="min-w-0 pr-2">
+                                      <div className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                                        <span className="font-extrabold text-foreground text-xs">{r.date}</span>
+                                        <span className="text-[10px] font-mono text-muted-foreground">{r.time}</span>
+                                      </div>
+                                      <span className="text-[9px] text-muted-foreground truncate block mt-0.5">
+                                        {r.scale}
+                                      </span>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className={`font-mono font-black text-xs block ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                        {net.toFixed(3)} kg
+                                      </span>
+                                      <span className="text-[8px] text-muted-foreground">Neto</span>
+                                    </div>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  /* MULTI RECORD COMPARISON MODE WITH COLLAPSIBLE ACCORDION BREAKDOWN */
+                  <div className="space-y-3">
                     {/* Multi Result Summary Cards */}
                     {comparativeMultiResult && (
-                      <div className="space-y-3 pt-1">
+                      <div className="space-y-3">
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                           <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20">
                             <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
@@ -2006,32 +2006,103 @@ export function BabyWeightTrackerModule() {
                           </div>
                         </div>
 
-                        {/* Breakdown per interval */}
-                        <div className="space-y-1.5 pt-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                            Desglose por tramo consecutivo:
-                          </span>
-                          <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
-                            {comparativeMultiResult.steps.map((step, idx) => (
-                              <div
-                                key={idx}
-                                className="p-2.5 bg-muted/30 border border-border/40 rounded-xl flex items-center justify-between text-xs font-bold"
-                              >
-                                <div className="flex items-center gap-1.5 truncate">
-                                  <span className="text-muted-foreground font-mono text-[10px]">#{idx + 1}</span>
-                                  <span className="truncate">{step.prev.date} → {step.curr.date}</span>
+                        {/* Collapsible Selection List Accordion */}
+                        <div className="bg-muted/20 border border-border/60 rounded-2xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setIsPickerOpen(!isPickerOpen)}
+                            className="w-full p-3 flex items-center justify-between font-extrabold text-xs text-foreground bg-muted/30 hover:bg-muted/60 transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Check size={14} className="text-primary" />
+                              <span>📋 Seleccionar Pesajes Incluidos ({selectedCalcRecordIds.filter((id) => calcAvailableRecords.some((r) => r._id === id)).length})</span>
+                            </span>
+                            {isPickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+
+                          {isPickerOpen && (
+                            <div className="p-3 border-t border-border/40 max-h-[220px] overflow-y-auto space-y-1.5 animate-fade-in">
+                              {calcAvailableRecords.map((r) => {
+                                const net = r.weight - r.margin - (r.blanketMargin || 0);
+                                const isChecked = selectedCalcRecordIds.includes(r._id);
+                                const color = siteColors[r.scale] || { hex: "#888" };
+                                return (
+                                  <div
+                                    key={r._id}
+                                    onClick={() => toggleMultiSelectRecord(r._id)}
+                                    className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                                      isChecked
+                                        ? "bg-card border-primary/50 text-foreground shadow-xs"
+                                        : "bg-card/40 border-border/30 text-muted-foreground hover:bg-card/80"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {}}
+                                        className="rounded text-primary focus:ring-primary/30 shrink-0"
+                                      />
+                                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                                      <div className="truncate">
+                                        <span className="font-extrabold text-xs text-foreground block leading-tight">
+                                          {r.date} <span className="text-[10px] font-mono text-muted-foreground">({r.time})</span>
+                                        </span>
+                                        <span className="text-[9px] text-muted-foreground truncate block">
+                                          {r.scale}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className="font-mono font-black text-xs text-foreground block">
+                                        {net.toFixed(3)} kg
+                                      </span>
+                                      <span className="text-[8px] text-muted-foreground">Neto</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Collapsible Breakdown Accordion */}
+                        <div className="bg-muted/20 border border-border/60 rounded-2xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setIsBreakdownOpen(!isBreakdownOpen)}
+                            className="w-full p-3 flex items-center justify-between font-extrabold text-xs text-foreground bg-muted/30 hover:bg-muted/60 transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <TrendingUp size={14} className="text-primary" />
+                              <span>📊 Ver Desglose por Tramo Consecutivo ({comparativeMultiResult.steps.length})</span>
+                            </span>
+                            {isBreakdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+
+                          {isBreakdownOpen && (
+                            <div className="p-3 border-t border-border/40 space-y-1.5 max-h-[220px] overflow-y-auto animate-fade-in">
+                              {comparativeMultiResult.steps.map((step, idx) => (
+                                <div
+                                  key={idx}
+                                  className="p-2.5 bg-card border border-border/40 rounded-xl flex items-center justify-between text-xs font-bold"
+                                >
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="text-muted-foreground font-mono text-[10px]">#{idx + 1}</span>
+                                    <span className="truncate">{step.prev.date} → {step.curr.date}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`font-mono font-black ${step.grams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+                                      {step.grams >= 0 ? "+" : ""}{step.grams.toFixed(0)}g
+                                    </span>
+                                    <span className="px-2 py-0.5 bg-primary/10 text-primary font-mono text-[10px] rounded-md">
+                                      {step.rate.toFixed(1)}g/día
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <span className={`font-mono font-black ${step.grams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
-                                    {step.grams >= 0 ? "+" : ""}{step.grams.toFixed(0)}g
-                                  </span>
-                                  <span className="px-2 py-0.5 bg-primary/10 text-primary font-mono text-[10px] rounded-md">
-                                    {step.rate.toFixed(1)}g/día
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}
