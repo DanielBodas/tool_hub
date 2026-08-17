@@ -100,11 +100,13 @@ export async function GET() {
 
     const responseData = {
       weights: sorted,
-      settings: settingsDoc || {
+      settings: {
         userId: BABY_ID,
-        sites: DEFAULT_SITES,
-        clothing: DEFAULT_CLOTHING,
-        blankets: DEFAULT_BLANKETS
+        sites: settingsDoc?.sites || DEFAULT_SITES,
+        clothing: settingsDoc?.clothing || DEFAULT_CLOTHING,
+        blankets: settingsDoc?.blankets || DEFAULT_BLANKETS,
+        birthDate: settingsDoc?.birthDate || "",
+        sex: settingsDoc?.sex || "female"
       }
     };
 
@@ -138,6 +140,8 @@ export async function POST(request: Request) {
         sites: body.sites || DEFAULT_SITES,
         clothing: body.clothing || DEFAULT_CLOTHING,
         blankets: body.blankets || DEFAULT_BLANKETS,
+        birthDate: body.birthDate !== undefined ? body.birthDate : "",
+        sex: body.sex || "female",
         updatedAt: new Date()
       };
 
