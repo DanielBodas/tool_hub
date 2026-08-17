@@ -407,15 +407,20 @@ export function BabyLeavePlannerModule() {
       setSelectedPerson("Festivo");
       setHolidayNameVal(existingHoliday.nombre);
     } else {
-      // Detect if there's an existing event on that day
-      const existing = globalData.events.find((e) => e.date === dateStr);
+      const preferredPerson = currentFilter !== "all" ? currentFilter : "Madre";
+      const existingForPref = globalData.events.find(
+        (e) => e.date === dateStr && e.person === preferredPerson
+      );
+      const existingAny = globalData.events.find((e) => e.date === dateStr);
+      const existing = existingForPref || existingAny;
+
       if (existing) {
         setSelectedPerson(existing.person);
         setSelectedType(existing.type);
       } else {
-        setSelectedPerson("Madre");
-        const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
-        setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+        setSelectedPerson(preferredPerson);
+        const firstBalance = globalData.balances.find((b) => b.person === preferredPerson);
+        setSelectedType(firstBalance ? firstBalance.type : "");
       }
     }
 
@@ -510,8 +515,10 @@ export function BabyLeavePlannerModule() {
               d.setDate(startDate.getDate() + i);
               const dStr = formatDateStr(d);
 
-              // Clean whatever existed on that day
-              eventsList = eventsList.filter((e) => e.date !== dStr);
+              // Clean previous events on that day for this specific person
+              eventsList = eventsList.filter(
+                (e) => !(e.date === dStr && e.person === selectedPerson)
+              );
               eventsList.push({
                 date: dStr,
                 person: selectedPerson,
@@ -529,8 +536,10 @@ export function BabyLeavePlannerModule() {
               return;
             }
 
-            // Clean whatever existed on that day
-            eventsList = eventsList.filter((e) => e.date !== dateStr);
+            // Clean previous events on that day for this specific person
+            eventsList = eventsList.filter(
+              (e) => !(e.date === dateStr && e.person === selectedPerson)
+            );
             eventsList.push({
               date: dateStr,
               person: selectedPerson,
@@ -566,11 +575,11 @@ export function BabyLeavePlannerModule() {
         let eventsList = [...prev.events];
 
         datesToProcess.forEach((dateStr) => {
-          // Find if an event exists on that day
-          const existing = eventsList.find((e) => e.date === dateStr);
+          // Find if an event exists on that day for selectedPerson
+          const existing = eventsList.find((e) => e.date === dateStr && e.person === selectedPerson);
           if (existing) {
             const targetBalance = prev.balances.find(
-              (b) => b.person === existing.person && b.type === existing.type
+              (b) => b.person === selectedPerson && b.type === existing.type
             );
             const isSemanal = targetBalance?.frecuencia === "Semanal";
 
@@ -582,14 +591,18 @@ export function BabyLeavePlannerModule() {
                 const dStr = formatDateStr(d);
 
                 eventsList = eventsList.filter(
-                  (e) => !(e.date === dStr && e.person === existing.person && e.type === existing.type)
+                  (e) => !(e.date === dStr && e.person === selectedPerson && e.type === existing.type)
                 );
               }
             } else {
-              eventsList = eventsList.filter((e) => e.date !== dateStr);
+              eventsList = eventsList.filter(
+                (e) => !(e.date === dateStr && e.person === selectedPerson)
+              );
             }
           } else {
-            eventsList = eventsList.filter((e) => e.date !== dateStr);
+            eventsList = eventsList.filter(
+              (e) => !(e.date === dateStr && e.person === selectedPerson)
+            );
           }
         });
 
@@ -1492,10 +1505,12 @@ export function BabyLeavePlannerModule() {
         /* High contrast numbers on cells with any event */
         .day-cell-fixed.bg-mom .d-num,
         .day-cell-fixed.bg-dad .d-num,
+        .day-cell-fixed.bg-both .d-num,
         .day-cell-fixed.bg-joint .d-num,
         .day-cell-fixed.bg-holiday .d-num,
         .dark .day-cell-fixed.bg-mom .d-num,
         .dark .day-cell-fixed.bg-dad .d-num,
+        .dark .day-cell-fixed.bg-both .d-num,
         .dark .day-cell-fixed.bg-joint .d-num,
         .dark .day-cell-fixed.bg-holiday .d-num {
           color: #ffffff !important;
@@ -1521,6 +1536,16 @@ export function BabyLeavePlannerModule() {
         }
         .dark .bg-dad {
           background-color: #0284c7 !important;
+          color: #ffffff !important;
+        }
+
+        /* AMBOS PADRES JUNTOS: Gradiente Rosa y Azul */
+        .bg-both {
+          background: linear-gradient(135deg, var(--color-mom) 50%, var(--color-dad) 50%) !important;
+          color: #1e1b4b !important;
+        }
+        .dark .bg-both {
+          background: linear-gradient(135deg, #be185d 50%, #0284c7 50%) !important;
           color: #ffffff !important;
         }
 
@@ -1837,6 +1862,7 @@ export function BabyLeavePlannerModule() {
           }
           .day-cell-fixed.bg-mom .d-num,
           .day-cell-fixed.bg-dad .d-num,
+          .day-cell-fixed.bg-both .d-num,
           .day-cell-fixed.bg-joint .d-num,
           .day-cell-fixed.bg-holiday .d-num {
             color: #ffffff !important;
@@ -1849,6 +1875,10 @@ export function BabyLeavePlannerModule() {
           }
           .bg-dad {
             background-color: #0284c7 !important;
+            color: #ffffff !important;
+          }
+          .bg-both {
+            background: linear-gradient(135deg, #be185d 50%, #0284c7 50%) !important;
             color: #ffffff !important;
           }
           .bg-joint {
@@ -2100,8 +2130,9 @@ export function BabyLeavePlannerModule() {
                   const dateStr = formatDateStr(dateObj);
                   const dayOfWeek = dateObj.getDay();
 
-                  // Find event, holiday, mandatory statuses
-                  const evt = globalData.events.find((e) => e.date === dateStr);
+                  // Find events on this date for Madre and Padre
+                  const momEvt = globalData.events.find((e) => e.date === dateStr && e.person === "Madre");
+                  const dadEvt = globalData.events.find((e) => e.date === dateStr && e.person === "Padre");
                   const festivo = globalData.festivos.find((f) => f.date === dateStr);
 
                   const checkTime = dateObj.getTime();
@@ -2121,16 +2152,32 @@ export function BabyLeavePlannerModule() {
                   let hoverInfo = `Día: ${dateStr}`;
 
                   // Visual Filtering rules
-                  let isVisible = true;
-                  if (evt && currentFilter !== "all" && evt.person !== currentFilter) {
-                    isVisible = false;
-                  }
+                  const showMom = momEvt && (currentFilter === "all" || currentFilter === "Madre");
+                  const showDad = dadEvt && (currentFilter === "all" || currentFilter === "Padre");
 
-                  if (evt && isVisible) {
-                    cssClass = evt.person === "Madre" ? "bg-mom" : "bg-dad";
-                    icon = evt.person === "Madre" ? "👩" : "👨";
-                    text = evt.type;
-                    hoverInfo = `${evt.person}: ${evt.type}`;
+                  if (showMom && showDad) {
+                    cssClass = "bg-both";
+                    icon = "👩👨";
+                    text = momEvt.type === dadEvt.type ? momEvt.type : `${momEvt.type} / ${dadEvt.type}`;
+                    hoverInfo = `Madre: ${momEvt.type} | Padre: ${dadEvt.type}`;
+                    if (festivo) {
+                      showDot = true;
+                      hoverInfo += ` | Festivo`;
+                    }
+                  } else if (showMom) {
+                    cssClass = "bg-mom";
+                    icon = "👩";
+                    text = momEvt.type;
+                    hoverInfo = `Madre: ${momEvt.type}`;
+                    if (festivo) {
+                      showDot = true;
+                      hoverInfo += ` | Festivo`;
+                    }
+                  } else if (showDad) {
+                    cssClass = "bg-dad";
+                    icon = "👨";
+                    text = dadEvt.type;
+                    hoverInfo = `Padre: ${dadEvt.type}`;
                     if (festivo) {
                       showDot = true;
                       hoverInfo += ` | Festivo`;
