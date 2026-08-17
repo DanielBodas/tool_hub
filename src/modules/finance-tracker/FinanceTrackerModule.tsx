@@ -44,7 +44,8 @@ export interface AirbusPackage {
   marketPrice: number; // Current valuation / market price per share
   yearGranted: number; // Grant year (lockup 3 years)
   sold: boolean;
-  soldPrice?: number;
+  soldPrice?: number; // Real price per share at the moment of sale
+  soldDate?: string; // ISO date of the sale
   notes?: string;
 }
 
@@ -88,6 +89,7 @@ export function FinanceTrackerModule() {
   // Simulation & Modal states
   const [airbusSimMode, setAirbusSimMode] = useState<"unlocked" | "all" | string>("unlocked");
   const [simMarketPriceOverride, setSimMarketPriceOverride] = useState<string>("");
+  const [expandedAirbusId, setExpandedAirbusId] = useState<string | null>(null);
 
   const [showLiquidityModal, setShowLiquidityModal] = useState(false);
   const [liquidityForm, setLiquidityForm] = useState({
@@ -109,6 +111,7 @@ export function FinanceTrackerModule() {
     yearGranted: String(currentYear),
     sold: false,
     soldPrice: "",
+    soldDate: "",
     notes: "",
   });
 
@@ -300,12 +303,33 @@ export function FinanceTrackerModule() {
     let totalAirbusLockedValue = 0;
     let totalAirbusBonusValue = 0;
 
-    airbusPackages.forEach((pkg) => {
-      if (pkg.sold) return;
+    // Realized (sold) accumulators
+    let realizedGrossProceeds = 0;
+    let realizedCostBasis = 0;
+    let realizedTaxableMargin = 0;
+    let realizedTax = 0;
+    let realizedNetProfit = 0;
+    let soldPackagesCount = 0;
 
+    airbusPackages.forEach((pkg) => {
       const totalShares = (Number(pkg.purchasedShares) || 0) + (Number(pkg.bonusShares) || 0);
       const paid = (Number(pkg.purchasedShares) || 0) * (Number(pkg.purchasePrice) || 0);
       const officialBasis = totalShares * (Number(pkg.officialPrice) || 0);
+
+      if (pkg.sold) {
+        const salePrice = Number(pkg.soldPrice) || Number(pkg.marketPrice) || 0;
+        const gross = totalShares * salePrice;
+        const margin = Math.max(0, gross - officialBasis);
+        const tax = margin * (settings.taxRate / 100);
+        realizedGrossProceeds += gross;
+        realizedCostBasis += paid;
+        realizedTaxableMargin += margin;
+        realizedTax += tax;
+        realizedNetProfit += gross - paid - tax;
+        soldPackagesCount += 1;
+        return;
+      }
+
       const mktValue = totalShares * (Number(pkg.marketPrice) || 0);
       const bonusVal = (Number(pkg.bonusShares) || 0) * (Number(pkg.marketPrice) || 0);
 
@@ -380,6 +404,12 @@ export function FinanceTrackerModule() {
       totalAirbusLockedValue,
       totalAirbusBonusValue,
       totalAirbusNetProfitIfSold,
+      realizedGrossProceeds,
+      realizedCostBasis,
+      realizedTaxableMargin,
+      realizedTax,
+      realizedNetProfit,
+      soldPackagesCount,
       totalOtherInvestmentsInitial,
       totalOtherInvestmentsCurrent,
       totalOtherInvestmentsGain,
@@ -484,6 +514,7 @@ export function FinanceTrackerModule() {
       yearGranted: String(currentYear),
       sold: false,
       soldPrice: "",
+      soldDate: "",
       notes: "",
     });
     setShowAirbusModal(true);
@@ -501,6 +532,7 @@ export function FinanceTrackerModule() {
       yearGranted: String(pkg.yearGranted || pkg.year),
       sold: pkg.sold || false,
       soldPrice: pkg.soldPrice ? String(pkg.soldPrice) : "",
+      soldDate: pkg.soldDate ? pkg.soldDate.slice(0, 10) : "",
       notes: pkg.notes || "",
     });
     setShowAirbusModal(true);
@@ -515,6 +547,10 @@ export function FinanceTrackerModule() {
     const oPrice = parseFloat(airbusForm.officialPrice) || 0;
     const mPrice = parseFloat(airbusForm.marketPrice) || 0;
     const yGranted = parseInt(airbusForm.yearGranted) || yr;
+    const soldPriceVal = airbusForm.soldPrice ? parseFloat(airbusForm.soldPrice) : undefined;
+    const soldDateVal = airbusForm.sold
+      ? (airbusForm.soldDate || new Date().toISOString().slice(0, 10))
+      : undefined;
 
     let updated: AirbusPackage[];
 
@@ -531,7 +567,8 @@ export function FinanceTrackerModule() {
               marketPrice: mPrice,
               yearGranted: yGranted,
               sold: airbusForm.sold,
-              soldPrice: airbusForm.soldPrice ? parseFloat(airbusForm.soldPrice) : undefined,
+              soldPrice: airbusForm.sold ? soldPriceVal : undefined,
+              soldDate: soldDateVal,
               notes: airbusForm.notes,
             }
           : p
@@ -547,7 +584,8 @@ export function FinanceTrackerModule() {
         marketPrice: mPrice,
         yearGranted: yGranted,
         sold: airbusForm.sold,
-        soldPrice: airbusForm.soldPrice ? parseFloat(airbusForm.soldPrice) : undefined,
+        soldPrice: airbusForm.sold ? soldPriceVal : undefined,
+        soldDate: soldDateVal,
         notes: airbusForm.notes,
       };
       updated = [...airbusPackages, newPkg];
@@ -699,6 +737,7 @@ export function FinanceTrackerModule() {
 
           <button
             onClick={handleOpenSettings}
+            data-testid="settings-btn"
             className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold shrink-0"
             title="Ajustes de Prudencia e IRPF"
           >
@@ -711,6 +750,7 @@ export function FinanceTrackerModule() {
         <div className="grid grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
           <button
             onClick={() => setActiveTab("dashboard")}
+            data-testid="tab-dashboard"
             className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
               activeTab === "dashboard"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
@@ -722,6 +762,7 @@ export function FinanceTrackerModule() {
           </button>
           <button
             onClick={() => setActiveTab("liquidity")}
+            data-testid="tab-liquidity"
             className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
               activeTab === "liquidity"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
@@ -733,6 +774,7 @@ export function FinanceTrackerModule() {
           </button>
           <button
             onClick={() => setActiveTab("airbus")}
+            data-testid="tab-airbus"
             className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
               activeTab === "airbus"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
@@ -744,6 +786,7 @@ export function FinanceTrackerModule() {
           </button>
           <button
             onClick={() => setActiveTab("other")}
+            data-testid="tab-other"
             className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
               activeTab === "other"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
@@ -867,6 +910,7 @@ export function FinanceTrackerModule() {
               </h2>
               <button
                 onClick={handleOpenLiquidityModal}
+                data-testid="edit-liquidity-btn"
                 className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
               >
                 <Edit2 size={13} className="inline mr-1" /> Editar Saldo
@@ -904,6 +948,7 @@ export function FinanceTrackerModule() {
               </h2>
               <button
                 onClick={handleOpenAddAirbus}
+                data-testid="add-airbus-btn"
                 className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
               >
                 + Nueva Añada
@@ -940,6 +985,34 @@ export function FinanceTrackerModule() {
             </div>
           </div>
 
+          {/* REALIZED GAINS CARD */}
+          {calculations.soldPackagesCount > 0 && (
+            <div className="bg-card p-4 rounded-3xl border border-emerald-500/30 shadow-xs space-y-2" data-testid="airbus-realized-card">
+              <div className="flex items-center justify-between border-b border-border/60 pb-2">
+                <span className="text-sm font-extrabold flex items-center gap-2 text-foreground">
+                  <ArrowUpRight className="text-emerald-500" size={17} /> Beneficio Realizado ({calculations.soldPackagesCount})
+                </span>
+                <span className="text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-full">
+                  Ventas cerradas
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-xs">
+                <div className="bg-muted/40 p-2.5 rounded-2xl border border-border/60">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase block">Ingreso Venta</span>
+                  <p className="font-extrabold text-foreground text-sm">{formatEUR(calculations.realizedGrossProceeds)}</p>
+                </div>
+                <div className="bg-rose-500/10 p-2.5 rounded-2xl border border-rose-500/20">
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase block">Impuestos ({settings.taxRate}%)</span>
+                  <p className="font-extrabold text-rose-600 dark:text-rose-400 text-sm">−{formatEUR(calculations.realizedTax)}</p>
+                </div>
+                <div className="bg-emerald-500/10 p-2.5 rounded-2xl border border-emerald-500/20">
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase block">Neto Real</span>
+                  <p className="font-extrabold text-emerald-600 dark:text-emerald-400 text-sm">{formatEUR(calculations.realizedNetProfit)}</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* 3-YEAR LOCKUP CARDS LIST */}
           <div className="space-y-2">
             <span className="text-xs font-black text-foreground px-1 uppercase tracking-wider text-muted-foreground block">
@@ -951,7 +1024,9 @@ export function FinanceTrackerModule() {
                 const totalShares = pkg.purchasedShares + pkg.bonusShares;
                 const paid = pkg.purchasedShares * pkg.purchasePrice;
                 const officialBasis = totalShares * pkg.officialPrice;
-                const mktValue = totalShares * (pkg.sold && pkg.soldPrice ? pkg.soldPrice : pkg.marketPrice);
+                const priceUsed = pkg.sold && pkg.soldPrice ? pkg.soldPrice : pkg.marketPrice;
+                const priceLabel = pkg.sold ? "Venta" : "Mercado";
+                const mktValue = totalShares * priceUsed;
                 const taxableMargin = Math.max(0, mktValue - officialBasis);
                 const estTax = taxableMargin * (settings.taxRate / 100);
                 const netProfit = mktValue - paid - estTax;
@@ -994,14 +1069,64 @@ export function FinanceTrackerModule() {
                         <p className="font-bold text-foreground">{formatEUR(paid)}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block font-semibold">Mercado</span>
+                        <span className="text-[10px] text-indigo-600 dark:text-indigo-400 block font-semibold">{priceLabel}</span>
                         <p className="font-bold text-indigo-600 dark:text-indigo-400">{formatEUR(mktValue)}</p>
                       </div>
                       <div>
-                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-semibold">Neto Limpio</span>
+                        <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block font-semibold">Neto {pkg.sold ? "Real" : "Limpio"}</span>
                         <p className="font-bold text-emerald-600 dark:text-emerald-400">{formatEUR(netProfit)}</p>
                       </div>
                     </div>
+
+                    {/* DETAILED FISCAL BREAKDOWN */}
+                    <button
+                      onClick={() => setExpandedAirbusId(expandedAirbusId === pkg.id ? null : pkg.id)}
+                      className="w-full flex items-center justify-between text-[10px] font-bold text-muted-foreground hover:text-foreground px-1 py-0.5 cursor-pointer"
+                      data-testid={`airbus-detail-toggle-${pkg.id}`}
+                    >
+                      <span className="flex items-center gap-1"><Calculator size={11} className="text-indigo-500" /> Desglose fiscal detallado</span>
+                      <ChevronRight size={12} className={`transition-transform ${expandedAirbusId === pkg.id ? "rotate-90" : ""}`} />
+                    </button>
+
+                    {expandedAirbusId === pkg.id && (
+                      <div className="space-y-1 text-[11px] bg-muted/20 border border-border/50 p-2.5 rounded-xl animate-fade-in" data-testid={`airbus-detail-${pkg.id}`}>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Acciones compradas (X)</span>
+                          <span className="font-mono font-bold text-foreground">{pkg.purchasedShares} × {formatEUR(pkg.purchasePrice)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Acciones regalo (Y) · coste 0</span>
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">+{pkg.bonusShares} uds</span>
+                        </div>
+                        <div className="flex justify-between border-t border-border/40 pt-1">
+                          <span className="text-muted-foreground">Coste de compra</span>
+                          <span className="font-mono font-bold text-foreground">{formatEUR(paid)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Ingreso {pkg.sold ? "venta" : "estimado"} ({totalShares} × {formatEUR(priceUsed)})</span>
+                          <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400">{formatEUR(mktValue)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Valor oficial ({totalShares} × {formatEUR(pkg.officialPrice)})</span>
+                          <span className="font-mono font-bold text-foreground">{formatEUR(officialBasis)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-border/40 pt-1">
+                          <span className="text-amber-600 dark:text-amber-400 font-semibold">Base fiscal (Venta − Oficial)</span>
+                          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{formatEUR(taxableMargin)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-rose-600 dark:text-rose-400 font-semibold">Impuesto ({settings.taxRate}%)</span>
+                          <span className="font-mono font-bold text-rose-600 dark:text-rose-400">−{formatEUR(estTax)}</span>
+                        </div>
+                        <div className="flex justify-between border-t border-border/40 pt-1 text-sm">
+                          <span className="text-emerald-700 dark:text-emerald-400 font-black">Beneficio neto {pkg.sold ? "real" : "estimado"}</span>
+                          <span className="font-mono font-black text-emerald-700 dark:text-emerald-400">{formatEUR(netProfit)}</span>
+                        </div>
+                        {pkg.sold && pkg.soldDate && (
+                          <p className="text-[10px] text-muted-foreground text-right pt-0.5">Vendido el {new Date(pkg.soldDate).toLocaleDateString("es-ES")}</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -1030,6 +1155,27 @@ export function FinanceTrackerModule() {
               </div>
             </div>
 
+            <div className="flex items-center gap-2 bg-muted/40 p-2.5 rounded-2xl border border-border/60">
+              <label className="text-[10px] font-bold text-muted-foreground shrink-0">Precio venta objetivo (€):</label>
+              <input
+                type="number"
+                step="0.01"
+                value={simMarketPriceOverride}
+                onChange={(e) => setSimMarketPriceOverride(e.target.value)}
+                placeholder="Usar precio de mercado"
+                className="flex-1 min-w-0 px-2 py-1.5 bg-card border border-border rounded-xl font-mono text-[11px] outline-none"
+                data-testid="sim-price-input"
+              />
+              {simMarketPriceOverride && (
+                <button
+                  onClick={() => setSimMarketPriceOverride("")}
+                  className="text-[10px] font-bold text-muted-foreground hover:text-foreground px-2 py-1 cursor-pointer shrink-0"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
             <div className="flex justify-between items-center bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20">
               <div>
                 <span className="text-[10px] text-muted-foreground font-semibold">Acciones Simuladas ({simulation.totalSimShares} uds)</span>
@@ -1038,6 +1184,21 @@ export function FinanceTrackerModule() {
               <div className="text-right">
                 <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold">IRPF ({settings.taxRate}%): -{formatEUR(simulation.simTax)}</span>
                 <p className="font-black text-sm text-emerald-600 dark:text-emerald-400">Neto: {formatEUR(simulation.simNetProceeds)}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 text-[10px]">
+              <div className="bg-muted/40 p-2 rounded-xl border border-border/60 text-center">
+                <span className="text-muted-foreground font-bold block">Coste compra</span>
+                <p className="font-mono font-bold text-foreground">{formatEUR(simulation.totalSimPaid)}</p>
+              </div>
+              <div className="bg-amber-500/10 p-2 rounded-xl border border-amber-500/20 text-center">
+                <span className="text-amber-600 dark:text-amber-400 font-bold block">Base fiscal</span>
+                <p className="font-mono font-bold text-amber-600 dark:text-amber-400">{formatEUR(simulation.simTaxableMargin)}</p>
+              </div>
+              <div className="bg-emerald-500/10 p-2 rounded-xl border border-emerald-500/20 text-center">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold block">Benef. real neto</span>
+                <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatEUR(simulation.simRealNetProfit)}</p>
               </div>
             </div>
           </div>
@@ -1053,6 +1214,7 @@ export function FinanceTrackerModule() {
             </h2>
             <button
               onClick={handleOpenAddOther}
+              data-testid="add-other-btn"
               className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
             >
               + Añadir
@@ -1254,10 +1416,38 @@ export function FinanceTrackerModule() {
                     checked={airbusForm.sold}
                     onChange={(e) => setAirbusForm({ ...airbusForm, sold: e.target.checked })}
                     className="w-4 h-4 rounded border-border text-indigo-600"
+                    data-testid="airbus-sold-checkbox"
                   />
-                  <span className="font-semibold text-xs text-foreground">Paquete ya vendido</span>
+                  <span className="font-semibold text-xs text-foreground">Marcar como vendido</span>
                 </label>
               </div>
+
+              {airbusForm.sold && (
+                <div className="grid grid-cols-2 gap-2 bg-emerald-500/5 border border-emerald-500/20 p-2.5 rounded-2xl animate-fade-in">
+                  <div>
+                    <label className="block font-bold text-emerald-700 dark:text-emerald-400 mb-1">Precio Venta (€/acción)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      required
+                      value={airbusForm.soldPrice}
+                      onChange={(e) => setAirbusForm({ ...airbusForm, soldPrice: e.target.value })}
+                      className="w-full px-2 py-1.5 bg-card border border-emerald-500/30 rounded-xl font-mono text-[11px] outline-none"
+                      data-testid="airbus-sold-price-input"
+                    />
+                  </div>
+                  <div>
+                    <label className="block font-bold text-emerald-700 dark:text-emerald-400 mb-1">Fecha Venta</label>
+                    <input
+                      type="date"
+                      value={airbusForm.soldDate}
+                      onChange={(e) => setAirbusForm({ ...airbusForm, soldDate: e.target.value })}
+                      className="w-full px-2 py-1.5 bg-card border border-emerald-500/30 rounded-xl font-mono text-[11px] outline-none"
+                      data-testid="airbus-sold-date-input"
+                    />
+                  </div>
+                </div>
+              )}
 
               <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
@@ -1267,7 +1457,7 @@ export function FinanceTrackerModule() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer">
+                <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer" data-testid="airbus-save-btn">
                   Guardar
                 </button>
               </div>
