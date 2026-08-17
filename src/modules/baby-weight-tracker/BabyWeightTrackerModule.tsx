@@ -108,6 +108,7 @@ export function BabyWeightTrackerModule() {
 
   // Analysis comparative state
   const [calcMode, setCalcMode] = useState<"pairwise" | "multi">("pairwise");
+  const [calcSiteFilter, setCalcSiteFilter] = useState<string>("ALL"); // "ALL" or specific site name
   const [calcStartId, setCalcStartId] = useState<string>("");
   const [calcEndId, setCalcEndId] = useState<string>("");
   const [selectedCalcRecordIds, setSelectedCalcRecordIds] = useState<string[]>([]);
@@ -664,21 +665,31 @@ export function BabyWeightTrackerModule() {
     );
   }, [filteredRecords, searchQuery]);
 
-  // Auto-set default calculator selection when records change
+  // Records available for calculator based on selected scale filter
+  const calcAvailableRecords = useMemo(() => {
+    const list = calcSiteFilter === "ALL"
+      ? records
+      : records.filter((r) => r.scale === calcSiteFilter);
+    return list.sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+  }, [records, calcSiteFilter]);
+
+  // Auto-set default calculator selection when records or site filter change
   useEffect(() => {
-    if (records.length >= 2) {
-      const sorted = [...records].sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
-      if (!calcStartId || !records.some((r) => r._id === calcStartId)) {
-        setCalcStartId(sorted[0]._id);
+    if (calcAvailableRecords.length >= 2) {
+      if (!calcStartId || !calcAvailableRecords.some((r) => r._id === calcStartId)) {
+        setCalcStartId(calcAvailableRecords[0]._id);
       }
-      if (!calcEndId || !records.some((r) => r._id === calcEndId)) {
-        setCalcEndId(sorted[sorted.length - 1]._id);
+      if (!calcEndId || !calcAvailableRecords.some((r) => r._id === calcEndId)) {
+        setCalcEndId(calcAvailableRecords[calcAvailableRecords.length - 1]._id);
       }
-      if (selectedCalcRecordIds.length === 0) {
-        setSelectedCalcRecordIds(sorted.map((r) => r._id));
+      const validSelected = selectedCalcRecordIds.filter((id) =>
+        calcAvailableRecords.some((r) => r._id === id)
+      );
+      if (validSelected.length < 2) {
+        setSelectedCalcRecordIds(calcAvailableRecords.map((r) => r._id));
       }
     }
-  }, [records, calcStartId, calcEndId, selectedCalcRecordIds.length]);
+  }, [calcAvailableRecords, calcStartId, calcEndId, selectedCalcRecordIds]);
 
   // Comparative calculations
   const comparativePairResult = useMemo(() => {
@@ -1633,8 +1644,8 @@ export function BabyWeightTrackerModule() {
           {/* SUBSECTION 1: COMPARATIVE WEIGHT CALCULATOR */}
           {analysisSubTab === "comparative" && (
             <div className="space-y-3 animate-fade-in">
-              {/* Mode switch: 2 pesajes vs varios pesajes */}
-              <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3">
+              {/* Mode switch & Same Scale Filter header */}
+              <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3.5">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-b border-border/50 pb-3">
                   <div>
                     <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
@@ -1642,7 +1653,7 @@ export function BabyWeightTrackerModule() {
                       <span>Calculadora de Gramos e Incremento Diario</span>
                     </h3>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      Compara la ganancia de peso exacta y gramos al día entre pesajes.
+                      Compara la ganancia de peso exacta y ritmo en gramos/día entre pesajes.
                     </p>
                   </div>
 
@@ -1662,93 +1673,198 @@ export function BabyWeightTrackerModule() {
                         calcMode === "multi" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground"
                       }`}
                     >
-                      Entre Varios ({records.length})
+                      Entre Varios ({calcAvailableRecords.length})
                     </button>
                   </div>
                 </div>
 
-                {records.length < 2 ? (
-                  <div className="text-center py-6 space-y-1">
+                {/* SAME WEIGHING SITE FILTER PILLS */}
+                <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-2xl border border-border/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} className="text-primary" />
+                      <span>Filtrar por Sitio de Pesaje:</span>
+                    </span>
+                    {calcSiteFilter !== "ALL" && (
+                      <span className="text-[10px] text-primary font-bold">
+                        Calculando solo en: {calcSiteFilter}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    <button
+                      onClick={() => setCalcSiteFilter("ALL")}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 border ${
+                        calcSiteFilter === "ALL"
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      Todas las básculas ({records.length})
+                    </button>
+                    {sites.map((s) => {
+                      const count = records.filter((r) => r.scale === s).length;
+                      const isSelected = calcSiteFilter === s;
+                      const color = siteColors[s] || { hex: "#888" };
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => setCalcSiteFilter(s)}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
+                            isSelected
+                              ? "bg-card text-foreground shadow-xs"
+                              : "bg-card/60 border-border/40 text-muted-foreground opacity-70 hover:opacity-100"
+                          }`}
+                          style={isSelected ? { borderColor: color.hex, color: color.hex } : {}}
+                        >
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
+                          <span className="truncate max-w-[120px]">{s}</span>
+                          <span className="text-[9px] opacity-70">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {calcAvailableRecords.length < 2 ? (
+                  <div className="text-center py-6 space-y-1 bg-card rounded-2xl border border-border/40 p-4">
                     <Scale size={20} className="mx-auto text-muted-foreground/50" />
-                    <p className="text-xs font-bold text-foreground">Necesitas al menos 2 pesajes para calcular diferencias</p>
-                    <p className="text-[11px] text-muted-foreground">Añade más pesajes desde el botón "+ Peso".</p>
+                    <p className="text-xs font-bold text-foreground">Necesitas al menos 2 pesajes para esta selección</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {calcSiteFilter !== "ALL"
+                        ? `Añade más pesajes en ${calcSiteFilter} o selecciona "Todas las básculas".`
+                        : "Añade más pesajes desde el botón '+ Peso'."}
+                    </p>
                   </div>
                 ) : calcMode === "pairwise" ? (
-                  /* PAIRWISE COMPARISON MODE */
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                      {/* Start Record Dropdown */}
-                      <div className="space-y-1 bg-muted/20 p-2.5 rounded-2xl border border-border/40">
-                        <label className="font-extrabold text-[10px] text-muted-foreground uppercase block">
-                          Pesaje Inicial (A)
-                        </label>
-                        <select
-                          value={calcStartId}
-                          onChange={(e) => setCalcStartId(e.target.value)}
-                          className="w-full bg-card border border-border rounded-xl px-2.5 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-primary/30"
-                        >
-                          {records.map((r) => {
+                  /* PAIRWISE COMPARISON MODE WITH VISUAL SELECTION CARDS */
+                  <div className="space-y-3.5">
+                    {/* Visual Card Selection Display */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                      {/* Start Record Card Picker */}
+                      <div className="space-y-1.5 bg-muted/20 p-3 rounded-2xl border border-border/50">
+                        <span className="font-black text-[10px] text-muted-foreground uppercase block tracking-wider">
+                          1️⃣ Pesaje Inicial (A)
+                        </span>
+                        <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
+                          {calcAvailableRecords.map((r) => {
                             const net = r.weight - r.margin - (r.blanketMargin || 0);
+                            const color = siteColors[r.scale] || { hex: "#888" };
+                            const isSelected = r._id === calcStartId;
                             return (
-                              <option key={r._id} value={r._id}>
-                                {r.date} ({r.time}) - {net.toFixed(3)}kg [{r.scale}]
-                              </option>
+                              <button
+                                key={r._id}
+                                type="button"
+                                onClick={() => setCalcStartId(r._id)}
+                                className={`w-full text-left p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                                  isSelected
+                                    ? "bg-card border-primary ring-2 ring-primary/20 text-foreground shadow-xs"
+                                    : "bg-card/50 border-border/40 text-muted-foreground hover:bg-card"
+                                }`}
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                                    <span className="font-extrabold text-foreground text-xs">{r.date}</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground">{r.time}</span>
+                                  </div>
+                                  <span className="text-[9px] text-muted-foreground truncate block mt-0.5">
+                                    {r.scale}
+                                  </span>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className={`font-mono font-black text-xs block ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                    {net.toFixed(3)} kg
+                                  </span>
+                                  <span className="text-[8px] text-muted-foreground">Neto</span>
+                                </div>
+                              </button>
                             );
                           })}
-                        </select>
+                        </div>
                       </div>
 
-                      {/* End Record Dropdown */}
-                      <div className="space-y-1 bg-muted/20 p-2.5 rounded-2xl border border-border/40">
-                        <label className="font-extrabold text-[10px] text-muted-foreground uppercase block">
-                          Pesaje Final (B)
-                        </label>
-                        <select
-                          value={calcEndId}
-                          onChange={(e) => setCalcEndId(e.target.value)}
-                          className="w-full bg-card border border-border rounded-xl px-2.5 py-2 font-bold text-xs outline-none focus:ring-2 focus:ring-primary/30"
-                        >
-                          {records.map((r) => {
+                      {/* End Record Card Picker */}
+                      <div className="space-y-1.5 bg-muted/20 p-3 rounded-2xl border border-border/50">
+                        <span className="font-black text-[10px] text-muted-foreground uppercase block tracking-wider">
+                          2️⃣ Pesaje Final (B)
+                        </span>
+                        <div className="space-y-1 max-h-[160px] overflow-y-auto pr-1">
+                          {calcAvailableRecords.map((r) => {
                             const net = r.weight - r.margin - (r.blanketMargin || 0);
+                            const color = siteColors[r.scale] || { hex: "#888" };
+                            const isSelected = r._id === calcEndId;
                             return (
-                              <option key={r._id} value={r._id}>
-                                {r.date} ({r.time}) - {net.toFixed(3)}kg [{r.scale}]
-                              </option>
+                              <button
+                                key={r._id}
+                                type="button"
+                                onClick={() => setCalcEndId(r._id)}
+                                className={`w-full text-left p-2.5 rounded-xl border transition cursor-pointer flex items-center justify-between ${
+                                  isSelected
+                                    ? "bg-card border-primary ring-2 ring-primary/20 text-foreground shadow-xs"
+                                    : "bg-card/50 border-border/40 text-muted-foreground hover:bg-card"
+                                }`}
+                              >
+                                <div className="min-w-0 pr-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                                    <span className="font-extrabold text-foreground text-xs">{r.date}</span>
+                                    <span className="text-[10px] font-mono text-muted-foreground">{r.time}</span>
+                                  </div>
+                                  <span className="text-[9px] text-muted-foreground truncate block mt-0.5">
+                                    {r.scale}
+                                  </span>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <span className={`font-mono font-black text-xs block ${isSelected ? "text-primary" : "text-foreground"}`}>
+                                    {net.toFixed(3)} kg
+                                  </span>
+                                  <span className="text-[8px] text-muted-foreground">Neto</span>
+                                </div>
+                              </button>
                             );
                           })}
-                        </select>
+                        </div>
                       </div>
                     </div>
 
                     {/* Pairwise Calculation Results Card */}
                     {comparativePairResult && (
-                      <div className="bg-card border-2 border-primary/30 rounded-2xl p-3.5 space-y-3 shadow-xs">
-                        <div className="flex items-center justify-between text-xs font-extrabold text-foreground border-b border-border/40 pb-2">
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-lg text-[10px]">
-                              {comparativePairResult.rStart.date}
+                      <div className="bg-card border-2 border-primary/30 rounded-3xl p-4 space-y-3.5 shadow-sm">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-extrabold text-foreground border-b border-border/50 pb-2.5">
+                          <div className="flex items-center gap-2 truncate">
+                            <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-xl text-xs font-black">
+                              {comparativePairResult.rStart.date} ({comparativePairResult.rStart.time})
                             </span>
-                            <ArrowRight size={13} className="text-muted-foreground shrink-0" />
-                            <span className="px-2 py-0.5 bg-primary/10 text-primary rounded-lg text-[10px]">
-                              {comparativePairResult.rEnd.date}
+                            <ArrowRight size={14} className="text-muted-foreground shrink-0" />
+                            <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-xl text-xs font-black">
+                              {comparativePairResult.rEnd.date} ({comparativePairResult.rEnd.time})
                             </span>
                           </div>
-                          <span className="text-[10px] text-muted-foreground font-mono font-bold shrink-0">
+                          <span className="text-[11px] text-muted-foreground font-mono font-bold shrink-0 bg-muted px-2.5 py-1 rounded-xl">
                             {comparativePairResult.diffDays >= 0 ? comparativePairResult.diffDays.toFixed(1) : 0} días transcurridos
                           </span>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {/* Same site indicator badge */}
+                        {comparativePairResult.rStart.scale === comparativePairResult.rEnd.scale && (
+                          <div className="flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 font-extrabold bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                            <Check size={14} className="shrink-0" />
+                            <span>Mismo sitio de pesaje: <strong>{comparativePairResult.rStart.scale}</strong> (sin desfase de calibración)</span>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
                           {/* Grams Difference KPI */}
-                          <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
-                            <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                          <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
+                            <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
                               Gramos Ganados
                             </span>
                             <div className="mt-1">
-                              <span className={`text-xl font-black ${comparativePairResult.diffGrams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+                              <span className={`text-2xl font-black ${comparativePairResult.diffGrams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
                                 {comparativePairResult.diffGrams >= 0 ? "+" : ""}{comparativePairResult.diffGrams.toFixed(0)}
                               </span>
-                              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 ml-1">g</span>
+                              <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 ml-1">g</span>
                             </div>
                             <span className="text-[9px] text-muted-foreground mt-0.5 font-mono">
                               ({(comparativePairResult.diffGrams / 1000).toFixed(3)} kg)
@@ -1756,15 +1872,15 @@ export function BabyWeightTrackerModule() {
                           </div>
 
                           {/* Grams per Day KPI */}
-                          <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20 flex flex-col justify-between">
-                            <span className="text-[9px] font-extrabold text-primary uppercase tracking-wider block">
+                          <div className="bg-primary/10 p-3.5 rounded-2xl border border-primary/20 flex flex-col justify-between">
+                            <span className="text-[9px] font-black text-primary uppercase tracking-wider block">
                               Ritmo Diario (g/día)
                             </span>
                             <div className="mt-1">
-                              <span className="text-xl font-black text-primary">
+                              <span className="text-2xl font-black text-primary">
                                 {comparativePairResult.gPerDay >= 0 ? "+" : ""}{comparativePairResult.gPerDay.toFixed(1)}
                               </span>
-                              <span className="text-xs font-bold text-primary ml-1">g/día</span>
+                              <span className="text-xs font-black text-primary ml-1">g/día</span>
                             </div>
                             <span className="text-[9px] text-muted-foreground mt-0.5">
                               Promedio en el periodo
@@ -1772,11 +1888,11 @@ export function BabyWeightTrackerModule() {
                           </div>
 
                           {/* Net Weight Span KPI */}
-                          <div className="bg-muted/40 p-3 rounded-2xl border border-border/40 flex flex-col justify-between col-span-2 sm:col-span-1">
-                            <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-wider block">
+                          <div className="bg-muted/40 p-3.5 rounded-2xl border border-border/40 flex flex-col justify-between col-span-2 sm:col-span-1">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">
                               Peso Neto Inicio / Fin
                             </span>
-                            <div className="mt-1 flex items-baseline gap-1 text-foreground font-black text-xs">
+                            <div className="mt-1 flex items-baseline gap-1 text-foreground font-black text-sm">
                               <span>{comparativePairResult.netStart.toFixed(3)}kg</span>
                               <span className="text-muted-foreground font-normal">→</span>
                               <span>{comparativePairResult.netEnd.toFixed(3)}kg</span>
@@ -1788,7 +1904,7 @@ export function BabyWeightTrackerModule() {
                         </div>
 
                         {comparativePairResult.isReversed && (
-                          <p className="text-[10px] text-rose-500 font-bold bg-rose-500/10 p-2 rounded-xl border border-rose-500/20 text-center">
+                          <p className="text-[10px] text-rose-500 font-bold bg-rose-500/10 p-2.5 rounded-xl border border-rose-500/20 text-center">
                             ⚠️ El pesaje final seleccionado es anterior en fecha al pesaje inicial.
                           </p>
                         )}
@@ -1796,87 +1912,96 @@ export function BabyWeightTrackerModule() {
                     )}
                   </div>
                 ) : (
-                  /* MULTI RECORD COMPARISON MODE */
+                  /* MULTI RECORD COMPARISON MODE WITH VISUAL CARDS */
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
                       <span>Selecciona 2 o más pesajes para analizar la secuencia:</span>
-                      <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                        {selectedCalcRecordIds.length} seleccionados
+                      <span className="text-[10px] bg-primary/10 text-primary px-2.5 py-0.5 rounded-full font-black">
+                        {selectedCalcRecordIds.filter((id) => calcAvailableRecords.some((r) => r._id === id)).length} seleccionados
                       </span>
                     </div>
 
-                    {/* Selection Checkboxes list */}
-                    <div className="max-h-[180px] overflow-y-auto space-y-1.5 pr-1 border border-border/40 rounded-2xl p-2 bg-muted/20">
-                      {records
-                        .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`))
-                        .map((r) => {
-                          const net = r.weight - r.margin - (r.blanketMargin || 0);
-                          const isChecked = selectedCalcRecordIds.includes(r._id);
-                          return (
-                            <label
-                              key={r._id}
-                              onClick={() => toggleMultiSelectRecord(r._id)}
-                              className={`flex items-center justify-between p-2 rounded-xl text-xs font-bold cursor-pointer transition ${
-                                isChecked
-                                  ? "bg-card border border-primary/40 text-foreground shadow-xs"
-                                  : "bg-transparent text-muted-foreground hover:bg-card/50"
-                              }`}
-                            >
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={isChecked}
-                                  onChange={() => {}} // Handled by label click
-                                  className="rounded text-primary focus:ring-primary/30"
-                                />
-                                <span>{r.date} ({r.time})</span>
+                    {/* Selection Visual Card list */}
+                    <div className="max-h-[220px] overflow-y-auto space-y-1.5 pr-1 border border-border/40 rounded-2xl p-2 bg-muted/20">
+                      {calcAvailableRecords.map((r) => {
+                        const net = r.weight - r.margin - (r.blanketMargin || 0);
+                        const isChecked = selectedCalcRecordIds.includes(r._id);
+                        const color = siteColors[r.scale] || { hex: "#888" };
+                        return (
+                          <div
+                            key={r._id}
+                            onClick={() => toggleMultiSelectRecord(r._id)}
+                            className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                              isChecked
+                                ? "bg-card border-primary/50 text-foreground shadow-xs"
+                                : "bg-card/40 border-border/30 text-muted-foreground hover:bg-card/80"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {}} // Handled by div click
+                                className="rounded text-primary focus:ring-primary/30 shrink-0"
+                              />
+                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                              <div className="truncate">
+                                <span className="font-extrabold text-xs text-foreground block leading-tight">
+                                  {r.date} <span className="text-[10px] font-mono text-muted-foreground">({r.time})</span>
+                                </span>
+                                <span className="text-[9px] text-muted-foreground truncate block">
+                                  {r.scale}
+                                </span>
                               </div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-mono text-foreground">{net.toFixed(3)} kg</span>
-                                <span className="text-[9px] text-muted-foreground font-normal">[{r.scale}]</span>
-                              </div>
-                            </label>
-                          );
-                        })}
+                            </div>
+                            <div className="text-right shrink-0">
+                              <span className="font-mono font-black text-xs text-foreground block">
+                                {net.toFixed(3)} kg
+                              </span>
+                              <span className="text-[8px] text-muted-foreground">Neto</span>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Multi Result Summary Cards */}
                     {comparativeMultiResult && (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
-                            <span className="text-[9px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                      <div className="space-y-3 pt-1">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                          <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20">
+                            <span className="text-[9px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
                               Total Crecimiento
                             </span>
-                            <span className="text-xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
                               +{comparativeMultiResult.totalGrams.toFixed(0)}g
                             </span>
-                            <span className="text-[9px] text-muted-foreground">
+                            <span className="text-[9px] text-muted-foreground font-semibold">
                               en {comparativeMultiResult.totalDays.toFixed(1)} días
                             </span>
                           </div>
 
-                          <div className="bg-primary/10 p-3 rounded-2xl border border-primary/20">
-                            <span className="text-[9px] font-extrabold text-primary uppercase tracking-wider block">
+                          <div className="bg-primary/10 p-3.5 rounded-2xl border border-primary/20">
+                            <span className="text-[9px] font-black text-primary uppercase tracking-wider block">
                               Promedio Total
                             </span>
-                            <span className="text-xl font-black text-primary mt-1 block">
+                            <span className="text-2xl font-black text-primary mt-1 block">
                               +{comparativeMultiResult.gPerDay.toFixed(1)}g/día
                             </span>
-                            <span className="text-[9px] text-muted-foreground">
+                            <span className="text-[9px] text-muted-foreground font-semibold">
                               ritmo medio global
                             </span>
                           </div>
 
-                          <div className="bg-muted/40 p-3 rounded-2xl border border-border/40 col-span-2 sm:col-span-1">
-                            <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-wider block">
+                          <div className="bg-muted/40 p-3.5 rounded-2xl border border-border/40 col-span-2 sm:col-span-1">
+                            <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider block">
                               Intervalos Evaluados
                             </span>
                             <span className="text-xl font-black text-foreground mt-1 block">
                               {comparativeMultiResult.steps.length} tramos
                             </span>
-                            <span className="text-[9px] text-muted-foreground">
-                              entre {comparativeMultiResult.first.date} y {comparativeMultiResult.last.date}
+                            <span className="text-[9px] text-muted-foreground font-semibold truncate block">
+                              {comparativeMultiResult.first.date} → {comparativeMultiResult.last.date}
                             </span>
                           </div>
                         </div>
@@ -1886,7 +2011,7 @@ export function BabyWeightTrackerModule() {
                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                             Desglose por tramo consecutivo:
                           </span>
-                          <div className="space-y-1 max-h-[200px] overflow-y-auto pr-1">
+                          <div className="space-y-1.5 max-h-[200px] overflow-y-auto pr-1">
                             {comparativeMultiResult.steps.map((step, idx) => (
                               <div
                                 key={idx}
