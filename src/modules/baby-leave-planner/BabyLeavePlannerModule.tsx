@@ -1491,12 +1491,30 @@ export function BabyLeavePlannerModule() {
 
         .d-num {
           position: absolute;
-          top: 4px;
-          left: 5px;
+          top: 3px;
+          left: 4px;
           font-size: 0.65rem;
           font-weight: 700;
           color: #64748b;
           z-index: 5;
+        }
+
+        .icon-top-right {
+          position: absolute;
+          top: 2px;
+          right: 3px;
+          font-size: 0.75rem;
+          line-height: 1;
+          z-index: 4;
+        }
+
+        .icon-bottom-right {
+          position: absolute;
+          bottom: 2px;
+          right: 3px;
+          font-size: 0.75rem;
+          line-height: 1;
+          z-index: 4;
         }
         .dark .d-num {
           color: #94a3b8;
@@ -2155,9 +2173,10 @@ export function BabyLeavePlannerModule() {
                   const showMom = momEvt && (currentFilter === "all" || currentFilter === "Madre");
                   const showDad = dadEvt && (currentFilter === "all" || currentFilter === "Padre");
 
+                  let isBoth = false;
                   if (showMom && showDad) {
+                    isBoth = true;
                     cssClass = "bg-both";
-                    icon = "👩👨";
                     text = momEvt.type === dadEvt.type ? momEvt.type : `${momEvt.type} / ${dadEvt.type}`;
                     hoverInfo = `Madre: ${momEvt.type} | Padre: ${dadEvt.type}`;
                     if (festivo) {
@@ -2210,9 +2229,17 @@ export function BabyLeavePlannerModule() {
                       onDoubleClick={() => handleDateDoubleClick(dateStr)}
                     >
                       <span className="d-num">{d}</span>
+                      {isBoth ? (
+                        <>
+                          <span className="icon-top-right">👩</span>
+                          <span className="icon-bottom-right">👨</span>
+                        </>
+                      ) : (
+                        null
+                      )}
                       {showDot && <div className="dot-festivo" />}
                       <div className="cell-inner-wrapper">
-                        <div className="d-icon">{icon}</div>
+                        {!isBoth && <div className="d-icon">{icon}</div>}
                         <div className="d-text truncate px-0.5">{text}</div>
                       </div>
                     </div>
@@ -2313,29 +2340,44 @@ export function BabyLeavePlannerModule() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">
                   Asignar A
                 </label>
-                <select
-                  value={selectedPerson}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSelectedPerson(val);
-                    if (val !== "Festivo") {
-                      const permits = globalData.balances.filter((b) => b.person === val);
-                      if (permits.length > 0) {
-                        setSelectedType(permits[0].type);
-                      } else {
-                        setSelectedType("");
-                      }
-                    }
-                  }}
-                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
-                >
-                  <option value="Madre">Madre 👩</option>
-                  <option value="Padre">Padre 👨</option>
-                  <option value="Festivo">Festivo 🚩</option>
-                </select>
+                <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  {[
+                    { id: "Madre", label: "Madre", icon: "👩", activeColor: "bg-pink-500 text-white" },
+                    { id: "Padre", label: "Padre", icon: "👨", activeColor: "bg-sky-500 text-white" },
+                    { id: "Festivo", label: "Festivo", icon: "🚩", activeColor: "bg-amber-500 text-white" },
+                  ].map((option) => {
+                    const isSelected = selectedPerson === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          const val = option.id;
+                          setSelectedPerson(val);
+                          if (val !== "Festivo") {
+                            const permits = globalData.balances.filter((b) => b.person === val);
+                            if (permits.length > 0) {
+                              setSelectedType(permits[0].type);
+                            } else {
+                              setSelectedType("");
+                            }
+                          }
+                        }}
+                        className={`py-2 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer ${
+                          isSelected
+                            ? `${option.activeColor} shadow-md scale-[1.02]`
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        <span>{option.icon}</span>
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {selectedPerson === "Festivo" ? (
