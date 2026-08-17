@@ -407,15 +407,20 @@ export function BabyLeavePlannerModule() {
       setSelectedPerson("Festivo");
       setHolidayNameVal(existingHoliday.nombre);
     } else {
-      // Detect if there's an existing event on that day
-      const existing = globalData.events.find((e) => e.date === dateStr);
+      const preferredPerson = currentFilter !== "all" ? currentFilter : "Madre";
+      const existingForPref = globalData.events.find(
+        (e) => e.date === dateStr && e.person === preferredPerson
+      );
+      const existingAny = globalData.events.find((e) => e.date === dateStr);
+      const existing = existingForPref || existingAny;
+
       if (existing) {
         setSelectedPerson(existing.person);
         setSelectedType(existing.type);
       } else {
-        setSelectedPerson("Madre");
-        const firstMomBalance = globalData.balances.find((b) => b.person === "Madre");
-        setSelectedType(firstMomBalance ? firstMomBalance.type : "");
+        setSelectedPerson(preferredPerson);
+        const firstBalance = globalData.balances.find((b) => b.person === preferredPerson);
+        setSelectedType(firstBalance ? firstBalance.type : "");
       }
     }
 
@@ -510,8 +515,10 @@ export function BabyLeavePlannerModule() {
               d.setDate(startDate.getDate() + i);
               const dStr = formatDateStr(d);
 
-              // Clean whatever existed on that day
-              eventsList = eventsList.filter((e) => e.date !== dStr);
+              // Clean previous events on that day for this specific person
+              eventsList = eventsList.filter(
+                (e) => !(e.date === dStr && e.person === selectedPerson)
+              );
               eventsList.push({
                 date: dStr,
                 person: selectedPerson,
@@ -529,8 +536,10 @@ export function BabyLeavePlannerModule() {
               return;
             }
 
-            // Clean whatever existed on that day
-            eventsList = eventsList.filter((e) => e.date !== dateStr);
+            // Clean previous events on that day for this specific person
+            eventsList = eventsList.filter(
+              (e) => !(e.date === dateStr && e.person === selectedPerson)
+            );
             eventsList.push({
               date: dateStr,
               person: selectedPerson,
@@ -566,11 +575,11 @@ export function BabyLeavePlannerModule() {
         let eventsList = [...prev.events];
 
         datesToProcess.forEach((dateStr) => {
-          // Find if an event exists on that day
-          const existing = eventsList.find((e) => e.date === dateStr);
+          // Find if an event exists on that day for selectedPerson
+          const existing = eventsList.find((e) => e.date === dateStr && e.person === selectedPerson);
           if (existing) {
             const targetBalance = prev.balances.find(
-              (b) => b.person === existing.person && b.type === existing.type
+              (b) => b.person === selectedPerson && b.type === existing.type
             );
             const isSemanal = targetBalance?.frecuencia === "Semanal";
 
@@ -582,14 +591,18 @@ export function BabyLeavePlannerModule() {
                 const dStr = formatDateStr(d);
 
                 eventsList = eventsList.filter(
-                  (e) => !(e.date === dStr && e.person === existing.person && e.type === existing.type)
+                  (e) => !(e.date === dStr && e.person === selectedPerson && e.type === existing.type)
                 );
               }
             } else {
-              eventsList = eventsList.filter((e) => e.date !== dateStr);
+              eventsList = eventsList.filter(
+                (e) => !(e.date === dateStr && e.person === selectedPerson)
+              );
             }
           } else {
-            eventsList = eventsList.filter((e) => e.date !== dateStr);
+            eventsList = eventsList.filter(
+              (e) => !(e.date === dateStr && e.person === selectedPerson)
+            );
           }
         });
 
@@ -1478,12 +1491,30 @@ export function BabyLeavePlannerModule() {
 
         .d-num {
           position: absolute;
-          top: 4px;
-          left: 5px;
+          top: 3px;
+          left: 4px;
           font-size: 0.65rem;
           font-weight: 700;
           color: #64748b;
           z-index: 5;
+        }
+
+        .icon-top-right {
+          position: absolute;
+          top: 2px;
+          right: 3px;
+          font-size: 0.75rem;
+          line-height: 1;
+          z-index: 4;
+        }
+
+        .icon-bottom-right {
+          position: absolute;
+          bottom: 2px;
+          right: 3px;
+          font-size: 0.75rem;
+          line-height: 1;
+          z-index: 4;
         }
         .dark .d-num {
           color: #94a3b8;
@@ -1492,10 +1523,12 @@ export function BabyLeavePlannerModule() {
         /* High contrast numbers on cells with any event */
         .day-cell-fixed.bg-mom .d-num,
         .day-cell-fixed.bg-dad .d-num,
+        .day-cell-fixed.bg-both .d-num,
         .day-cell-fixed.bg-joint .d-num,
         .day-cell-fixed.bg-holiday .d-num,
         .dark .day-cell-fixed.bg-mom .d-num,
         .dark .day-cell-fixed.bg-dad .d-num,
+        .dark .day-cell-fixed.bg-both .d-num,
         .dark .day-cell-fixed.bg-joint .d-num,
         .dark .day-cell-fixed.bg-holiday .d-num {
           color: #ffffff !important;
@@ -1521,6 +1554,16 @@ export function BabyLeavePlannerModule() {
         }
         .dark .bg-dad {
           background-color: #0284c7 !important;
+          color: #ffffff !important;
+        }
+
+        /* AMBOS PADRES JUNTOS: Gradiente Rosa y Azul */
+        .bg-both {
+          background: linear-gradient(135deg, var(--color-mom) 50%, var(--color-dad) 50%) !important;
+          color: #1e1b4b !important;
+        }
+        .dark .bg-both {
+          background: linear-gradient(135deg, #be185d 50%, #0284c7 50%) !important;
           color: #ffffff !important;
         }
 
@@ -1837,6 +1880,7 @@ export function BabyLeavePlannerModule() {
           }
           .day-cell-fixed.bg-mom .d-num,
           .day-cell-fixed.bg-dad .d-num,
+          .day-cell-fixed.bg-both .d-num,
           .day-cell-fixed.bg-joint .d-num,
           .day-cell-fixed.bg-holiday .d-num {
             color: #ffffff !important;
@@ -1849,6 +1893,10 @@ export function BabyLeavePlannerModule() {
           }
           .bg-dad {
             background-color: #0284c7 !important;
+            color: #ffffff !important;
+          }
+          .bg-both {
+            background: linear-gradient(135deg, #be185d 50%, #0284c7 50%) !important;
             color: #ffffff !important;
           }
           .bg-joint {
@@ -2100,8 +2148,9 @@ export function BabyLeavePlannerModule() {
                   const dateStr = formatDateStr(dateObj);
                   const dayOfWeek = dateObj.getDay();
 
-                  // Find event, holiday, mandatory statuses
-                  const evt = globalData.events.find((e) => e.date === dateStr);
+                  // Find events on this date for Madre and Padre
+                  const momEvt = globalData.events.find((e) => e.date === dateStr && e.person === "Madre");
+                  const dadEvt = globalData.events.find((e) => e.date === dateStr && e.person === "Padre");
                   const festivo = globalData.festivos.find((f) => f.date === dateStr);
 
                   const checkTime = dateObj.getTime();
@@ -2121,16 +2170,33 @@ export function BabyLeavePlannerModule() {
                   let hoverInfo = `Día: ${dateStr}`;
 
                   // Visual Filtering rules
-                  let isVisible = true;
-                  if (evt && currentFilter !== "all" && evt.person !== currentFilter) {
-                    isVisible = false;
-                  }
+                  const showMom = momEvt && (currentFilter === "all" || currentFilter === "Madre");
+                  const showDad = dadEvt && (currentFilter === "all" || currentFilter === "Padre");
 
-                  if (evt && isVisible) {
-                    cssClass = evt.person === "Madre" ? "bg-mom" : "bg-dad";
-                    icon = evt.person === "Madre" ? "👩" : "👨";
-                    text = evt.type;
-                    hoverInfo = `${evt.person}: ${evt.type}`;
+                  let isBoth = false;
+                  if (showMom && showDad) {
+                    isBoth = true;
+                    cssClass = "bg-both";
+                    text = momEvt.type === dadEvt.type ? momEvt.type : `${momEvt.type} / ${dadEvt.type}`;
+                    hoverInfo = `Madre: ${momEvt.type} | Padre: ${dadEvt.type}`;
+                    if (festivo) {
+                      showDot = true;
+                      hoverInfo += ` | Festivo`;
+                    }
+                  } else if (showMom) {
+                    cssClass = "bg-mom";
+                    icon = "👩";
+                    text = momEvt.type;
+                    hoverInfo = `Madre: ${momEvt.type}`;
+                    if (festivo) {
+                      showDot = true;
+                      hoverInfo += ` | Festivo`;
+                    }
+                  } else if (showDad) {
+                    cssClass = "bg-dad";
+                    icon = "👨";
+                    text = dadEvt.type;
+                    hoverInfo = `Padre: ${dadEvt.type}`;
                     if (festivo) {
                       showDot = true;
                       hoverInfo += ` | Festivo`;
@@ -2163,9 +2229,17 @@ export function BabyLeavePlannerModule() {
                       onDoubleClick={() => handleDateDoubleClick(dateStr)}
                     >
                       <span className="d-num">{d}</span>
+                      {isBoth ? (
+                        <>
+                          <span className="icon-top-right">👩</span>
+                          <span className="icon-bottom-right">👨</span>
+                        </>
+                      ) : (
+                        null
+                      )}
                       {showDot && <div className="dot-festivo" />}
                       <div className="cell-inner-wrapper">
-                        <div className="d-icon">{icon}</div>
+                        {!isBoth && <div className="d-icon">{icon}</div>}
                         <div className="d-text truncate px-0.5">{text}</div>
                       </div>
                     </div>
@@ -2266,29 +2340,44 @@ export function BabyLeavePlannerModule() {
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-1.5">
                   Asignar A
                 </label>
-                <select
-                  value={selectedPerson}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setSelectedPerson(val);
-                    if (val !== "Festivo") {
-                      const permits = globalData.balances.filter((b) => b.person === val);
-                      if (permits.length > 0) {
-                        setSelectedType(permits[0].type);
-                      } else {
-                        setSelectedType("");
-                      }
-                    }
-                  }}
-                  className="w-full p-3 border border-slate-200 dark:border-slate-700 dark:bg-slate-900 rounded-xl font-medium outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-slate-800"
-                >
-                  <option value="Madre">Madre 👩</option>
-                  <option value="Padre">Padre 👨</option>
-                  <option value="Festivo">Festivo 🚩</option>
-                </select>
+                <div className="grid grid-cols-3 gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800">
+                  {[
+                    { id: "Madre", label: "Madre", icon: "👩", activeColor: "bg-pink-500 text-white" },
+                    { id: "Padre", label: "Padre", icon: "👨", activeColor: "bg-sky-500 text-white" },
+                    { id: "Festivo", label: "Festivo", icon: "🚩", activeColor: "bg-amber-500 text-white" },
+                  ].map((option) => {
+                    const isSelected = selectedPerson === option.id;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          const val = option.id;
+                          setSelectedPerson(val);
+                          if (val !== "Festivo") {
+                            const permits = globalData.balances.filter((b) => b.person === val);
+                            if (permits.length > 0) {
+                              setSelectedType(permits[0].type);
+                            } else {
+                              setSelectedType("");
+                            }
+                          }
+                        }}
+                        className={`py-2 px-3 rounded-xl font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all duration-200 cursor-pointer ${
+                          isSelected
+                            ? `${option.activeColor} shadow-md scale-[1.02]`
+                            : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-200/60 dark:hover:bg-slate-800"
+                        }`}
+                      >
+                        <span>{option.icon}</span>
+                        <span>{option.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               {selectedPerson === "Festivo" ? (
