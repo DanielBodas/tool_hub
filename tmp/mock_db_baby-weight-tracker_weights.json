@@ -166,5 +166,47 @@
     "clothes": "Desnudo completo",
     "notes": "",
     "updatedAt": "2026-08-17T21:01:55.028Z"
+  },
+  {
+    "_id": "ff967ba2-6d78-4f01-96fa-73d9334b68bb",
+    "userId": "default_baby",
+    "date": "2026-08-01",
+    "time": "21:38",
+    "weight": 3.2,
+    "margin": 0.01,
+    "blanket": "Sin cobertor",
+    "blanketMargin": 0.005,
+    "scale": "Báscula Dormitorio Principal",
+    "clothes": "Desnudo completo",
+    "notes": "",
+    "updatedAt": "2026-08-17T21:38:56.424Z"
+  },
+  {
+    "_id": "0e23a46a-c890-494f-b910-9cc0693748cf",
+    "userId": "default_baby",
+    "date": "2026-08-10",
+    "time": "21:38",
+    "weight": 3.5,
+    "margin": 0.01,
+    "blanket": "Sin cobertor",
+    "blanketMargin": 0.005,
+    "scale": "Báscula Dormitorio Principal",
+    "clothes": "Desnudo completo",
+    "notes": "",
+    "updatedAt": "2026-08-17T21:38:58.416Z"
+  },
+  {
+    "_id": "7185a5d2-8aa7-40d5-b797-00f147fbba20",
+    "userId": "default_baby",
+    "date": "2026-08-17",
+    "time": "21:38",
+    "weight": 3.75,
+    "margin": 0.01,
+    "blanket": "Sin cobertor",
+    "blanketMargin": 0.005,
+    "scale": "Báscula Dormitorio Principal",
+    "clothes": "Desnudo completo",
+    "notes": "",
+    "updatedAt": "2026-08-17T21:39:00.350Z"
   }
 ]

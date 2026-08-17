@@ -711,6 +711,14 @@ export function BabyWeightTrackerModule() {
     return list.sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
   }, [records, calcSiteFilter]);
 
+  const handleSetCalcSiteFilter = (site: string) => {
+    setCalcSiteFilter(site);
+    const available = site === "ALL"
+      ? records
+      : records.filter((r) => r.scale === site);
+    setSelectedCalcRecordIds(available.map((r) => r._id));
+  };
+
   // Auto-set default calculator selection when records or site filter change
   useEffect(() => {
     if (calcAvailableRecords.length >= 2) {
@@ -724,7 +732,7 @@ export function BabyWeightTrackerModule() {
   }, [calcAvailableRecords, selectedCalcRecordIds]);
 
   const comparativeMultiResult = useMemo(() => {
-    const selectedList = records
+    const selectedList = calcAvailableRecords
       .filter((r) => selectedCalcRecordIds.includes(r._id))
       .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
 
@@ -1897,7 +1905,7 @@ export function BabyWeightTrackerModule() {
                   </div>
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
                     <button
-                      onClick={() => setCalcSiteFilter("ALL")}
+                      onClick={() => handleSetCalcSiteFilter("ALL")}
                       className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 border ${
                         calcSiteFilter === "ALL"
                           ? "bg-primary text-primary-foreground border-primary shadow-xs"
@@ -1913,7 +1921,7 @@ export function BabyWeightTrackerModule() {
                       return (
                         <button
                           key={s}
-                          onClick={() => setCalcSiteFilter(s)}
+                          onClick={() => handleSetCalcSiteFilter(s)}
                           className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
                             isSelected
                               ? "bg-card text-foreground shadow-xs"
