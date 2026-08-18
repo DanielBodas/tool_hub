@@ -26,8 +26,16 @@ import {
   MapPin,
   Shirt,
   Layers,
-  Check
+  Check,
+  Calculator,
+  ArrowRight
 } from "lucide-react";
+import {
+  getWHOPercentilesAtAge,
+  calculateWHOPercentile,
+  getAgeInDays,
+  Sex
+} from "./whoPercentiles";
 
 interface WeightRecord {
   _id: string;
@@ -75,9 +83,14 @@ export function BabyWeightTrackerModule() {
   const [saving, setSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
 
+  // WHO Percentile and Baby Profile States
+  const [babyBirthDate, setBabyBirthDate] = useState<string>("");
+  const [babySex, setBabySex] = useState<"female" | "male">("female");
+  const [showPercentiles, setShowPercentiles] = useState<boolean>(true);
+
   // Settings Config states
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
-  const [configTab, setConfigTab] = useState<"sites" | "clothing" | "blankets">("sites");
+  const [configTab, setConfigTab] = useState<"baby" | "sites" | "clothing" | "blankets">("baby");
   const [newSite, setNewSite] = useState<string>("");
 
   const [newClothingName, setNewClothingName] = useState<string>("");
@@ -101,7 +114,14 @@ export function BabyWeightTrackerModule() {
   // Filter & Navigation States
   const [selectedSites, setSelectedSites] = useState<string[]>([]);
   const [mainTab, setMainTab] = useState<"chart" | "history" | "analysis">("chart");
+  const [analysisSubTab, setAnalysisSubTab] = useState<"comparative" | "trends" | "calibration">("comparative");
   const [searchQuery, setSearchQuery] = useState<string>("");
+
+  // Analysis comparative state
+  const [calcSiteFilter, setCalcSiteFilter] = useState<string>("ALL"); // "ALL" or specific site name
+  const [selectedCalcRecordIds, setSelectedCalcRecordIds] = useState<string[]>([]);
+  const [isPickerOpen, setIsPickerOpen] = useState<boolean>(false);
+  const [isBreakdownOpen, setIsBreakdownOpen] = useState<boolean>(false);
 
   // Local helper date initializers
   const getTodayDateString = () => {
@@ -158,6 +178,8 @@ export function BabyWeightTrackerModule() {
         setSites(loadedSites);
         setClothing(loadedClothing);
         setBlankets(loadedBlankets);
+        if (data.settings?.birthDate) setBabyBirthDate(data.settings.birthDate);
+        if (data.settings?.sex) setBabySex(data.settings.sex);
 
         if (selectedSites.length === 0) {
           setSelectedSites(loadedSites);
@@ -186,6 +208,8 @@ export function BabyWeightTrackerModule() {
         setSites(loadedSites);
         setClothing(loadedClothing);
         setBlankets(loadedBlankets);
+        if (data.settings?.birthDate) setBabyBirthDate(data.settings.birthDate);
+        if (data.settings?.sex) setBabySex(data.settings.sex);
         setSelectedSites(loadedSites);
         setLoading(false);
       })
@@ -367,7 +391,13 @@ export function BabyWeightTrackerModule() {
   };
 
   // Config Management Helpers
-  const handleSaveConfig = async (updatedSites: string[], updatedClothing: ClothingPreset[], updatedBlankets: BlanketPreset[]) => {
+  const handleSaveConfig = async (
+    updatedSites: string[],
+    updatedClothing: ClothingPreset[],
+    updatedBlankets: BlanketPreset[],
+    updatedBirthDate: string = babyBirthDate,
+    updatedSex: "female" | "male" = babySex
+  ) => {
     try {
       const res = await fetch("/api/baby-weight-tracker", {
         method: "POST",
@@ -376,7 +406,9 @@ export function BabyWeightTrackerModule() {
           type: "settings",
           sites: updatedSites,
           clothing: updatedClothing,
-          blankets: updatedBlankets
+          blankets: updatedBlankets,
+          birthDate: updatedBirthDate,
+          sex: updatedSex
         })
       });
 
@@ -387,6 +419,8 @@ export function BabyWeightTrackerModule() {
         setSites(data.settings.sites);
         setClothing(data.settings.clothing);
         setBlankets(data.settings.blankets);
+        if (data.settings.birthDate !== undefined) setBabyBirthDate(data.settings.birthDate);
+        if (data.settings.sex) setBabySex(data.settings.sex);
         setSelectedSites(data.settings.sites);
       }
     } catch (err: unknown) {
@@ -624,7 +658,21 @@ export function BabyWeightTrackerModule() {
 
   const pName = (name: string) => name.toLowerCase().trim();
 
-  // Multi-site filter toggle helper
+  // Site filter helpers for chart
+  const handleSelectAllSites = () => {
+    setSelectedSites([...sites]);
+  };
+
+  const handleSelectOnlySite = (site: string) => {
+    if (selectedSites.length === 1 && selectedSites[0] === site) {
+      // Tapping sole active site resets to all sites
+      setSelectedSites([...sites]);
+    } else {
+      // Tapping a site isolates the chart to ONLY that site in 1 click
+      setSelectedSites([site]);
+    }
+  };
+
   const handleToggleSiteFilter = (site: string) => {
     if (selectedSites.includes(site)) {
       if (selectedSites.length === 1) return; // Leave at least one checked
@@ -654,6 +702,103 @@ export function BabyWeightTrackerModule() {
         (r.notes && r.notes.toLowerCase().includes(q))
     );
   }, [filteredRecords, searchQuery]);
+
+  // Records available for calculator based on selected scale filter
+  const calcAvailableRecords = useMemo(() => {
+    const list = calcSiteFilter === "ALL"
+      ? records
+      : records.filter((r) => r.scale === calcSiteFilter);
+    return list.sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+  }, [records, calcSiteFilter]);
+
+  const handleSetCalcSiteFilter = (site: string) => {
+    setCalcSiteFilter(site);
+    const available = site === "ALL"
+      ? records
+      : records.filter((r) => r.scale === site);
+    setSelectedCalcRecordIds(available.map((r) => r._id));
+  };
+
+  // Auto-set default calculator selection when records or site filter change
+  useEffect(() => {
+    if (calcAvailableRecords.length >= 2) {
+      const validSelected = selectedCalcRecordIds.filter((id) =>
+        calcAvailableRecords.some((r) => r._id === id)
+      );
+      if (validSelected.length < 2) {
+        setSelectedCalcRecordIds(calcAvailableRecords.map((r) => r._id));
+      }
+    }
+  }, [calcAvailableRecords, selectedCalcRecordIds]);
+
+  const comparativeMultiResult = useMemo(() => {
+    const selectedList = calcAvailableRecords
+      .filter((r) => selectedCalcRecordIds.includes(r._id))
+      .sort((a, b) => `${a.date}T${a.time}`.localeCompare(`${b.date}T${b.time}`));
+
+    if (selectedList.length < 2) return null;
+
+    const first = selectedList[0];
+    const last = selectedList[selectedList.length - 1];
+
+    const netFirst = first.weight - first.margin - (first.blanketMargin || 0);
+    const netLast = last.weight - last.margin - (last.blanketMargin || 0);
+
+    const tFirst = new Date(`${first.date}T${first.time || "00:00"}`).getTime();
+    const tLast = new Date(`${last.date}T${last.time || "00:00"}`).getTime();
+
+    const totalDays = (tLast - tFirst) / (1000 * 60 * 60 * 24);
+    const totalGrams = (netLast - netFirst) * 1000;
+    const gPerDay = totalDays > 0 ? totalGrams / totalDays : 0;
+
+    // Consecutive intervals
+    const steps = [];
+    for (let i = 0; i < selectedList.length - 1; i++) {
+      const prev = selectedList[i];
+      const curr = selectedList[i + 1];
+
+      const netPrev = prev.weight - prev.margin - (prev.blanketMargin || 0);
+      const netCurr = curr.weight - curr.margin - (curr.blanketMargin || 0);
+
+      const tPrev = new Date(`${prev.date}T${prev.time || "00:00"}`).getTime();
+      const tCurr = new Date(`${curr.date}T${curr.time || "00:00"}`).getTime();
+
+      const days = (tCurr - tPrev) / (1000 * 60 * 60 * 24);
+      const grams = (netCurr - netPrev) * 1000;
+      const rate = days > 0 ? grams / days : 0;
+
+      steps.push({
+        prev,
+        curr,
+        netPrev,
+        netCurr,
+        days,
+        grams,
+        rate
+      });
+    }
+
+    return {
+      selectedList,
+      first,
+      last,
+      netFirst,
+      netLast,
+      totalDays,
+      totalGrams,
+      gPerDay,
+      steps
+    };
+  }, [records, selectedCalcRecordIds]);
+
+  const toggleMultiSelectRecord = (id: string) => {
+    if (selectedCalcRecordIds.includes(id)) {
+      if (selectedCalcRecordIds.length <= 2) return; // Maintain at least 2
+      setSelectedCalcRecordIds(selectedCalcRecordIds.filter((i) => i !== id));
+    } else {
+      setSelectedCalcRecordIds([...selectedCalcRecordIds, id]);
+    }
+  };
 
   // General Metrics (using filtered records)
   const metrics = useMemo(() => {
@@ -708,8 +853,17 @@ export function BabyWeightTrackerModule() {
     if (filteredRecords.length > 0) {
       const lows = filteredRecords.map((r) => r.weight - r.margin - (r.blanketMargin || 0));
       const highs = filteredRecords.map((r) => r.weight);
-      const absoluteMin = Math.min(...lows);
-      const absoluteMax = Math.max(...highs);
+      let absoluteMin = Math.min(...lows);
+      let absoluteMax = Math.max(...highs);
+
+      if (showPercentiles && babyBirthDate) {
+        filteredRecords.forEach((r) => {
+          const age = getAgeInDays(babyBirthDate, r.date);
+          const p = getWHOPercentilesAtAge(age, babySex);
+          if (p.p3 < absoluteMin) absoluteMin = p.p3;
+          if (p.p97 > absoluteMax) absoluteMax = p.p97;
+        });
+      }
 
       const span = absoluteMax - absoluteMin;
       const verticalPadding = span > 0 ? span * 0.15 : 0.5;
@@ -728,7 +882,7 @@ export function BabyWeightTrackerModule() {
       minY,
       maxY
     };
-  }, [filteredRecords]);
+  }, [filteredRecords, showPercentiles, babyBirthDate, babySex]);
 
   // Scaler functions for chart
   const scaleY = (val: number) => {
@@ -743,6 +897,44 @@ export function BabyWeightTrackerModule() {
     const baseWidthPerCandle = 75;
     return paddingLeft + index * baseWidthPerCandle + baseWidthPerCandle / 2;
   };
+
+  // WHO Percentile SVG Overlay calculation
+  const percentilesData = useMemo(() => {
+    if (!showPercentiles || !babyBirthDate || filteredRecords.length === 0) return null;
+
+    const points = filteredRecords.map((r, idx) => {
+      const age = getAgeInDays(babyBirthDate, r.date);
+      const band = getWHOPercentilesAtAge(age, babySex);
+      const x = scaleX(idx);
+      return {
+        x,
+        age,
+        date: r.date,
+        p3: scaleY(band.p3),
+        p15: scaleY(band.p15),
+        p50: scaleY(band.p50),
+        p85: scaleY(band.p85),
+        p97: scaleY(band.p97),
+        rawP3: band.p3,
+        rawP50: band.p50,
+        rawP97: band.p97
+      };
+    });
+
+    if (points.length === 0) return null;
+
+    const p3Path = points.map((p) => `${p.x},${p.p3}`).join(" ");
+    const p15Path = points.map((p) => `${p.x},${p.p15}`).join(" ");
+    const p50Path = points.map((p) => `${p.x},${p.p50}`).join(" ");
+    const p85Path = points.map((p) => `${p.x},${p.p85}`).join(" ");
+    const p97Path = points.map((p) => `${p.x},${p.p97}`).join(" ");
+
+    const forwardP15 = points.map((p) => `${p.x},${p.p15}`);
+    const reverseP85 = [...points].reverse().map((p) => `${p.x},${p.p85}`);
+    const bandP15P85Polygon = [...forwardP15, ...reverseP85].join(" ");
+
+    return { points, p3Path, p15Path, p50Path, p85Path, p97Path, bandP15P85Polygon };
+  }, [showPercentiles, babyBirthDate, babySex, filteredRecords, chartDimensions]);
 
   const handleCanvasMouseMove = (e: React.MouseEvent<SVGSVGElement, MouseEvent>) => {
     if (filteredRecords.length === 0 || !chartContainerRef.current) return;
@@ -1012,6 +1204,18 @@ export function BabyWeightTrackerModule() {
                     {metrics.totalGain >= 0 ? "+" : ""}{metrics.totalGain.toFixed(3)} kg
                   </span>
                 )}
+                {metrics.lastNetWeight > 0 && filteredRecords.length > 0 && babyBirthDate && (
+                  (() => {
+                    const lastRec = filteredRecords[filteredRecords.length - 1];
+                    const age = getAgeInDays(babyBirthDate, lastRec.date);
+                    const pInfo = calculateWHOPercentile(metrics.lastNetWeight, age, babySex);
+                    return (
+                      <span className="px-2 py-0.5 bg-primary/15 text-primary rounded-full font-extrabold text-[10px] whitespace-nowrap inline-flex items-center shrink-0" title={`Percentil OMS a los ${age} días (${(age / 7).toFixed(1)} sem)`}>
+                        {pInfo.label}
+                      </span>
+                    );
+                  })()
+                )}
               </div>
             </div>
           </div>
@@ -1111,29 +1315,71 @@ export function BabyWeightTrackerModule() {
             </div>
           </div>
 
-          {/* Site Filter Pills */}
+          {/* Site Filter Pills supporting both multi-selection group toggle and 1-click single site isolation */}
           <div className="bg-card border border-border/60 p-2.5 rounded-2xl shadow-xs space-y-1.5">
-            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
-              Filtrar por sitio:
-            </span>
+            <div className="flex items-center justify-between">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest block">
+                Filtrar por sitio:
+              </span>
+              <span className="text-[9px] text-muted-foreground">
+                Toca para activar/desactivar varios | usa &quot;solo&quot; para aislar 1
+              </span>
+            </div>
             <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={handleSelectAllSites}
+                className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 border ${
+                  selectedSites.length === sites.length
+                    ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                    : "bg-muted/60 text-muted-foreground border-border/40 hover:text-foreground"
+                }`}
+              >
+                Todas ({sites.length})
+              </button>
+
               {sites.map((site) => {
                 const isChecked = selectedSites.includes(site);
                 const color = siteColors[site] || { hex: "#888" };
                 return (
-                  <button
+                  <div
                     key={site}
-                    onClick={() => handleToggleSiteFilter(site)}
-                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 flex items-center gap-1 border ${
+                    className={`inline-flex items-center rounded-xl text-[10px] font-bold transition border shrink-0 overflow-hidden ${
                       isChecked
-                        ? "bg-muted text-foreground border-border"
-                        : "bg-transparent border-border/40 text-muted-foreground opacity-60"
+                        ? "bg-muted/50 text-foreground border-border"
+                        : "bg-transparent border-border/30 text-muted-foreground opacity-50"
                     }`}
-                    style={isChecked ? { borderColor: color.hex, color: color.hex } : {}}
+                    style={isChecked ? { borderColor: color.hex } : {}}
                   >
-                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
-                    <span className="truncate max-w-[110px]">{site}</span>
-                  </button>
+                    {/* Main toggle pill for multi-selection */}
+                    <button
+                      type="button"
+                      onClick={() => handleToggleSiteFilter(site)}
+                      className="px-2.5 py-1 flex items-center gap-1.5 hover:bg-muted/80 cursor-pointer"
+                      title="Activar/desactivar este sitio"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                      <span className="truncate max-w-[110px]" style={isChecked ? { color: color.hex } : {}}>
+                        {site}
+                      </span>
+                    </button>
+
+                    {/* Quick "solo" button to isolate this single scale in 1 click */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSelectOnlySite(site);
+                      }}
+                      className={`px-1.5 py-1 text-[8px] uppercase tracking-wider font-black border-l border-border/40 hover:bg-primary/20 hover:text-primary cursor-pointer transition ${
+                        selectedSites.length === 1 && selectedSites[0] === site
+                          ? "bg-primary text-primary-foreground"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                      title="Ver solo este sitio de pesaje"
+                    >
+                      solo
+                    </button>
+                  </div>
                 );
               })}
             </div>
@@ -1141,13 +1387,35 @@ export function BabyWeightTrackerModule() {
 
           {/* SVG Candlestick Chart View */}
           <div className="bg-card border border-border/80 rounded-3xl p-3 shadow-xs space-y-2">
-            <div className="flex items-center justify-between text-xs font-extrabold text-foreground px-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-extrabold text-foreground px-1">
               <span className="flex items-center gap-1 text-[11px] uppercase tracking-wider text-muted-foreground">
                 <Sparkles size={13} className="text-primary" /> Velas por pesaje
               </span>
-              <span className="text-[10px] text-muted-foreground font-medium">
-                P. Bruto (alto) / P. Neto (bajo)
-              </span>
+
+              {/* WHO Percentiles Chart Overlay Toggle Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!babyBirthDate) {
+                    setConfigTab("baby");
+                    setShowConfigModal(true);
+                  } else {
+                    setShowPercentiles(!showPercentiles);
+                  }
+                }}
+                className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+                  showPercentiles && babyBirthDate
+                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                    : "bg-muted/60 border-border/50 text-muted-foreground hover:text-foreground"
+                }`}
+                title={babyBirthDate ? "Activar/desactivar curvas de percentiles OMS" : "Configurar fecha de nacimiento para ver percentiles OMS"}
+              >
+                <TrendingUp size={12} className={showPercentiles && babyBirthDate ? "text-emerald-500" : ""} />
+                <span>Curvas OMS ({babySex === "female" ? "Niña" : "Niño"})</span>
+                <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold uppercase ${showPercentiles && babyBirthDate ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                  {showPercentiles && babyBirthDate ? "ON" : "OFF"}
+                </span>
+              </button>
             </div>
 
             {loading ? (
@@ -1174,6 +1442,81 @@ export function BabyWeightTrackerModule() {
                     onMouseLeave={handleCanvasMouseLeave}
                     className="overflow-visible select-none cursor-crosshair mx-auto"
                   >
+                    {/* WHO Percentile Band Overlay */}
+                    {percentilesData && (
+                      <g className="percentile-overlay opacity-80 pointer-events-none">
+                        {/* Shaded central normal area (P15 to P85) */}
+                        {percentilesData.points.length > 1 && (
+                          <polygon
+                            points={percentilesData.bandP15P85Polygon}
+                            fill="rgb(16, 185, 129)"
+                            fillOpacity="0.08"
+                          />
+                        )}
+
+                        {/* P3 Outer Curve */}
+                        <polyline
+                          points={percentilesData.p3Path}
+                          fill="none"
+                          stroke="rgb(239, 68, 68)"
+                          strokeWidth="1"
+                          strokeDasharray="2,2"
+                          strokeOpacity="0.6"
+                        />
+
+                        {/* P15 Curve */}
+                        <polyline
+                          points={percentilesData.p15Path}
+                          fill="none"
+                          stroke="rgb(245, 158, 11)"
+                          strokeWidth="1"
+                          strokeDasharray="3,3"
+                          strokeOpacity="0.5"
+                        />
+
+                        {/* P50 Median Curve */}
+                        <polyline
+                          points={percentilesData.p50Path}
+                          fill="none"
+                          stroke="rgb(16, 185, 129)"
+                          strokeWidth="2"
+                          strokeOpacity="0.85"
+                        />
+
+                        {/* P85 Curve */}
+                        <polyline
+                          points={percentilesData.p85Path}
+                          fill="none"
+                          stroke="rgb(245, 158, 11)"
+                          strokeWidth="1"
+                          strokeDasharray="3,3"
+                          strokeOpacity="0.5"
+                        />
+
+                        {/* P97 Outer Curve */}
+                        <polyline
+                          points={percentilesData.p97Path}
+                          fill="none"
+                          stroke="rgb(239, 68, 68)"
+                          strokeWidth="1"
+                          strokeDasharray="2,2"
+                          strokeOpacity="0.6"
+                        />
+
+                        {/* Curve Labels at the last point */}
+                        {percentilesData.points.length > 0 && (() => {
+                          const last = percentilesData.points[percentilesData.points.length - 1];
+                          return (
+                            <g>
+                              <text x={last.x + 4} y={last.p97 + 3} fill="currentColor" className="text-[7px] text-rose-500 font-bold">P97</text>
+                              <text x={last.x + 4} y={last.p50 + 3} fill="currentColor" className="text-[8px] text-emerald-500 font-black">P50</text>
+                              <text x={last.x + 4} y={last.p3 + 3} fill="currentColor" className="text-[7px] text-rose-500 font-bold">P3</text>
+                            </g>
+                          );
+                        })()}
+                      </g>
+                    )}
+
                     {/* Horizontal Grid lines */}
                     {Array.from({ length: 4 }).map((_, i) => {
                       const val =
@@ -1328,7 +1671,21 @@ export function BabyWeightTrackerModule() {
                   <span className="text-base font-black text-foreground">{selectedRecord.weight.toFixed(3)} kg</span>
                 </div>
                 <div className="bg-emerald-500/10 p-2.5 rounded-2xl border border-emerald-500/20">
-                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase block font-bold">Peso Neto (Low)</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase block font-bold">Peso Neto (Low)</span>
+                    {babyBirthDate && (
+                      (() => {
+                        const net = selectedRecord.weight - selectedRecord.margin - (selectedRecord.blanketMargin || 0);
+                        const age = getAgeInDays(babyBirthDate, selectedRecord.date);
+                        const pInfo = calculateWHOPercentile(net, age, babySex);
+                        return (
+                          <span className="px-1.5 py-0.2 bg-primary/15 text-primary font-black text-[9px] rounded-md">
+                            {pInfo.label}
+                          </span>
+                        );
+                      })()
+                    )}
+                  </div>
                   <span className="text-base font-black text-emerald-600 dark:text-emerald-400">
                     {(selectedRecord.weight - selectedRecord.margin - (selectedRecord.blanketMargin || 0)).toFixed(3)} kg
                   </span>
@@ -1426,7 +1783,20 @@ export function BabyWeightTrackerModule() {
                         <span className="font-extrabold text-foreground">{record.weight.toFixed(3)} kg</span>
                       </div>
                       <div>
-                        <span className="text-[9px] text-emerald-600 dark:text-emerald-400 block font-bold">P. Neto Real</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] text-emerald-600 dark:text-emerald-400 block font-bold">P. Neto Real</span>
+                          {babyBirthDate && (
+                            (() => {
+                              const age = getAgeInDays(babyBirthDate, record.date);
+                              const pInfo = calculateWHOPercentile(netWeight, age, babySex);
+                              return (
+                                <span className="px-1.5 py-0.2 bg-primary/15 text-primary font-extrabold text-[8px] rounded-md">
+                                  {pInfo.label}
+                                </span>
+                              );
+                            })()
+                          )}
+                        </div>
                         <span className="font-black text-emerald-600 dark:text-emerald-400 text-sm">{netWeight.toFixed(3)} kg</span>
                       </div>
                     </div>
@@ -1466,90 +1836,352 @@ export function BabyWeightTrackerModule() {
         </div>
       )}
 
-      {/* TAB 3: ANÁLISIS (Trends, Calibration & Global Stats in clean accordion sections) */}
+      {/* TAB 3: ANÁLISIS (Subsections: Comparative Calculator, Trends, Scale Calibration) */}
       {mainTab === "analysis" && (
         <div className="space-y-3 animate-fade-in">
-          {/* Site Trends */}
-          <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-              <TrendingUp size={16} className="text-emerald-500" />
-              <span>Ritmo de Crecimiento por Báscula</span>
-            </h3>
+          {/* ANALYSIS SUBSECTION NAVIGATION PILLS */}
+          <div className="grid grid-cols-3 bg-muted/70 p-1 rounded-2xl gap-1 text-center border border-border/40">
+            <button
+              onClick={() => setAnalysisSubTab("comparative")}
+              className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                analysisSubTab === "comparative"
+                  ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calculator size={13} />
+              <span>Calculadora</span>
+            </button>
+            <button
+              onClick={() => setAnalysisSubTab("trends")}
+              className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                analysisSubTab === "trends"
+                  ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <TrendingUp size={13} />
+              <span>Tendencia</span>
+            </button>
+            <button
+              onClick={() => setAnalysisSubTab("calibration")}
+              className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                analysisSubTab === "calibration"
+                  ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Activity size={13} />
+              <span>Calibración</span>
+            </button>
+          </div>
 
-            {siteTrends.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Sin datos suficientes.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {siteTrends.map((trend) => {
-                  const color = siteColors[trend.scale] || { hex: "#888" };
-                  return (
-                    <div
-                      key={trend.scale}
-                      className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1"
-                      style={{ borderLeft: `3px solid ${color.hex}` }}
+          {/* SUBSECTION 1: COMPARATIVE WEIGHT CALCULATOR */}
+          {analysisSubTab === "comparative" && (
+            <div className="space-y-3 animate-fade-in">
+              <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3.5">
+                <div className="border-b border-border/50 pb-2.5">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                    <Calculator size={16} className="text-primary" />
+                    <span>Calculadora de Gramos e Incremento Diario</span>
+                  </h3>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Calcula la ganancia neta en gramos y el promedio en g/día seleccionando los pesajes que desees analizar.
+                  </p>
+                </div>
+
+                {/* SAME WEIGHING SITE FILTER PILLS */}
+                <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-2xl border border-border/40">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <MapPin size={12} className="text-primary" />
+                      <span>Filtrar por Sitio de Pesaje:</span>
+                    </span>
+                    {calcSiteFilter !== "ALL" && (
+                      <span className="text-[10px] text-primary font-bold">
+                        Calculando solo en: {calcSiteFilter}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                    <button
+                      onClick={() => handleSetCalcSiteFilter("ALL")}
+                      className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 border ${
+                        calcSiteFilter === "ALL"
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+                      }`}
                     >
-                      <div className="flex justify-between items-center text-xs font-bold text-foreground">
-                        <span className="truncate pr-1">{trend.scale}</span>
-                        <span className="text-[9px] text-muted-foreground font-mono">{trend.count} pesajes</span>
-                      </div>
-                      {trend.count <= 1 ? (
-                        <p className="text-[10px] text-muted-foreground italic">Insuficiente para tendencia</p>
-                      ) : (
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">+{trend.growthRate.toFixed(1)}g</span>
-                          <span className="text-[10px] text-muted-foreground font-semibold">por día</span>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                      Todas las básculas ({records.length})
+                    </button>
+                    {sites.map((s) => {
+                      const count = records.filter((r) => r.scale === s).length;
+                      const isSelected = calcSiteFilter === s;
+                      const color = siteColors[s] || { hex: "#888" };
+                      return (
+                        <button
+                          key={s}
+                          onClick={() => handleSetCalcSiteFilter(s)}
+                          className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer shrink-0 flex items-center gap-1.5 border ${
+                            isSelected
+                              ? "bg-card text-foreground shadow-xs"
+                              : "bg-card/60 border-border/40 text-muted-foreground opacity-70 hover:opacity-100"
+                          }`}
+                          style={isSelected ? { borderColor: color.hex, color: color.hex } : {}}
+                        >
+                          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: color.hex }} />
+                          <span className="truncate max-w-[120px]">{s}</span>
+                          <span className="text-[9px] opacity-70">({count})</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          {/* Scale Calibration */}
-          <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3">
-            <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
-              <Activity size={16} className="text-primary" />
-              <span>Calibración de Básculas</span>
-            </h3>
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Calcula el desfase promedio de peso respecto a la báscula de referencia (<strong>{sites[0] || "Principal"}</strong>) por interpolación lineal.
-            </p>
+                {calcAvailableRecords.length < 2 ? (
+                  <div className="text-center py-6 space-y-1 bg-card rounded-2xl border border-border/40 p-4">
+                    <Scale size={20} className="mx-auto text-muted-foreground/50" />
+                    <p className="text-xs font-bold text-foreground">Se necesitan al menos 2 pesajes para realizar el cálculo</p>
+                    <p className="text-[11px] text-muted-foreground">
+                      {calcSiteFilter !== "ALL"
+                        ? `Añade más pesajes en ${calcSiteFilter} o selecciona "Todas las básculas".`
+                        : "Añade más pesajes desde el botón '+ Peso'."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* Summary Result KPI Cards */}
+                    {comparativeMultiResult && (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                          <div className="bg-emerald-500/10 p-3.5 rounded-2xl border border-emerald-500/20">
+                            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                              Total Crecimiento
+                            </span>
+                            <span className="text-2xl font-black text-emerald-600 dark:text-emerald-400 mt-1 block">
+                              {comparativeMultiResult.totalGrams >= 0 ? "+" : ""}{comparativeMultiResult.totalGrams.toFixed(0)}g
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-semibold">
+                              en {comparativeMultiResult.totalDays.toFixed(1)} días
+                            </span>
+                          </div>
 
-            {calibrationData.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">Registra pesajes en más de una báscula para ver la calibración.</p>
-            ) : (
-              <div className="space-y-2">
-                {calibrationData.map((cal) => {
-                  const absGrams = Math.abs(cal.offset * 1000);
-                  const isPos = cal.offset >= 0;
-                  return (
-                    <div key={cal.scale} className="p-3 bg-muted/30 border border-border/50 rounded-2xl flex items-center justify-between text-xs">
-                      <div>
-                        <span className="font-extrabold text-foreground block">{cal.scale}</span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {cal.method === "direct" ? "Mismo día" : "Interpolado"} ({cal.pointsCount} pts)
-                        </span>
+                          <div className="bg-primary/10 p-3.5 rounded-2xl border border-primary/20">
+                            <span className="text-[9px] font-bold text-primary uppercase tracking-wider block">
+                              Promedio Total
+                            </span>
+                            <span className="text-2xl font-black text-primary mt-1 block">
+                              {comparativeMultiResult.gPerDay >= 0 ? "+" : ""}{comparativeMultiResult.gPerDay.toFixed(1)}g/día
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-semibold">
+                              ritmo medio en el periodo
+                            </span>
+                          </div>
+
+                          <div className="bg-muted/40 p-3.5 rounded-2xl border border-border/40 col-span-2 sm:col-span-1">
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block">
+                              Intervalo Analizado
+                            </span>
+                            <span className="text-xl font-black text-foreground mt-1 block">
+                              {comparativeMultiResult.steps.length} tramos
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-semibold truncate block">
+                              {comparativeMultiResult.first.date} → {comparativeMultiResult.last.date}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Collapsible Selection List Accordion */}
+                        <div className="bg-muted/20 border border-border/60 rounded-2xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setIsPickerOpen(!isPickerOpen)}
+                            className="w-full p-3 flex items-center justify-between font-extrabold text-xs text-foreground bg-muted/30 hover:bg-muted/60 transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <Check size={14} className="text-primary" />
+                              <span>Pesajes Incluidos en el Cálculo ({selectedCalcRecordIds.filter((id) => calcAvailableRecords.some((r) => r._id === id)).length})</span>
+                            </span>
+                            {isPickerOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+
+                          {isPickerOpen && (
+                            <div className="p-3 border-t border-border/40 max-h-[220px] overflow-y-auto space-y-1.5 animate-fade-in">
+                              {calcAvailableRecords.map((r) => {
+                                const net = r.weight - r.margin - (r.blanketMargin || 0);
+                                const isChecked = selectedCalcRecordIds.includes(r._id);
+                                const color = siteColors[r.scale] || { hex: "#888" };
+                                return (
+                                  <div
+                                    key={r._id}
+                                    onClick={() => toggleMultiSelectRecord(r._id)}
+                                    className={`p-2.5 rounded-xl border cursor-pointer transition flex items-center justify-between ${
+                                      isChecked
+                                        ? "bg-card border-primary/50 text-foreground shadow-xs"
+                                        : "bg-card/40 border-border/30 text-muted-foreground hover:bg-card/80"
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                      <input
+                                        type="checkbox"
+                                        checked={isChecked}
+                                        onChange={() => {}}
+                                        className="rounded text-primary focus:ring-primary/30 shrink-0"
+                                      />
+                                      <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color.hex }} />
+                                      <div className="truncate">
+                                        <span className="font-extrabold text-xs text-foreground block leading-tight">
+                                          {r.date} <span className="text-[10px] font-mono text-muted-foreground">({r.time})</span>
+                                        </span>
+                                        <span className="text-[9px] text-muted-foreground truncate block">
+                                          {r.scale}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className="text-right shrink-0">
+                                      <span className="font-mono font-black text-xs text-foreground block">
+                                        {net.toFixed(3)} kg
+                                      </span>
+                                      <span className="text-[8px] text-muted-foreground">Neto</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Collapsible Breakdown Accordion */}
+                        <div className="bg-muted/20 border border-border/60 rounded-2xl overflow-hidden">
+                          <button
+                            type="button"
+                            onClick={() => setIsBreakdownOpen(!isBreakdownOpen)}
+                            className="w-full p-3 flex items-center justify-between font-extrabold text-xs text-foreground bg-muted/30 hover:bg-muted/60 transition cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <TrendingUp size={14} className="text-primary" />
+                              <span>Desglose por Tramo Consecutivo ({comparativeMultiResult.steps.length})</span>
+                            </span>
+                            {isBreakdownOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                          </button>
+
+                          {isBreakdownOpen && (
+                            <div className="p-3 border-t border-border/40 space-y-1.5 max-h-[220px] overflow-y-auto animate-fade-in">
+                              {comparativeMultiResult.steps.map((step, idx) => (
+                                <div
+                                  key={idx}
+                                  className="p-2.5 bg-card border border-border/40 rounded-xl flex items-center justify-between text-xs font-bold"
+                                >
+                                  <div className="flex items-center gap-1.5 truncate">
+                                    <span className="text-muted-foreground font-mono text-[10px]">#{idx + 1}</span>
+                                    <span className="truncate">{step.prev.date} → {step.curr.date}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className={`font-mono font-black ${step.grams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+                                      {step.grams >= 0 ? "+" : ""}{step.grams.toFixed(0)}g
+                                    </span>
+                                    <span className="px-2 py-0.5 bg-primary/10 text-primary font-mono text-[10px] rounded-md">
+                                      {step.rate.toFixed(1)}g/día
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      {cal.method === "insufficient" ? (
-                        <span className="text-[10px] text-muted-foreground italic">Sin puntos</span>
-                      ) : (
-                        <div className="text-right">
-                          <span className={`font-black text-sm block ${isPos ? "text-rose-500" : "text-emerald-500"}`}>
-                            {isPos ? "+" : "-"}{absGrams.toFixed(0)}g
-                          </span>
-                          <span className="text-[9px] text-muted-foreground font-semibold">
-                            vs {sites[0]}
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* SUBSECTION 2: GROWTH TRENDS BY SCALE */}
+          {analysisSubTab === "trends" && (
+            <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3 animate-fade-in">
+              <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                <TrendingUp size={16} className="text-emerald-500" />
+                <span>Ritmo de Crecimiento por Báscula</span>
+              </h3>
+
+              {siteTrends.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Sin datos suficientes.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {siteTrends.map((trend) => {
+                    const color = siteColors[trend.scale] || { hex: "#888" };
+                    return (
+                      <div
+                        key={trend.scale}
+                        className="p-3 bg-muted/30 border border-border/50 rounded-2xl space-y-1"
+                        style={{ borderLeft: `3px solid ${color.hex}` }}
+                      >
+                        <div className="flex justify-between items-center text-xs font-bold text-foreground">
+                          <span className="truncate pr-1">{trend.scale}</span>
+                          <span className="text-[9px] text-muted-foreground font-mono">{trend.count} pesajes</span>
+                        </div>
+                        {trend.count <= 1 ? (
+                          <p className="text-[10px] text-muted-foreground italic">Insuficiente para tendencia</p>
+                        ) : (
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">+{trend.growthRate.toFixed(1)}g</span>
+                            <span className="text-[10px] text-muted-foreground font-semibold">por día</span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* SUBSECTION 3: SCALE CALIBRATION */}
+          {analysisSubTab === "calibration" && (
+            <div className="bg-card border border-border/80 rounded-3xl p-4 shadow-xs space-y-3 animate-fade-in">
+              <h3 className="text-xs font-black uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                <Activity size={16} className="text-primary" />
+                <span>Calibración de Básculas</span>
+              </h3>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                Calcula el desfase promedio de peso respecto a la báscula de referencia (<strong>{sites[0] || "Principal"}</strong>) por interpolación lineal.
+              </p>
+
+              {calibrationData.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">Registra pesajes en más de una báscula para ver la calibración.</p>
+              ) : (
+                <div className="space-y-2">
+                  {calibrationData.map((cal) => {
+                    const absGrams = Math.abs(cal.offset * 1000);
+                    const isPos = cal.offset >= 0;
+                    return (
+                      <div key={cal.scale} className="p-3 bg-muted/30 border border-border/50 rounded-2xl flex items-center justify-between text-xs">
+                        <div>
+                          <span className="font-extrabold text-foreground block">{cal.scale}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {cal.method === "direct" ? "Mismo día" : "Interpolado"} ({cal.pointsCount} pts)
                           </span>
                         </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                        {cal.method === "insufficient" ? (
+                          <span className="text-[10px] text-muted-foreground italic">Sin puntos</span>
+                        ) : (
+                          <div className="text-right">
+                            <span className={`font-black text-sm block ${isPos ? "text-rose-500" : "text-emerald-500"}`}>
+                              {isPos ? "+" : "-"}{absGrams.toFixed(0)}g
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-semibold">
+                              vs {sites[0]}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -1785,10 +2417,21 @@ export function BabyWeightTrackerModule() {
             </div>
 
             {/* Modal Internal Navigation Sub-Tabs */}
-            <div className="grid grid-cols-3 bg-muted/80 p-1 rounded-2xl gap-1 mt-3.5 shrink-0 text-center border border-border/30">
+            <div className="grid grid-cols-4 bg-muted/80 p-1 rounded-2xl gap-1 mt-3.5 shrink-0 text-center border border-border/30">
+              <button
+                onClick={() => setConfigTab("baby")}
+                className={`py-2 px-1 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                  configTab === "baby"
+                    ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Calendar size={13} />
+                <span>Bebé/OMS</span>
+              </button>
               <button
                 onClick={() => setConfigTab("sites")}
-                className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-2 px-1 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   configTab === "sites"
                     ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -1796,13 +2439,13 @@ export function BabyWeightTrackerModule() {
               >
                 <MapPin size={13} />
                 <span>Sitios</span>
-                <span className="text-[9px] px-1.5 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                <span className="text-[8px] px-1 py-0.2 bg-primary/10 text-primary rounded-full font-black">
                   {sites.length}
                 </span>
               </button>
               <button
                 onClick={() => setConfigTab("clothing")}
-                className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-2 px-1 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   configTab === "clothing"
                     ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -1810,13 +2453,13 @@ export function BabyWeightTrackerModule() {
               >
                 <Shirt size={13} />
                 <span>Ropa</span>
-                <span className="text-[9px] px-1.5 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                <span className="text-[8px] px-1 py-0.2 bg-primary/10 text-primary rounded-full font-black">
                   {clothing.length}
                 </span>
               </button>
               <button
                 onClick={() => setConfigTab("blankets")}
-                className={`py-2 px-2 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                className={`py-2 px-1 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   configTab === "blankets"
                     ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
@@ -1824,7 +2467,7 @@ export function BabyWeightTrackerModule() {
               >
                 <Layers size={13} />
                 <span>Mantas</span>
-                <span className="text-[9px] px-1.5 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                <span className="text-[8px] px-1 py-0.2 bg-primary/10 text-primary rounded-full font-black">
                   {blankets.length}
                 </span>
               </button>
@@ -1832,6 +2475,76 @@ export function BabyWeightTrackerModule() {
 
             {/* Scrollable Modal Content */}
             <div className="flex-1 overflow-y-auto py-3.5 space-y-4 pr-1 scrollbar-thin">
+              {/* Baby OMS Profile Section */}
+              {configTab === "baby" && (
+                <div className="space-y-4 animate-fade-in">
+                  <div className="bg-primary/5 border border-primary/20 rounded-2xl p-3.5 space-y-2">
+                    <span className="text-[10px] font-black text-primary uppercase tracking-wider block">
+                      Perfil del Bebé para Percentiles OMS
+                    </span>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Introduce la fecha de nacimiento y sexo para superponer en el gráfico y tablas las curvas de crecimiento oficiales de la OMS.
+                    </p>
+                  </div>
+
+                  {/* Birth Date Input */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-muted-foreground uppercase text-[10px] block">
+                      Fecha de Nacimiento
+                    </label>
+                    <div className="relative">
+                      <Calendar size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="date"
+                        value={babyBirthDate}
+                        onChange={(e) => {
+                          setBabyBirthDate(e.target.value);
+                          handleSaveConfig(sites, clothing, blankets, e.target.value, babySex);
+                        }}
+                        className="w-full pl-9 pr-3 py-2.5 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Sex Selection */}
+                  <div className="space-y-1.5">
+                    <label className="font-bold text-muted-foreground uppercase text-[10px] block">
+                      Sexo (Estándares OMS)
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBabySex("female");
+                          handleSaveConfig(sites, clothing, blankets, babyBirthDate, "female");
+                        }}
+                        className={`py-2.5 px-3 rounded-xl font-bold text-xs border transition cursor-pointer flex items-center justify-center gap-2 ${
+                          babySex === "female"
+                            ? "bg-rose-500/15 border-rose-500 text-rose-600 dark:text-rose-400 font-black shadow-xs"
+                            : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>Niña (Girls)</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBabySex("male");
+                          handleSaveConfig(sites, clothing, blankets, babyBirthDate, "male");
+                        }}
+                        className={`py-2.5 px-3 rounded-xl font-bold text-xs border transition cursor-pointer flex items-center justify-center gap-2 ${
+                          babySex === "male"
+                            ? "bg-indigo-500/15 border-indigo-500 text-indigo-600 dark:text-indigo-400 font-black shadow-xs"
+                            : "bg-card border-border/60 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span>Niño (Boys)</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Sites Section */}
               {configTab === "sites" && (
                 <div className="space-y-3.5 animate-fade-in">
