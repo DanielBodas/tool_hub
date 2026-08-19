@@ -43,9 +43,20 @@ export function JobOfferEvaluatorModule() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const [selectedConceptId, setSelectedConceptId] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSettingsGroups, setCollapsedSettingsGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroupCollapse = (groupId: string) => {
     setCollapsedGroups((prev) => {
+      const isCurrentlyCollapsed = prev[groupId] !== false;
+      return {
+        ...prev,
+        [groupId]: !isCurrentlyCollapsed,
+      };
+    });
+  };
+
+  const toggleSettingsGroupCollapse = (groupId: string) => {
+    setCollapsedSettingsGroups((prev) => {
       const isCurrentlyCollapsed = prev[groupId] !== false;
       return {
         ...prev,
@@ -83,6 +94,13 @@ export function JobOfferEvaluatorModule() {
   const [conceptType, setConceptType] = useState<CalculationType>("monetary_direct");
   const [conceptWeight, setConceptWeight] = useState<number>(7);
   const [conceptMonetaryEquivalence, setConceptMonetaryEquivalence] = useState<number>(0);
+
+  // Group Modal State
+  const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
+  const [editingGroup, setEditingGroup] = useState<ConceptGroup | null>(null);
+  const [groupName, setGroupName] = useState<string>("");
+  const [groupDescription, setGroupDescription] = useState<string>("");
+  const [groupColor, setGroupColor] = useState<string>("emerald");
 
   // Load initial data
   useEffect(() => {
@@ -500,6 +518,81 @@ export function JobOfferEvaluatorModule() {
     saveData(offers, updatedConcepts, groups);
   };
 
+  const handleMoveConceptToGroup = (conceptId: string, newGroupId: string) => {
+    const updatedConcepts = concepts.map((c) =>
+      c.id === conceptId ? { ...c, groupId: newGroupId } : c
+    );
+    saveData(offers, updatedConcepts, groups);
+  };
+
+  // Group Management Handlers
+  const handleOpenGroupModal = (groupToEdit?: ConceptGroup) => {
+    if (groupToEdit) {
+      setEditingGroup(groupToEdit);
+      setGroupName(groupToEdit.name);
+      setGroupDescription(groupToEdit.description || "");
+      setGroupColor(groupToEdit.color || "emerald");
+    } else {
+      setEditingGroup(null);
+      setGroupName("");
+      setGroupDescription("");
+      setGroupColor("emerald");
+    }
+    setShowGroupModal(true);
+  };
+
+  const handleSaveGroup = () => {
+    if (!groupName.trim()) {
+      alert("Introduce un nombre para el grupo.");
+      return;
+    }
+
+    const groupId = editingGroup ? editingGroup.id : `g_${Date.now()}`;
+    const newGroup: ConceptGroup = {
+      id: groupId,
+      name: groupName,
+      description: groupDescription,
+      color: groupColor,
+    };
+
+    let updatedGroups = [...groups];
+    if (editingGroup) {
+      updatedGroups = updatedGroups.map((g) => (g.id === groupId ? newGroup : g));
+    } else {
+      updatedGroups.push(newGroup);
+    }
+
+    saveData(offers, concepts, updatedGroups);
+    setShowGroupModal(false);
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    if (groups.length <= 1) {
+      alert("Debe existir al menos un grupo de conceptos.");
+      return;
+    }
+
+    const conceptsInGroup = concepts.filter((c) => c.groupId === groupId);
+    const targetGroup = groups.find((g) => g.id !== groupId);
+
+    if (conceptsInGroup.length > 0) {
+      const confirmMessage = `Este grupo contiene ${conceptsInGroup.length} concepto(s). ¿Deseas reasignarlos a "${targetGroup?.name}" y eliminar el grupo?`;
+      if (!confirm(confirmMessage)) return;
+    } else {
+      if (!confirm("¿Eliminar este grupo de conceptos?")) return;
+    }
+
+    let updatedConcepts = [...concepts];
+    if (conceptsInGroup.length > 0 && targetGroup) {
+      updatedConcepts = updatedConcepts.map((c) =>
+        c.groupId === groupId ? { ...c, groupId: targetGroup.id } : c
+      );
+    }
+
+    const updatedGroups = groups.filter((g) => g.id !== groupId);
+    saveData(offers, updatedConcepts, updatedGroups);
+  };
+
   const handleConceptEquivalenceChange = (conceptId: string, newEq: number) => {
     const updatedConcepts = concepts.map((c) =>
       c.id === conceptId ? { ...c, monetaryEquivalencePerUnit: newEq } : c
@@ -587,46 +680,50 @@ export function JobOfferEvaluatorModule() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
         <button
           onClick={() => setActiveTab("all_offers")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "all_offers"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          1. Visión General ({offers.length})
+          <span className="sm:hidden">1. General ({offers.length})</span>
+          <span className="hidden sm:inline">1. Visión General ({offers.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("comparison")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "comparison"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          2. Comparativa Frente a Frente
+          <span className="sm:hidden">2. Comparativa</span>
+          <span className="hidden sm:inline">2. Comparativa Frente a Frente</span>
         </button>
 
         <button
           onClick={() => setActiveTab("offers_crud")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "offers_crud"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          3. Gestionar Ofertas
+          <span className="sm:hidden">3. Ofertas</span>
+          <span className="hidden sm:inline">3. Gestionar Ofertas</span>
         </button>
 
         <button
           onClick={() => setActiveTab("settings")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "settings"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          4. Conceptos y Pesos ({concepts.length})
+          <span className="sm:hidden">4. Conceptos ({concepts.length})</span>
+          <span className="hidden sm:inline">4. Conceptos y Pesos ({concepts.length})</span>
         </button>
       </div>
 
@@ -1268,90 +1365,183 @@ export function JobOfferEvaluatorModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: WEIGHTS & CONCEPT SETTINGS                                        */}
+      {/* TAB 4: WEIGHTS & CONCEPT SETTINGS (GROUPED BY SECTION)                    */}
       {/* ========================================================================= */}
       {activeTab === "settings" && (
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
-          <div className="flex justify-between items-center border-b border-border pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border pb-3">
             <div>
               <h2 className="text-sm font-black uppercase text-foreground">
-                Ajuste de Criterios y Conceptos de Medición
+                Configuración de Grupos y Conceptos de Medición
               </h2>
               <p className="text-xs text-muted-foreground font-semibold">
-                Crea o modifica los conceptos con los que quieres evaluar todos tus puestos
+                Organiza tus criterios en grupos de análisis, muévelos fácilmente y ajusta sus pesos
               </p>
             </div>
-            <button
-              onClick={() => handleOpenConceptModal()}
-              className="px-3 py-1.5 bg-primary text-primary-foreground font-black text-xs rounded-xl hover:bg-primary-hover transition cursor-pointer uppercase"
-            >
-              + Nuevo Concepto
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleOpenGroupModal()}
+                className="px-3 py-1.5 bg-muted text-foreground font-black text-xs rounded-xl hover:bg-muted/80 border border-border transition cursor-pointer uppercase shrink-0"
+              >
+                + Nuevo Grupo
+              </button>
+              <button
+                onClick={() => handleOpenConceptModal()}
+                className="px-3 py-1.5 bg-primary text-primary-foreground font-black text-xs rounded-xl hover:bg-primary-hover transition cursor-pointer uppercase shrink-0"
+              >
+                + Nuevo Concepto
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {concepts.map((concept) => (
-              <div
-                key={concept.id}
-                className="bg-muted/30 rounded-xl p-3 border border-border/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
-              >
-                <div className="max-w-md">
-                  <h4 className="font-black text-foreground">{concept.name}</h4>
-                  <p className="text-[11px] text-muted-foreground font-semibold">
-                    {concept.description}
-                  </p>
-                </div>
+          {/* Render Groups and their corresponding Concepts */}
+          <div className="space-y-4">
+            {groups.map((group) => {
+              const groupConcepts = concepts.filter((c) => c.groupId === group.id);
+              const isCollapsed = collapsedSettingsGroups[group.id] !== false;
 
-                <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                  {concept.unit !== "EUR_YEAR" && (
-                    <div>
-                      <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                        Valor Anual (€/unidad)
-                      </label>
-                      <input
-                        type="number"
-                        value={concept.monetaryEquivalencePerUnit || 0}
-                        onChange={(e) =>
-                          handleConceptEquivalenceChange(concept.id, Number(e.target.value))
-                        }
-                        className="w-28 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
-                      />
+              return (
+                <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
+                  {/* Group Header */}
+                  <div className="bg-muted/60 p-3 sm:p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
+                          {group.name}
+                        </h3>
+                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase whitespace-nowrap bg-muted px-1.5 py-0.5 rounded border border-border">
+                          {groupConcepts.length} {groupConcepts.length === 1 ? "concepto" : "conceptos"}
+                        </span>
+                      </div>
+                      {group.description && (
+                        <p className="text-[10px] sm:text-xs text-muted-foreground font-semibold mt-0.5">
+                          {group.description}
+                        </p>
+                      )}
                     </div>
-                  )}
 
-                  <div>
-                    <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                      Peso (1 a 10)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={concept.weight}
-                      onChange={(e) =>
-                        handleConceptWeightChange(concept.id, Number(e.target.value))
-                      }
-                      className="w-16 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
-                    />
+                    <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-border/40">
+                      <button
+                        onClick={() => toggleSettingsGroupCollapse(group.id)}
+                        className="px-2 py-1 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
+                      >
+                        {isCollapsed ? "[+ VER CONCEPTOS]" : "[- OCULTAR]"}
+                      </button>
+                      <button
+                        onClick={() => handleOpenGroupModal(group)}
+                        className="px-2 py-1 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
+                      >
+                        Editar Grupo
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGroup(group.id)}
+                        className="px-2 py-1 rounded-md bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 text-[10px] font-black uppercase border border-rose-500/20 cursor-pointer transition"
+                      >
+                        Borrar
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="pt-2 sm:pt-0 flex gap-1">
-                    <button
-                      onClick={() => handleOpenConceptModal(concept)}
-                      className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase cursor-pointer"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      onClick={() => handleDeleteConcept(concept.id)}
-                      className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase cursor-pointer"
-                    >
-                      Borrar
-                    </button>
-                  </div>
+                  {/* Group Concepts List */}
+                  {!isCollapsed && (
+                    groupConcepts.length > 0 ? (
+                      <div className="divide-y divide-border/60 p-2 sm:p-3 space-y-2">
+                      {groupConcepts.map((concept) => (
+                        <div
+                          key={concept.id}
+                          className="bg-muted/20 rounded-xl p-3 border border-border/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="space-y-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-black text-foreground">{concept.name}</h4>
+                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
+                                {concept.unit}
+                              </span>
+                            </div>
+                            {concept.description && (
+                              <p className="text-[11px] text-muted-foreground font-semibold">
+                                {concept.description}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                            {/* Group Reassignment Dropdown */}
+                            <div>
+                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                                Grupo
+                              </label>
+                              <select
+                                value={concept.groupId}
+                                onChange={(e) => handleMoveConceptToGroup(concept.id, e.target.value)}
+                                className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer max-w-[140px]"
+                              >
+                                {groups.map((g) => (
+                                  <option key={g.id} value={g.id}>
+                                    {g.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+
+                            {concept.unit !== "EUR_YEAR" && (
+                              <div>
+                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                                  Valor Anual (€/unidad)
+                                </label>
+                                <input
+                                  type="number"
+                                  value={concept.monetaryEquivalencePerUnit || 0}
+                                  onChange={(e) =>
+                                    handleConceptEquivalenceChange(concept.id, Number(e.target.value))
+                                  }
+                                  className="w-24 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                                />
+                              </div>
+                            )}
+
+                            <div>
+                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                                Peso (1-10)
+                              </label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={10}
+                                value={concept.weight}
+                                onChange={(e) =>
+                                  handleConceptWeightChange(concept.id, Number(e.target.value))
+                                }
+                                className="w-14 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                              />
+                            </div>
+
+                            <div className="pt-3 md:pt-0 flex gap-1">
+                              <button
+                                onClick={() => handleOpenConceptModal(concept)}
+                                className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase cursor-pointer"
+                              >
+                                Editar
+                              </button>
+                              <button
+                                onClick={() => handleDeleteConcept(concept.id)}
+                                className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase cursor-pointer"
+                              >
+                                Borrar
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-center text-xs text-muted-foreground italic font-medium">
+                      No hay conceptos en este grupo. Asigna o crea un nuevo concepto para este grupo.
+                    </div>
+                  ))}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -1737,6 +1927,70 @@ export function JobOfferEvaluatorModule() {
       )}
 
       {/* ========================================================================= */}
+      {/* MODAL: ADD / EDIT GROUP                                                  */}
+      {/* ========================================================================= */}
+      {showGroupModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
+          <div className="bg-card rounded-2xl border border-border p-5 max-w-md w-full max-h-[90dvh] overflow-y-auto space-y-4 shadow-xl text-xs">
+            <div className="flex justify-between items-center border-b border-border pb-3">
+              <h3 className="text-base font-black text-foreground">
+                {editingGroup ? "Editar Grupo" : "Nuevo Grupo de Conceptos"}
+              </h3>
+              <button
+                onClick={() => setShowGroupModal(false)}
+                className="px-2.5 py-1 rounded-lg bg-muted text-muted-foreground font-black cursor-pointer uppercase"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block font-black text-foreground uppercase mb-1">
+                  Nombre del Grupo *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ej. Retribución Directa / Beneficios"
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
+                />
+              </div>
+
+              <div>
+                <label className="block font-black text-foreground uppercase mb-1">
+                  Descripción
+                </label>
+                <input
+                  type="text"
+                  placeholder="Descripción o propósito del grupo"
+                  value={groupDescription}
+                  onChange={(e) => setGroupDescription(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-semibold text-foreground"
+                />
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-border flex justify-end gap-2">
+              <button
+                onClick={() => setShowGroupModal(false)}
+                className="px-4 py-2 rounded-xl bg-muted text-foreground font-bold cursor-pointer uppercase"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSaveGroup}
+                className="px-5 py-2 rounded-xl bg-primary text-primary-foreground font-black cursor-pointer uppercase"
+              >
+                Guardar Grupo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* MODAL: ADD / EDIT CONCEPT                                                */}
       {/* ========================================================================= */}
       {showConceptModal && (
@@ -1755,6 +2009,23 @@ export function JobOfferEvaluatorModule() {
             </div>
 
             <div className="space-y-3">
+              <div>
+                <label className="block font-black text-foreground uppercase mb-1">
+                  Grupo Pertenece *
+                </label>
+                <select
+                  value={conceptGroupId}
+                  onChange={(e) => setConceptGroupId(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground cursor-pointer"
+                >
+                  {groups.map((g) => (
+                    <option key={g.id} value={g.id}>
+                      {g.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div>
                 <label className="block font-black text-foreground uppercase mb-1">
                   Nombre del Concepto *
