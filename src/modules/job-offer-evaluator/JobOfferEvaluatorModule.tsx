@@ -882,19 +882,19 @@ export function JobOfferEvaluatorModule() {
               return (
               <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
                 {/* Group Section Header */}
-                <div className="bg-muted/60 px-4 py-2.5 border-b border-border flex justify-between items-center">
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
-                      {group.name}
+                <div className="bg-muted/60 px-3 py-2 sm:px-4 sm:py-2.5 border-b border-border flex items-center justify-between gap-2">
+                  <div className="min-w-0 pr-1">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-foreground break-words leading-tight">
+                      {group.name}{" "}
+                      <span className="text-[10px] font-extrabold text-muted-foreground uppercase whitespace-nowrap">
+                        ({groupConcepts.length})
+                      </span>
                     </h3>
-                    <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
-                      ({groupConcepts.length})
-                    </span>
                   </div>
 
                   <button
                     onClick={() => toggleGroupCollapse(group.id)}
-                    className="px-2 py-0.5 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
+                    className="shrink-0 whitespace-nowrap px-2 py-1 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
                   >
                     {isCollapsed ? "[+ VER CONCEPTOS]" : "[- OCULTAR]"}
                   </button>
