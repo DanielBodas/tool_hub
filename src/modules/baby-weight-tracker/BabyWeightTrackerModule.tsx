@@ -99,6 +99,7 @@ export function BabyWeightTrackerModule() {
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
   const [configTab, setConfigTab] = useState<"baby" | "sites" | "clothing" | "blankets">("baby");
   const [newSite, setNewSite] = useState<string>("");
+  const [openColorPickerSite, setOpenColorPickerSite] = useState<string | null>(null);
 
   const [newClothingName, setNewClothingName] = useState<string>("");
   const [newClothingMargin, setNewClothingMargin] = useState<string>("0.05");
@@ -2507,15 +2508,15 @@ export function BabyWeightTrackerModule() {
               </button>
               <button
                 onClick={() => setConfigTab("blankets")}
-                className={`py-2 px-1 text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                className={`py-2 px-1 text-[10px] sm:text-[11px] font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
                   configTab === "blankets"
                     ? "bg-card text-foreground shadow-xs border border-border/60 text-primary"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Layers size={13} />
-                <span>Objetos / Superficie</span>
-                <span className="text-[8px] px-1 py-0.2 bg-primary/10 text-primary rounded-full font-black">
+                <Layers size={13} className="shrink-0" />
+                <span className="truncate">Objetos</span>
+                <span className="text-[8px] px-1 py-0.2 bg-primary/10 text-primary rounded-full font-black shrink-0">
                   {blankets.length}
                 </span>
               </button>
@@ -2608,6 +2609,7 @@ export function BabyWeightTrackerModule() {
                       const isEditing = editingSite === s;
                       const currentColorHex = (siteColors[s] || { hex: "#888" }).hex;
                       const isPrimary = idx === 0;
+                      const isColorPickerOpen = openColorPickerSite === s;
 
                       return (
                         <div
@@ -2618,7 +2620,7 @@ export function BabyWeightTrackerModule() {
                         >
                           {isEditing ? (
                             <div className="flex items-center gap-2">
-                              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: currentColorHex }} />
+                              <span className="w-3.5 h-3.5 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: currentColorHex }} />
                               <input
                                 type="text"
                                 value={editSiteValue}
@@ -2651,11 +2653,24 @@ export function BabyWeightTrackerModule() {
                             </div>
                           ) : (
                             <div className="flex flex-col space-y-2">
-                              {/* Top row: Name, Principal badge / Mark principal button, Edit & Delete */}
+                              {/* Main Row: Color Button, Title & Primary status, Action buttons */}
                               <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <span className="w-3 h-3 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: currentColorHex }} />
-                                  <span className="truncate font-black text-sm">{s}</span>
+                                <div className="flex items-center gap-2 min-w-0 flex-1">
+                                  {/* Interactive Color Swatch Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setOpenColorPickerSite(isColorPickerOpen ? null : s)}
+                                    className="p-1 rounded-xl border border-border/60 hover:border-primary/60 bg-card hover:bg-muted/80 transition cursor-pointer flex items-center gap-1 shrink-0 shadow-2xs group"
+                                    title="Cambiar color de la gráfica para este sitio"
+                                  >
+                                    <span className="w-4 h-4 rounded-full shadow-2xs transition group-hover:scale-110" style={{ backgroundColor: currentColorHex }} />
+                                    <Palette size={11} className="text-muted-foreground group-hover:text-foreground" />
+                                  </button>
+
+                                  {/* Site Name */}
+                                  <span className="font-black text-sm text-foreground break-words min-w-0">{s}</span>
+
+                                  {/* Principal Status Badge or Action */}
                                   {isPrimary ? (
                                     <span className="px-2 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-extrabold rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
                                       <Star size={10} fill="currentColor" /> Principal
@@ -2663,7 +2678,7 @@ export function BabyWeightTrackerModule() {
                                   ) : (
                                     <button
                                       onClick={() => handleSetPrimarySite(s)}
-                                      className="px-2 py-0.5 text-[9px] font-extrabold bg-muted hover:bg-amber-500/15 hover:text-amber-600 dark:hover:text-amber-400 text-muted-foreground border border-border/60 hover:border-amber-500/40 rounded-md transition cursor-pointer flex items-center gap-1 shrink-0"
+                                      className="px-2 py-0.5 text-[9px] font-extrabold bg-card hover:bg-amber-500/15 hover:text-amber-600 dark:hover:text-amber-400 text-muted-foreground border border-border/60 hover:border-amber-500/40 rounded-md transition cursor-pointer flex items-center gap-1 shrink-0"
                                       title="Establecer como báscula principal de referencia"
                                     >
                                       <Star size={10} />
@@ -2671,6 +2686,8 @@ export function BabyWeightTrackerModule() {
                                     </button>
                                   )}
                                 </div>
+
+                                {/* Edit Name & Delete Actions */}
                                 <div className="flex items-center gap-1 shrink-0">
                                   <button
                                     onClick={() => handleStartEditSite(s)}
@@ -2690,31 +2707,47 @@ export function BabyWeightTrackerModule() {
                                 </div>
                               </div>
 
-                              {/* Bottom row: Color palette swatch selection */}
-                              <div className="flex items-center gap-1.5 pt-1 border-t border-border/30 overflow-x-auto scrollbar-none">
-                                <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider shrink-0 flex items-center gap-1">
-                                  <Palette size={10} /> Color:
-                                </span>
-                                {COLOR_PALETTE.map((c) => {
-                                  const isSelected = currentColorHex === c.hex;
-                                  return (
+                              {/* Interactive Color Palette Picker Popover Dropdown */}
+                              {isColorPickerOpen && (
+                                <div className="p-2.5 bg-card border border-primary/40 rounded-2xl shadow-md space-y-2 animate-fade-in">
+                                  <div className="flex items-center justify-between text-[10px] font-extrabold text-foreground border-b border-border/40 pb-1.5">
+                                    <span className="flex items-center gap-1.5">
+                                      <Palette size={12} className="text-primary" />
+                                      <span>Selecciona un color para &quot;{s}&quot;:</span>
+                                    </span>
                                     <button
-                                      key={c.hex}
-                                      type="button"
-                                      onClick={() => handleSetSiteColor(s, c.hex)}
-                                      className={`w-5 h-5 rounded-full cursor-pointer transition shrink-0 flex items-center justify-center border ${
-                                        isSelected
-                                          ? "scale-110 ring-2 ring-primary ring-offset-1 border-white"
-                                          : "opacity-70 hover:opacity-100 border-transparent hover:scale-105"
-                                      }`}
-                                      style={{ backgroundColor: c.hex }}
-                                      title={`Elegir color ${c.hex}`}
+                                      onClick={() => setOpenColorPickerSite(null)}
+                                      className="p-0.5 text-muted-foreground hover:text-foreground cursor-pointer"
                                     >
-                                      {isSelected && <Check size={10} className="text-white drop-shadow-xs" />}
+                                      <X size={12} />
                                     </button>
-                                  );
-                                })}
-                              </div>
+                                  </div>
+                                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-2 pt-1">
+                                    {COLOR_PALETTE.map((c) => {
+                                      const isSelected = currentColorHex === c.hex;
+                                      return (
+                                        <button
+                                          key={c.hex}
+                                          type="button"
+                                          onClick={() => {
+                                            handleSetSiteColor(s, c.hex);
+                                            setOpenColorPickerSite(null);
+                                          }}
+                                          className={`w-7 h-7 rounded-xl cursor-pointer transition flex items-center justify-center border shadow-xs ${
+                                            isSelected
+                                              ? "scale-110 ring-2 ring-primary ring-offset-2 border-white"
+                                              : "opacity-80 hover:opacity-100 hover:scale-105 border-transparent"
+                                          }`}
+                                          style={{ backgroundColor: c.hex }}
+                                          title={`Elegir color ${c.hex}`}
+                                        >
+                                          {isSelected && <Check size={14} className="text-white drop-shadow-md" />}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
