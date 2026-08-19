@@ -120,13 +120,18 @@ export const tools: Tool[] = [babyLeave, finance, miTool].map(...);
 
 ### Por tool
 
-Cada tool tiene su propio `example.env` dentro de su carpeta en `src/modules/<tool-id>/`. El PIN sigue el formato:
+Cada tool tiene su propio `example.env` dentro de su carpeta en `src/modules/<tool-id>/`:
 
 ```
 TOOL_ID_EN_MAYUSCULAS_PIN=1234
+TOOL_ID_EN_MAYUSCULAS_ALLOWED_USERS=usuario1@gmail.com,usuario2@gmail.com
+TOOL_ID_EN_MAYUSCULAS_VISIBLE_WITHOUT_ACCESS=false
 ```
 
-Ejemplos: `BABY_LEAVE_PLANNER_PIN`, `FINANCE_TRACKER_PIN`
+- **`ALLOWED_USERS`**: Lista de emails autorizados para acceso directo sin PIN.
+- **`VISIBLE_WITHOUT_ACCESS`**: Controla si la herramienta aparece en el dashboard para usuarios sin acceso directo (por defecto `false`, oculta si no se tiene acceso). Si se marca como `true`, aparecerá en el panel y requerirá PIN al acceder.
+
+Ejemplos: `BABY_LEAVE_PLANNER_PIN`, `FINANCE_TRACKER_VISIBLE_WITHOUT_ACCESS`
 
 ---
 

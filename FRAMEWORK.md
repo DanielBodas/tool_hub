@@ -42,12 +42,18 @@ Access to every tool is controlled by three ordered tiers:
 
 2. **Per-Tool User Whitelist** (`<TOOL_ID_UPPER>_ALLOWED_USERS`):
    - A comma-separated list of Google email addresses stored in the tool's `.env`.
-   - If the variable is **not defined or empty** → any Google session can access the tool (retrocompatible).
-   - If the variable **is defined** → only listed emails get direct access.
+   - If the variable is **defined** → only listed emails get direct access.
    - Users with a valid Google session who are **NOT** on the whitelist are shown the PIN gate with a "no tienes acceso" message (`userBlocked=true`).
    - Logic lives in `src/lib/toolAccess.ts` → `isUserAllowedForTool(toolId, email, role)`.
 
-3. **Emergency PIN Access** (`<TOOL_ID_UPPER>_PIN`):
+3. **Per-Tool Dashboard Visibility** (`<TOOL_ID_UPPER>_VISIBLE_WITHOUT_ACCESS`):
+   - Boolean environment variable in the tool's `.env` (`true` or `false`, defaults to `false`).
+   - Controls whether the tool card is visible on the dashboard panel for users who do not have direct access.
+   - **Default (`false`)**: If a user lacks direct access/PIN, the tool option is hidden from their dashboard panel.
+   - **`true`**: The tool card is displayed on the dashboard for users without access, allowing them to click it and enter using the tool PIN.
+   - Logic lives in `src/lib/toolAccess.ts` → `isToolVisibleForUser(toolId, email, role, cookies)`.
+
+4. **Emergency PIN Access** (`<TOOL_ID_UPPER>_PIN`):
    - Any user (with or without a session) can enter the tool using its PIN.
    - Sets a 30-day persistent cookie (`auth_tool_<toolId>`) and updates `localStorage`.
    - API endpoint: `POST /api/auth/unlock` (formerly `secondary`).
