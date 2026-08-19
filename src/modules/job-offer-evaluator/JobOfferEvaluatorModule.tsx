@@ -19,7 +19,8 @@ import {
   calculateCommuteAnnualExpense,
 } from "./initialData";
 
-type ActiveTab = "comparison" | "offers" | "settings";
+type ActiveTab = "comparison" | "all_offers" | "offers_crud" | "settings";
+type FilterScope = "all" | "group" | "concept";
 
 export function JobOfferEvaluatorModule() {
   const [groups, setGroups] = useState<ConceptGroup[]>(DEFAULT_GROUPS);
@@ -29,6 +30,15 @@ export function JobOfferEvaluatorModule() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("comparison");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [statusMessage, setStatusMessage] = useState<string>("");
+
+  // 2-Column Side-by-Side Selection State
+  const [offerIdA, setOfferIdA] = useState<string>("");
+  const [offerIdB, setOfferIdB] = useState<string>("");
+
+  // Granular Filter State
+  const [filterScope, setFilterScope] = useState<FilterScope>("all");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
+  const [selectedConceptId, setSelectedConceptId] = useState<string>("all");
 
   // Offer Modal State
   const [showOfferModal, setShowOfferModal] = useState<boolean>(false);
@@ -104,6 +114,17 @@ export function JobOfferEvaluatorModule() {
     return false;
   }
 
+  // Set default 2-column comparison selections when offers load
+  useEffect(() => {
+    if (offers.length > 0) {
+      const current = offers.find((o) => o.isCurrent) || offers[0];
+      const nonCurrent = offers.find((o) => o.id !== current.id) || offers[1] || offers[0];
+
+      if (!offerIdA) setOfferIdA(current.id);
+      if (!offerIdB) setOfferIdB(nonCurrent.id);
+    }
+  }, [offers, offerIdA, offerIdB]);
+
   const saveData = async (
     updatedOffers: JobOffer[],
     updatedConcepts: Concept[],
@@ -151,9 +172,63 @@ export function JobOfferEvaluatorModule() {
     return evaluateJobOffers(offers, concepts, groups);
   }, [offers, concepts, groups]);
 
-  const currentOffer = useMemo(() => {
-    return offers.find((o) => o.isCurrent) || offers[0];
-  }, [offers]);
+  const selectedOfferA = useMemo(() => {
+    return offers.find((o) => o.id === offerIdA) || offers[0];
+  }, [offers, offerIdA]);
+
+  const selectedOfferB = useMemo(() => {
+    return offers.find((o) => o.id === offerIdB) || offers[1] || offers[0];
+  }, [offers, offerIdB]);
+
+  const evalResultA = useMemo(() => {
+    return evaluationResults.find((r) => r.offerId === offerIdA);
+  }, [evaluationResults, offerIdA]);
+
+  const evalResultB = useMemo(() => {
+    return evaluationResults.find((r) => r.offerId === offerIdB);
+  }, [evaluationResults, offerIdB]);
+
+  // Commute cost computations
+  const commuteCostA = useMemo(() => {
+    return selectedOfferA ? calculateCommuteAnnualExpense(selectedOfferA) : 0;
+  }, [selectedOfferA]);
+
+  const commuteCostB = useMemo(() => {
+    return selectedOfferB ? calculateCommuteAnnualExpense(selectedOfferB) : 0;
+  }, [selectedOfferB]);
+
+  // Filter concepts based on selection scope
+  const filteredConcepts = useMemo(() => {
+    if (filterScope === "group" && selectedGroupId !== "all") {
+      return concepts.filter((c) => c.groupId === selectedGroupId);
+    }
+    if (filterScope === "concept" && selectedConceptId !== "all") {
+      return concepts.filter((c) => c.id === selectedConceptId);
+    }
+    return concepts;
+  }, [concepts, filterScope, selectedGroupId, selectedConceptId]);
+
+  // Group concepts by ConceptGroup
+  const groupedConcepts = useMemo(() => {
+    const map = new Map<string, Concept[]>();
+    groups.forEach((g) => map.set(g.id, []));
+    filteredConcepts.forEach((c) => {
+      const list = map.get(c.groupId) || [];
+      list.push(c);
+      map.set(c.groupId, list);
+    });
+    return Array.from(map.entries())
+      .filter(([_, list]) => list.length > 0)
+      .map(([groupId, list]) => ({
+        group: groups.find((g) => g.id === groupId) || {
+          id: groupId,
+          name: "Otros",
+          description: "",
+          color: "gray",
+        },
+        concepts: list,
+      }));
+  }, [groups, filteredConcepts]);
 
   // Handle Offer Modal
   const handleOpenOfferModal = (offerToEdit?: JobOffer) => {
@@ -373,15 +448,15 @@ export function JobOfferEvaluatorModule() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-4 pb-12">
+    <div className="max-w-6xl mx-auto space-y-4 pb-12">
       {/* -------------------- SIMPLE CLEAN HEADER -------------------- */}
-      <div className="bg-card rounded-2xl border border-border p-4 shadow-2xs flex items-center justify-between gap-3">
+      <div className="bg-card rounded-2xl border border-border p-4 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <span className="text-[10px] font-black uppercase tracking-widest text-primary block">
-            COMPARADOR DE EMPLEO
+            EVALUADOR DE PUESTOS Y OFERTAS DE EMPLEO
           </span>
           <h1 className="text-lg font-black text-foreground tracking-tight">
-            Valoración de Ofertas de Trabajo
+            Análisis y Comparativa de Empleo
           </h1>
         </div>
 
@@ -400,8 +475,8 @@ export function JobOfferEvaluatorModule() {
         </div>
       </div>
 
-      {/* -------------------- TOP SIMPLE NAVIGATION TABS -------------------- */}
-      <div className="grid grid-cols-3 gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
+      {/* -------------------- MAIN NAVIGATION TABS -------------------- */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
         <button
           onClick={() => setActiveTab("comparison")}
           className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
@@ -410,18 +485,29 @@ export function JobOfferEvaluatorModule() {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          1. Comparativa ({offers.length})
+          1. Comparar 2 Puestos
         </button>
 
         <button
-          onClick={() => setActiveTab("offers")}
+          onClick={() => setActiveTab("all_offers")}
           className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
-            activeTab === "offers"
+            activeTab === "all_offers"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          2. Gestionar Ofertas
+          2. Visión General ({offers.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("offers_crud")}
+          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+            activeTab === "offers_crud"
+              ? "bg-card text-foreground shadow-2xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          3. Gestionar Ofertas
         </button>
 
         <button
@@ -432,182 +518,500 @@ export function JobOfferEvaluatorModule() {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          3. Ajuste de Pesos ({concepts.length})
+          4. Conceptos y Pesos ({concepts.length})
         </button>
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: STREAMLINED COMPARISON VIEW WITH CAR COMMUTE BREAKDOWN             */}
+      {/* TAB 1: 2-COLUMN SIDE-BY-SIDE MINUTIOUS COMPARISON VIEW                     */}
       {/* ========================================================================= */}
       {activeTab === "comparison" && (
         <div className="space-y-4">
-          {/* Main Offers Cards Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {evaluationResults.map((result) => {
-              const offerObj = offers.find((o) => o.id === result.offerId);
-              const isCurrent = result.isCurrent;
-              const isWinner = result.rank === 1 && !isCurrent;
-              const commuteCost = offerObj ? calculateCommuteAnnualExpense(offerObj) : 0;
-
-              return (
-                <div
-                  key={result.offerId}
-                  className={`bg-card rounded-2xl border p-4 shadow-2xs flex flex-col justify-between transition-all ${
-                    isWinner
-                      ? "border-primary/60 ring-2 ring-primary/20"
-                      : isCurrent
-                      ? "border-emerald-500/50"
-                      : "border-border"
-                  }`}
+          {/* CONTROLS BAR: POSITION SELECTORS & FILTER SCOPES */}
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-border">
+              {/* Position A Selector */}
+              <div>
+                <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1">
+                  Puesto #1 (Columna Izquierda / Base):
+                </label>
+                <select
+                  value={offerIdA}
+                  onChange={(e) => setOfferIdA(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-black text-xs text-foreground cursor-pointer"
                 >
-                  <div>
-                    {/* Header Badges */}
-                    <div className="flex justify-between items-center mb-2">
-                      <span
-                        className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
-                          isCurrent
-                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
-                            : isWinner
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground border border-border"
-                        }`}
-                      >
-                        {isCurrent
-                          ? "[MI PUESTO ACTUAL - BASE]"
-                          : isWinner
-                          ? "[RECOMENDADO #1]"
-                          : `[OFERTA #${result.rank}]`}
-                      </span>
+                  {offers.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.isCurrent ? "[ACTUAL] " : ""}
+                      {o.title} — {o.company}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-                      <span className="text-xs font-black text-primary">
-                        {result.compositeScore} / 100 PTS
-                      </span>
-                    </div>
+              {/* Position B Selector */}
+              <div>
+                <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1">
+                  Puesto #2 (Columna Derecha / A Comparar):
+                </label>
+                <select
+                  value={offerIdB}
+                  onChange={(e) => setOfferIdB(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-black text-xs text-foreground cursor-pointer"
+                >
+                  {offers.map((o) => (
+                    <option key={o.id} value={o.id}>
+                      {o.isCurrent ? "[ACTUAL] " : ""}
+                      {o.title} — {o.company}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
-                    {/* Offer Title & Company */}
-                    <h3 className="text-base font-black text-foreground truncate">
-                      {result.offerTitle}
-                    </h3>
-                    <p className="text-xs font-bold text-muted-foreground truncate mb-3">
-                      {result.company} {offerObj?.location ? `• ${offerObj.location}` : ""}
-                    </p>
+            {/* Granular Filtering Control Row */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-muted-foreground uppercase text-[10px]">
+                  Filtrar Comparativa:
+                </span>
+                <div className="flex bg-muted p-0.5 rounded-xl border border-border">
+                  <button
+                    onClick={() => {
+                      setFilterScope("all");
+                      setSelectedGroupId("all");
+                      setSelectedConceptId("all");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] transition cursor-pointer ${
+                      filterScope === "all"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Todos
+                  </button>
 
-                    {/* KEY FINANCIAL HIGHLIGHT */}
-                    <div className="bg-muted/40 rounded-xl p-3 border border-border/60 mb-3 text-center">
-                      <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-wider block">
-                        Valor Percibido Total (Neto Combustible)
-                      </span>
-                      <div className="text-xl font-black text-foreground mt-0.5">
-                        {formatCurrency(result.totalMonetaryValue)}
-                        <span className="text-xs font-bold text-muted-foreground">/año</span>
-                      </div>
+                  <button
+                    onClick={() => {
+                      setFilterScope("group");
+                      if (selectedGroupId === "all") setSelectedGroupId(groups[0]?.id || "all");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] transition cursor-pointer ${
+                      filterScope === "group"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Por Grupo
+                  </button>
 
-                      {!isCurrent && (
-                        <div
-                          className={`mt-1.5 text-xs font-black px-2 py-0.5 rounded-md inline-block ${
-                            result.deltaMonetaryVsCurrent >= 0
+                  <button
+                    onClick={() => {
+                      setFilterScope("concept");
+                      if (selectedConceptId === "all") setSelectedConceptId(concepts[0]?.id || "all");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-black uppercase text-[10px] transition cursor-pointer ${
+                      filterScope === "concept"
+                        ? "bg-card text-foreground shadow-2xs"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    Por Concepto
+                  </button>
+                </div>
+              </div>
+
+              {/* Dynamic Filter Dropdown */}
+              {filterScope === "group" && (
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-muted-foreground text-[10px] uppercase">Grupo:</span>
+                  <select
+                    value={selectedGroupId}
+                    onChange={(e) => setSelectedGroupId(e.target.value)}
+                    className="px-2.5 py-1 rounded-xl border border-border bg-background font-bold text-xs"
+                  >
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {filterScope === "concept" && (
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-muted-foreground text-[10px] uppercase">Concepto:</span>
+                  <select
+                    value={selectedConceptId}
+                    onChange={(e) => setSelectedConceptId(e.target.value)}
+                    className="px-2.5 py-1 rounded-xl border border-border bg-background font-bold text-xs"
+                  >
+                    {concepts.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* TOP COMPARISON SUMMARY HEADER CARDS (2 COLUMNS) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Position 1 Summary */}
+            <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-muted text-muted-foreground rounded-md border border-border">
+                  {selectedOfferA?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #1]"}
+                </span>
+                <span className="text-xs font-black text-primary">
+                  {evalResultA?.compositeScore || 0} / 100 PTS
+                </span>
+              </div>
+              <div>
+                <h2 className="text-base font-black text-foreground">{selectedOfferA?.title}</h2>
+                <p className="text-xs font-bold text-muted-foreground">
+                  {selectedOfferA?.company} {selectedOfferA?.location ? `• ${selectedOfferA.location}` : ""}
+                </p>
+              </div>
+
+              <div className="bg-muted/40 p-2.5 rounded-xl border border-border text-center">
+                <span className="text-[9px] font-extrabold uppercase text-muted-foreground block">
+                  Valor Percibido Anual Neto
+                </span>
+                <span className="text-xl font-black text-foreground">
+                  {formatCurrency(evalResultA?.totalMonetaryValue || 0)}/año
+                </span>
+              </div>
+            </div>
+
+            {/* Position 2 Summary */}
+            <div className="bg-card rounded-2xl border border-primary/50 ring-1 ring-primary/20 p-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-primary text-primary-foreground rounded-md">
+                  {selectedOfferB?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #2]"}
+                </span>
+                <span className="text-xs font-black text-primary">
+                  {evalResultB?.compositeScore || 0} / 100 PTS
+                </span>
+              </div>
+              <div>
+                <h2 className="text-base font-black text-foreground">{selectedOfferB?.title}</h2>
+                <p className="text-xs font-bold text-muted-foreground">
+                  {selectedOfferB?.company} {selectedOfferB?.location ? `• ${selectedOfferB.location}` : ""}
+                </p>
+              </div>
+
+              <div className="bg-muted/40 p-2.5 rounded-xl border border-border text-center">
+                <span className="text-[9px] font-extrabold uppercase text-muted-foreground block">
+                  Valor Percibido Anual Neto
+                </span>
+                <span className="text-xl font-black text-foreground">
+                  {formatCurrency(evalResultB?.totalMonetaryValue || 0)}/año
+                </span>
+
+                {/* Net Delta position B vs position A */}
+                {evalResultA && evalResultB && (
+                  <div className="mt-1">
+                    {(() => {
+                      const delta = evalResultB.totalMonetaryValue - evalResultA.totalMonetaryValue;
+                      const pct = evalResultA.totalMonetaryValue > 0
+                        ? Math.round((delta / evalResultA.totalMonetaryValue) * 100)
+                        : 0;
+                      return (
+                        <span
+                          className={`text-xs font-black px-2 py-0.5 rounded-md inline-block ${
+                            delta >= 0
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                               : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                           }`}
                         >
-                          {result.deltaMonetaryVsCurrent >= 0 ? "+" : ""}
-                          {formatCurrency(result.deltaMonetaryVsCurrent)}/año ({result.deltaPercentVsCurrent > 0 ? "+" : ""}
-                          {result.deltaPercentVsCurrent}%)
+                          Diferencia vs Puesto #1: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
+                        </span>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* DETAILED CONCEPT-BY-CONCEPT COMPARISON (ROW BY ROW) */}
+          <div className="space-y-4">
+            {groupedConcepts.map(({ group, concepts: groupConcepts }) => (
+              <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
+                {/* Group Section Header */}
+                <div className="bg-muted/60 px-4 py-2.5 border-b border-border flex justify-between items-center">
+                  <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                    {group.name}
+                  </h3>
+                  <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
+                    {groupConcepts.length} Concepto(s)
+                  </span>
+                </div>
+
+                {/* Concept Rows */}
+                <div className="divide-y divide-border/60">
+                  {groupConcepts.map((concept) => {
+                    const valA = selectedOfferA?.values[concept.id];
+                    const noteA = selectedOfferA?.conceptNotes?.[concept.id];
+                    const monA = calculateConceptMonetaryValue(concept, valA);
+
+                    const valB = selectedOfferB?.values[concept.id];
+                    const noteB = selectedOfferB?.conceptNotes?.[concept.id];
+                    const monB = calculateConceptMonetaryValue(concept, valB);
+
+                    const diffMon = monB - monA;
+
+                    return (
+                      <div key={concept.id} className="p-4 space-y-3">
+                        {/* Concept Title & Weight Row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-foreground">
+                              {concept.name}
+                            </span>
+                            <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 bg-muted text-muted-foreground rounded-md border border-border">
+                              Peso: {concept.weight}/10
+                            </span>
+                          </div>
+
+                          {concept.description && (
+                            <span className="text-[10px] text-muted-foreground font-semibold">
+                              {concept.description}
+                            </span>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    {/* Key Values List with Justifications */}
-                    <div className="space-y-2 text-xs">
-                      {concepts.map((concept) => {
-                        const val = offerObj?.values[concept.id];
-                        const note = offerObj?.conceptNotes?.[concept.id];
-                        const monVal = calculateConceptMonetaryValue(concept, val);
-
-                        if (val === undefined && !note) return null;
-
-                        return (
-                          <div
-                            key={concept.id}
-                            className="py-1 border-b border-border/40 space-y-0.5"
-                          >
-                            <div className="flex justify-between items-center">
-                              <span className="font-bold text-muted-foreground truncate pr-2">
-                                {concept.name}
-                              </span>
-                              <div className="text-right shrink-0">
-                                <span className="font-black text-foreground">
-                                  {formatValue(concept, val)}
-                                </span>
-                                {monVal > 0 && concept.unit !== "EUR_YEAR" && (
-                                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold block">
-                                    +{formatCurrency(monVal)}
-                                  </span>
-                                )}
-                              </div>
+                        {/* 2-COLUMN SIDE BY SIDE DATA FOR THIS CONCEPT */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                          {/* Column 1 Data */}
+                          <div className="bg-muted/30 rounded-xl p-3 border border-border space-y-1">
+                            <div className="text-[9px] font-extrabold uppercase text-muted-foreground">
+                              {selectedOfferA?.title}:
                             </div>
-
-                            {/* Justification note if provided */}
-                            {note && (
-                              <p className="text-[10px] font-semibold text-muted-foreground/90 bg-muted/30 p-1.5 rounded-md border border-border/40 italic">
-                                "{note}"
+                            <div className="flex justify-between items-center font-black text-foreground">
+                              <span>Valor:</span>
+                              <span>{formatValue(concept, valA)}</span>
+                            </div>
+                            {monA > 0 && concept.unit !== "EUR_YEAR" && (
+                              <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                                <span>Aporte Percibido:</span>
+                                <span>+{formatCurrency(monA)}/año</span>
+                              </div>
+                            )}
+                            {noteA && (
+                              <p className="text-[10px] font-normal text-muted-foreground italic bg-background/60 p-1.5 rounded-md border border-border/40 mt-1">
+                                "{noteA}"
                               </p>
                             )}
                           </div>
-                        );
-                      })}
 
-                      {/* Commute Car Expense Line Item */}
-                      {commuteCost > 0 && (
-                        <div className="py-1.5 border-b border-border/40 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
-                          <div className="flex justify-between items-center font-black">
-                            <span className="text-rose-600 dark:text-rose-400 uppercase text-[10px]">
-                              Gasto Combustible Coche
-                            </span>
-                            <span className="text-rose-600 dark:text-rose-400">
-                              -{formatCurrency(commuteCost)}/año
+                          {/* Column 2 Data */}
+                          <div className="bg-muted/30 rounded-xl p-3 border border-border space-y-1">
+                            <div className="text-[9px] font-extrabold uppercase text-muted-foreground">
+                              {selectedOfferB?.title}:
+                            </div>
+                            <div className="flex justify-between items-center font-black text-foreground">
+                              <span>Valor:</span>
+                              <span>{formatValue(concept, valB)}</span>
+                            </div>
+                            {monB > 0 && concept.unit !== "EUR_YEAR" && (
+                              <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
+                                <span>Aporte Percibido:</span>
+                                <span>+{formatCurrency(monB)}/año</span>
+                              </div>
+                            )}
+                            {noteB && (
+                              <p className="text-[10px] font-normal text-muted-foreground italic bg-background/60 p-1.5 rounded-md border border-border/40 mt-1">
+                                "{noteB}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Delta / Difference row */}
+                        {diffMon !== 0 && concept.unit !== "EUR_YEAR" && (
+                          <div className="text-right text-[11px] font-black">
+                            <span
+                              className={`px-2 py-0.5 rounded-md ${
+                                diffMon > 0
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                              }`}
+                            >
+                              Diferencia en {concept.name}: {diffMon > 0 ? "+" : ""}{formatCurrency(diffMon)}/año a favor de {diffMon > 0 ? selectedOfferB?.title : selectedOfferA?.title}
                             </span>
                           </div>
-                          <span className="text-[9px] text-muted-foreground font-semibold block mt-0.5">
-                            {offerObj?.commuteKmOneWay} km ida • Consumo {offerObj?.commuteFuelL100} L/100km @ {offerObj?.fuelPriceEurL} €/L
-                          </span>
-                        </div>
-                      )}
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+
+            {/* Commute Car Expense Comparison Item */}
+            {(commuteCostA > 0 || commuteCostB > 0) && (
+              <div className="bg-card rounded-2xl border border-rose-500/30 p-4 space-y-3">
+                <div className="flex justify-between items-center border-b border-border pb-2">
+                  <h3 className="text-xs font-black uppercase text-rose-600 dark:text-rose-400">
+                    Desplazamiento en Coche (Gasto Anual de Combustible)
+                  </h3>
+                  <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                    Gasto Deducido
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                  <div className="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 space-y-1">
+                    <div className="font-extrabold uppercase text-[9px] text-muted-foreground">
+                      {selectedOfferA?.title}:
                     </div>
+                    <div className="text-base font-black text-rose-600 dark:text-rose-400">
+                      -{formatCurrency(commuteCostA)}/año
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-semibold block">
+                      {selectedOfferA?.commuteKmOneWay} km ida • {selectedOfferA?.commuteFuelL100} L/100km @ {selectedOfferA?.fuelPriceEurL} €/L
+                    </span>
                   </div>
 
-                  {/* Card Footer Actions */}
-                  <div className="pt-3 mt-3 border-t border-border/60 flex justify-between items-center">
-                    <button
-                      onClick={() => handleOpenOfferModal(offerObj)}
-                      className="text-xs font-bold text-primary hover:underline cursor-pointer uppercase"
-                    >
-                      Editar Datos
-                    </button>
-                    {offerObj?.isCurrent ? (
-                      <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">
-                        Puesto Base
-                      </span>
-                    ) : (
-                      <button
-                        onClick={() => handleDeleteOffer(result.offerId)}
-                        className="text-xs font-bold text-rose-500 hover:underline cursor-pointer uppercase"
-                      >
-                        Eliminar
-                      </button>
-                    )}
+                  <div className="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 space-y-1">
+                    <div className="font-extrabold uppercase text-[9px] text-muted-foreground">
+                      {selectedOfferB?.title}:
+                    </div>
+                    <div className="text-base font-black text-rose-600 dark:text-rose-400">
+                      -{formatCurrency(commuteCostB)}/año
+                    </div>
+                    <span className="text-[10px] text-muted-foreground font-semibold block">
+                      {selectedOfferB?.commuteKmOneWay} km ida • {selectedOfferB?.commuteFuelL100} L/100km @ {selectedOfferB?.fuelPriceEurL} €/L
+                    </span>
                   </div>
                 </div>
-              );
-            })}
+              </div>
+            )}
           </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: OFFERS MANAGEMENT                                                 */}
+      {/* TAB 2: OVERVIEW CARDS FOR ALL OFFERS                                      */}
       {/* ========================================================================= */}
-      {activeTab === "offers" && (
+      {activeTab === "all_offers" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {evaluationResults.map((result) => {
+            const offerObj = offers.find((o) => o.id === result.offerId);
+            const isCurrent = result.isCurrent;
+            const isWinner = result.rank === 1 && !isCurrent;
+            const commuteCost = offerObj ? calculateCommuteAnnualExpense(offerObj) : 0;
+
+            return (
+              <div
+                key={result.offerId}
+                className={`bg-card rounded-2xl border p-4 shadow-2xs flex flex-col justify-between transition-all ${
+                  isWinner
+                    ? "border-primary/60 ring-2 ring-primary/20"
+                    : isCurrent
+                    ? "border-emerald-500/50"
+                    : "border-border"
+                }`}
+              >
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span
+                      className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-md ${
+                        isCurrent
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30"
+                          : isWinner
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}
+                    >
+                      {isCurrent
+                        ? "[PUESTO ACTUAL - BASE]"
+                        : isWinner
+                        ? "[RECOMENDADO #1]"
+                        : `[OFERTA #${result.rank}]`}
+                    </span>
+
+                    <span className="text-xs font-black text-primary">
+                      {result.compositeScore} / 100 PTS
+                    </span>
+                  </div>
+
+                  <h3 className="text-base font-black text-foreground truncate">
+                    {result.offerTitle}
+                  </h3>
+                  <p className="text-xs font-bold text-muted-foreground truncate mb-3">
+                    {result.company} {offerObj?.location ? `• ${offerObj.location}` : ""}
+                  </p>
+
+                  <div className="bg-muted/40 rounded-xl p-3 border border-border/60 mb-3 text-center">
+                    <span className="text-[9px] font-extrabold text-muted-foreground uppercase block">
+                      Valor Percibido Total
+                    </span>
+                    <div className="text-xl font-black text-foreground mt-0.5">
+                      {formatCurrency(result.totalMonetaryValue)}
+                      <span className="text-xs font-bold text-muted-foreground">/año</span>
+                    </div>
+
+                    {!isCurrent && (
+                      <div
+                        className={`mt-1.5 text-xs font-black px-2 py-0.5 rounded-md inline-block ${
+                          result.deltaMonetaryVsCurrent >= 0
+                            ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                            : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
+                        }`}
+                      >
+                        {result.deltaMonetaryVsCurrent >= 0 ? "+" : ""}
+                        {formatCurrency(result.deltaMonetaryVsCurrent)}/año ({result.deltaPercentVsCurrent > 0 ? "+" : ""}
+                        {result.deltaPercentVsCurrent}%)
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-1 text-xs">
+                    {concepts.slice(0, 5).map((concept) => {
+                      const val = offerObj?.values[concept.id];
+                      return (
+                        <div key={concept.id} className="flex justify-between py-0.5 border-b border-border/40">
+                          <span className="text-muted-foreground font-semibold truncate pr-2">{concept.name}</span>
+                          <span className="font-bold text-foreground">{formatValue(concept, val)}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="pt-3 mt-3 border-t border-border flex justify-between items-center">
+                  <button
+                    onClick={() => {
+                      setOfferIdB(result.offerId);
+                      setActiveTab("comparison");
+                    }}
+                    className="text-xs font-bold text-primary hover:underline cursor-pointer uppercase"
+                  >
+                    Comparar en 2 Columnas
+                  </button>
+                  <button
+                    onClick={() => handleOpenOfferModal(offerObj)}
+                    className="text-xs font-bold text-muted-foreground hover:text-foreground cursor-pointer uppercase"
+                  >
+                    Editar
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 3: OFFERS MANAGEMENT                                                 */}
+      {/* ========================================================================= */}
+      {activeTab === "offers_crud" && (
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
           <div className="flex justify-between items-center border-b border-border pb-3">
             <div>
@@ -669,7 +1073,7 @@ export function JobOfferEvaluatorModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: WEIGHTS & CONCEPT SETTINGS (WITH CUSTOM CONCEPTS CRUD)           */}
+      {/* TAB 4: WEIGHTS & CONCEPT SETTINGS                                        */}
       {/* ========================================================================= */}
       {activeTab === "settings" && (
         <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
@@ -704,7 +1108,6 @@ export function JobOfferEvaluatorModule() {
                 </div>
 
                 <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                  {/* Monetary equivalency adjust */}
                   {concept.unit !== "EUR_YEAR" && (
                     <div>
                       <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
@@ -721,7 +1124,6 @@ export function JobOfferEvaluatorModule() {
                     </div>
                   )}
 
-                  {/* Weight adjust */}
                   <div>
                     <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
                       Peso (1 a 10)
@@ -741,13 +1143,13 @@ export function JobOfferEvaluatorModule() {
                   <div className="pt-2 sm:pt-0 flex gap-1">
                     <button
                       onClick={() => handleOpenConceptModal(concept)}
-                      className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase"
+                      className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase cursor-pointer"
                     >
                       Editar
                     </button>
                     <button
                       onClick={() => handleDeleteConcept(concept.id)}
-                      className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase"
+                      className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase cursor-pointer"
                     >
                       Borrar
                     </button>
@@ -940,11 +1342,10 @@ export function JobOfferEvaluatorModule() {
                       )}
                     </div>
 
-                    {/* Justification note input for this concept */}
                     <div>
                       <input
                         type="text"
-                        placeholder="Añade una justificación o detalle sobre este valor (ej. 100% libre elección de días)..."
+                        placeholder="Añade una justificación o detalle sobre este valor..."
                         value={offerConceptNotes[concept.id] || ""}
                         onChange={(e) =>
                           setOfferConceptNotes({
