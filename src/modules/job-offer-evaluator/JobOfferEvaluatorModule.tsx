@@ -43,9 +43,20 @@ export function JobOfferEvaluatorModule() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const [selectedConceptId, setSelectedConceptId] = useState<string>("all");
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+  const [collapsedSettingsGroups, setCollapsedSettingsGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroupCollapse = (groupId: string) => {
     setCollapsedGroups((prev) => {
+      const isCurrentlyCollapsed = prev[groupId] !== false;
+      return {
+        ...prev,
+        [groupId]: !isCurrentlyCollapsed,
+      };
+    });
+  };
+
+  const toggleSettingsGroupCollapse = (groupId: string) => {
+    setCollapsedSettingsGroups((prev) => {
       const isCurrentlyCollapsed = prev[groupId] !== false;
       return {
         ...prev,
@@ -1383,6 +1394,7 @@ export function JobOfferEvaluatorModule() {
           <div className="space-y-4">
             {groups.map((group) => {
               const groupConcepts = concepts.filter((c) => c.groupId === group.id);
+              const isCollapsed = collapsedSettingsGroups[group.id] !== false;
 
               return (
                 <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -1406,6 +1418,12 @@ export function JobOfferEvaluatorModule() {
 
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
+                        onClick={() => toggleSettingsGroupCollapse(group.id)}
+                        className="px-2 py-1 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
+                      >
+                        {isCollapsed ? "[+ VER CONCEPTOS]" : "[- OCULTAR]"}
+                      </button>
+                      <button
                         onClick={() => handleOpenGroupModal(group)}
                         className="px-2 py-1 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
                       >
@@ -1421,8 +1439,9 @@ export function JobOfferEvaluatorModule() {
                   </div>
 
                   {/* Group Concepts List */}
-                  {groupConcepts.length > 0 ? (
-                    <div className="divide-y divide-border/60 p-2 sm:p-3 space-y-2">
+                  {!isCollapsed && (
+                    groupConcepts.length > 0 ? (
+                      <div className="divide-y divide-border/60 p-2 sm:p-3 space-y-2">
                       {groupConcepts.map((concept) => (
                         <div
                           key={concept.id}
@@ -1515,7 +1534,7 @@ export function JobOfferEvaluatorModule() {
                     <div className="p-4 text-center text-xs text-muted-foreground italic font-medium">
                       No hay conceptos en este grupo. Asigna o crea un nuevo concepto para este grupo.
                     </div>
-                  )}
+                  ))}
                 </div>
               );
             })}
