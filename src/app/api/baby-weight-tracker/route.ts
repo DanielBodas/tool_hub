@@ -103,6 +103,7 @@ export async function GET() {
       settings: {
         userId: BABY_ID,
         sites: settingsDoc?.sites || DEFAULT_SITES,
+        siteColors: settingsDoc?.siteColors || {},
         clothing: settingsDoc?.clothing || DEFAULT_CLOTHING,
         blankets: settingsDoc?.blankets || DEFAULT_BLANKETS,
         birthDate: settingsDoc?.birthDate || "",
@@ -138,6 +139,7 @@ export async function POST(request: Request) {
       const cleanSettings = {
         userId: BABY_ID,
         sites: body.sites || DEFAULT_SITES,
+        siteColors: body.siteColors || {},
         clothing: body.clothing || DEFAULT_CLOTHING,
         blankets: body.blankets || DEFAULT_BLANKETS,
         birthDate: body.birthDate !== undefined ? body.birthDate : "",
