@@ -1,0 +1,20 @@
+
+> tool-app@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 518ms
+
+○ Compiling / ...
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+ HEAD / 307 in 4.3s (next.js: 3.9s, application-code: 358ms)
+ GET /tools/job-offer-evaluator 200 in 1301ms (next.js: 920ms, proxy.ts: 174ms, application-code: 207ms)
+⚠️ Local MongoDB server is not running. Falling back to Mock DB Storage...
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+ GET /tools/job-offer-evaluator 200 in 106ms (next.js: 5ms, proxy.ts: 8ms, application-code: 93ms)
+ GET /api/job-offer-evaluator 200 in 16ms (next.js: 4ms, application-code: 13ms)
+ GET /api/auth/session 200 in 47ms (next.js: 32ms, application-code: 15ms)
