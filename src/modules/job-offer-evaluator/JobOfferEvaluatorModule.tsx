@@ -643,13 +643,13 @@ export function JobOfferEvaluatorModule() {
 
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {/* Position 1 (Base / Left) Compact Card */}
-              <div className="bg-muted/40 p-2.5 sm:p-3 rounded-xl border border-border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <div className="min-w-0">
-                  <span className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground block truncate">
+              <div className="bg-muted/40 p-2.5 sm:p-3 rounded-xl border border-border flex flex-col justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground block break-words">
                     PUESTO #1 (BASE)
                   </span>
-                  <div className="flex items-center gap-1 truncate">
-                    <span className="text-xs font-black text-foreground truncate">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-xs font-black text-foreground break-words">
                       {selectedOfferA?.title || "Seleccionar Puesto"}
                     </span>
                     {selectedOfferA?.isCurrent && (
@@ -658,27 +658,27 @@ export function JobOfferEvaluatorModule() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground truncate">
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground break-words">
                     {selectedOfferA?.company}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setShowPickerA(true)}
-                  className="w-full sm:w-auto px-2 py-1 sm:px-2.5 sm:py-1.5 bg-card hover:bg-muted text-foreground font-black text-[9px] sm:text-[10px] uppercase border border-border rounded-lg cursor-pointer shrink-0 transition text-center"
+                  className="w-full px-2 py-1 sm:px-2.5 sm:py-1.5 bg-card hover:bg-muted text-foreground font-black text-[9px] sm:text-[10px] uppercase border border-border rounded-lg cursor-pointer shrink-0 transition text-center"
                 >
                   [CAMBIAR]
                 </button>
               </div>
 
               {/* Position 2 (Comparison / Right) Compact Card */}
-              <div className="bg-primary/5 p-2.5 sm:p-3 rounded-xl border border-primary/30 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                <div className="min-w-0">
-                  <span className="text-[8px] sm:text-[9px] font-black uppercase text-primary block truncate">
+              <div className="bg-primary/5 p-2.5 sm:p-3 rounded-xl border border-primary/30 flex flex-col justify-between gap-2">
+                <div className="min-w-0 space-y-1">
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase text-primary block break-words">
                     PUESTO #2 (COMPARAR)
                   </span>
-                  <div className="flex items-center gap-1 truncate">
-                    <span className="text-xs font-black text-foreground truncate">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <span className="text-xs font-black text-foreground break-words">
                       {selectedOfferB?.title || "Seleccionar Puesto"}
                     </span>
                     {selectedOfferB?.isCurrent && (
@@ -687,14 +687,14 @@ export function JobOfferEvaluatorModule() {
                       </span>
                     )}
                   </div>
-                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground truncate">
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground break-words">
                     {selectedOfferB?.company}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setShowPickerB(true)}
-                  className="w-full sm:w-auto px-2 py-1 sm:px-2.5 sm:py-1.5 bg-primary text-primary-foreground font-black text-[9px] sm:text-[10px] uppercase rounded-lg cursor-pointer shrink-0 transition hover:bg-primary-hover text-center"
+                  className="w-full px-2 py-1 sm:px-2.5 sm:py-1.5 bg-primary text-primary-foreground font-black text-[9px] sm:text-[10px] uppercase rounded-lg cursor-pointer shrink-0 transition hover:bg-primary-hover text-center"
                 >
                   [CAMBIAR]
                 </button>
@@ -796,7 +796,7 @@ export function JobOfferEvaluatorModule() {
             <div className="bg-card rounded-2xl border border-border p-2.5 sm:p-4 space-y-2 flex flex-col justify-between">
               <div className="space-y-1.5">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
-                  <span className="text-[8px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border truncate max-w-full">
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border inline-block break-words">
                     {selectedOfferA?.isCurrent ? "[ACTUAL]" : "[PUESTO #1]"}
                   </span>
                   <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
@@ -804,18 +804,18 @@ export function JobOfferEvaluatorModule() {
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-xs sm:text-base font-black text-foreground truncate">{selectedOfferA?.title}</h2>
-                  <p className="text-[10px] sm:text-xs font-bold text-muted-foreground truncate">
+                  <h2 className="text-xs sm:text-base font-black text-foreground break-words">{selectedOfferA?.title}</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-muted-foreground break-words">
                     {selectedOfferA?.company} • {formatModalityText(selectedOfferA)}
                   </p>
                 </div>
               </div>
 
               <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
-                <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block truncate">
+                <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block break-words">
                   Valor Percibido
                 </span>
-                <span className="text-sm sm:text-xl font-black text-foreground block truncate">
+                <span className="text-sm sm:text-xl font-black text-foreground block break-words">
                   {formatCurrency(evalResultA?.totalMonetaryValue || 0)}/año
                 </span>
               </div>
@@ -825,7 +825,7 @@ export function JobOfferEvaluatorModule() {
             <div className="bg-card rounded-2xl border border-primary/50 ring-1 ring-primary/20 p-2.5 sm:p-4 space-y-2 flex flex-col justify-between">
               <div className="space-y-1.5">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
-                  <span className="text-[8px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-primary text-primary-foreground rounded truncate max-w-full">
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-primary text-primary-foreground rounded inline-block break-words">
                     {selectedOfferB?.isCurrent ? "[ACTUAL]" : "[PUESTO #2]"}
                   </span>
                   <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
@@ -833,18 +833,18 @@ export function JobOfferEvaluatorModule() {
                   </span>
                 </div>
                 <div>
-                  <h2 className="text-xs sm:text-base font-black text-foreground truncate">{selectedOfferB?.title}</h2>
-                  <p className="text-[10px] sm:text-xs font-bold text-muted-foreground truncate">
+                  <h2 className="text-xs sm:text-base font-black text-foreground break-words">{selectedOfferB?.title}</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-muted-foreground break-words">
                     {selectedOfferB?.company} • {formatModalityText(selectedOfferB)}
                   </p>
                 </div>
               </div>
 
               <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
-                <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block truncate">
+                <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block break-words">
                   Valor Percibido
                 </span>
-                <span className="text-sm sm:text-xl font-black text-foreground block truncate">
+                <span className="text-sm sm:text-xl font-black text-foreground block break-words">
                   {formatCurrency(evalResultB?.totalMonetaryValue || 0)}/año
                 </span>
 
@@ -858,7 +858,7 @@ export function JobOfferEvaluatorModule() {
                         : 0;
                       return (
                         <span
-                          className={`text-[9px] sm:text-xs font-black px-1.5 py-0.5 rounded inline-block max-w-full truncate ${
+                          className={`text-[9px] sm:text-xs font-black px-1.5 py-0.5 rounded inline-block break-words ${
                             delta >= 0
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                               : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
