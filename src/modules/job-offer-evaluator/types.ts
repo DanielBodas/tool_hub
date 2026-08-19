@@ -45,6 +45,7 @@ export interface JobOffer {
   status: OfferStatus;
   notes?: string;
   values: Record<string, number | boolean>;
+  conceptNotes?: Record<string, string>; // Justification / notes per concept value
   createdAt?: string;
   updatedAt?: string;
 }
