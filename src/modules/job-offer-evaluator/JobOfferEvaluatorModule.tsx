@@ -503,9 +503,17 @@ export function JobOfferEvaluatorModule() {
   };
 
   const formatValue = (concept: Concept, rawVal: number | boolean | undefined) => {
-    if (rawVal === undefined || rawVal === null) return "-";
-    if (concept.unit === "BOOLEAN") return rawVal ? "SÍ" : "NO";
+    if (rawVal === undefined || rawVal === null) return "Sin especificar";
+    if (concept.unit === "BOOLEAN") return rawVal ? "SÍ (Incluido)" : "NO (No incluido)";
     const num = Number(rawVal);
+    if (isNaN(num) || num === 0) {
+      if (concept.unit === "EUR_YEAR" || concept.unit === "EUR_MONTH") return "0 €";
+      if (concept.unit === "DAYS_YEAR" || concept.unit === "DAYS_WEEK") return "0 días";
+      if (concept.unit === "MINUTES_DAY") return "0 min";
+      if (concept.unit === "SCORE_10") return "0/10";
+      return "0";
+    }
+
     switch (concept.unit) {
       case "EUR_YEAR":
         return `${formatCurrency(num)}/año`;
@@ -610,57 +618,107 @@ export function JobOfferEvaluatorModule() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: 2-COLUMN SIDE-BY-SIDE MINUTIOUS COMPARISON VIEW                     */}
+      {/* TAB 1: PARALLEL 2-COLUMN SIDE-BY-SIDE COMPARISON VIEW                      */}
       {/* ========================================================================= */}
       {activeTab === "comparison" && (
         <div className="space-y-4">
-          {/* CONTROLS BAR: POSITION SELECTORS & FILTER SCOPES */}
-          <div className="bg-card rounded-2xl border border-border p-4 space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-border">
-              {/* Position A Selector */}
-              <div>
-                <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1">
-                  Puesto #1 (Columna Izquierda / Base):
-                </label>
-                <select
-                  value={offerIdA}
-                  onChange={(e) => setOfferIdA(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-black text-xs text-foreground cursor-pointer"
-                >
-                  {offers.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.isCurrent ? "[ACTUAL] " : ""}
-                      {o.title} — {o.company}
-                    </option>
-                  ))}
-                </select>
+          {/* VISUAL EXECUTIVE SELECTOR TOGGLE CARDS */}
+          <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+            <h2 className="text-xs font-black uppercase tracking-wider text-foreground">
+              Selecciona los 2 Puestos a Comparar Frente a Frente:
+            </h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Position 1 (Base / Left) Toggle Section */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase text-muted-foreground block">
+                  PUESTO #1 (BASE / IZQUIERDA):
+                </span>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {offers.map((offer) => {
+                    const isSelected = offer.id === offerIdA;
+                    return (
+                      <button
+                        key={`a_${offer.id}`}
+                        onClick={() => setOfferIdA(offer.id)}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex justify-between items-center ${
+                          isSelected
+                            ? "bg-muted text-foreground border-primary font-black shadow-2xs ring-1 ring-primary/20"
+                            : "bg-background/60 text-muted-foreground border-border hover:border-muted-foreground/40"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black">{offer.title}</span>
+                            {offer.isCurrent && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md">
+                                [ACTUAL]
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-semibold opacity-80">
+                            {offer.company} • {formatModalityText(offer)}
+                          </p>
+                        </div>
+                        {isSelected && (
+                          <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/10 rounded-md">
+                            SELECCIONADO
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
-              {/* Position B Selector */}
-              <div>
-                <label className="block text-[10px] font-black uppercase text-muted-foreground mb-1">
-                  Puesto #2 (Columna Derecha / A Comparar):
-                </label>
-                <select
-                  value={offerIdB}
-                  onChange={(e) => setOfferIdB(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-black text-xs text-foreground cursor-pointer"
-                >
-                  {offers.map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.isCurrent ? "[ACTUAL] " : ""}
-                      {o.title} — {o.company}
-                    </option>
-                  ))}
-                </select>
+              {/* Position 2 (Comparison / Right) Toggle Section */}
+              <div className="space-y-2">
+                <span className="text-[10px] font-black uppercase text-muted-foreground block">
+                  PUESTO #2 (COMPARAR / DERECHA):
+                </span>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {offers.map((offer) => {
+                    const isSelected = offer.id === offerIdB;
+                    return (
+                      <button
+                        key={`b_${offer.id}`}
+                        onClick={() => setOfferIdB(offer.id)}
+                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex justify-between items-center ${
+                          isSelected
+                            ? "bg-primary/10 text-foreground border-primary font-black shadow-2xs ring-1 ring-primary/30"
+                            : "bg-background/60 text-muted-foreground border-border hover:border-muted-foreground/40"
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black">{offer.title}</span>
+                            {offer.isCurrent && (
+                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md">
+                                [ACTUAL]
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] font-semibold opacity-80">
+                            {offer.company} • {formatModalityText(offer)}
+                          </p>
+                        </div>
+                        {isSelected && (
+                          <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/15 rounded-md">
+                            SELECCIONADO
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
             {/* Granular Filtering Control Row */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+            <div className="pt-3 border-t border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-muted-foreground uppercase text-[10px]">
-                  Filtrar Comparativa:
+                  Filtrar Conceptos:
                 </span>
                 <div className="flex bg-muted p-0.5 rounded-xl border border-border">
                   <button
@@ -751,7 +809,7 @@ export function JobOfferEvaluatorModule() {
             <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-muted text-muted-foreground rounded-md border border-border">
-                  {selectedOfferA?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #1]"}
+                  {selectedOfferA?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #1 - BASE]"}
                 </span>
                 <span className="text-xs font-black text-primary">
                   {evalResultA?.compositeScore || 0} / 100 PTS
@@ -778,7 +836,7 @@ export function JobOfferEvaluatorModule() {
             <div className="bg-card rounded-2xl border border-primary/50 ring-1 ring-primary/20 p-4 space-y-2">
               <div className="flex justify-between items-center">
                 <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-primary text-primary-foreground rounded-md">
-                  {selectedOfferB?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #2]"}
+                  {selectedOfferB?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #2 - A COMPARAR]"}
                 </span>
                 <span className="text-xs font-black text-primary">
                   {evalResultB?.compositeScore || 0} / 100 PTS
@@ -825,7 +883,7 @@ export function JobOfferEvaluatorModule() {
             </div>
           </div>
 
-          {/* DETAILED CONCEPT-BY-CONCEPT COMPARISON (ROW BY ROW) */}
+          {/* PARALLEL CONCEPT-BY-CONCEPT COMPARISON MATRIX */}
           <div className="space-y-4">
             {groupedConcepts.map(({ group, concepts: groupConcepts }) => (
               <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -839,7 +897,7 @@ export function JobOfferEvaluatorModule() {
                   </span>
                 </div>
 
-                {/* Concept Rows */}
+                {/* Concept Rows - Strict Parallel Alignment */}
                 <div className="divide-y divide-border/60">
                   {groupConcepts.map((concept) => {
                     const valA = selectedOfferA?.values[concept.id];
@@ -853,9 +911,9 @@ export function JobOfferEvaluatorModule() {
                     const diffMon = monB - monA;
 
                     return (
-                      <div key={concept.id} className="p-4 space-y-3">
-                        {/* Concept Title & Weight Row */}
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                      <div key={concept.id} className="p-4 space-y-2">
+                        {/* Row Header: Concept Title & Description */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1">
                           <div className="flex items-center gap-2">
                             <span className="text-xs font-black text-foreground">
                               {concept.name}
@@ -872,56 +930,100 @@ export function JobOfferEvaluatorModule() {
                           )}
                         </div>
 
-                        {/* 2-COLUMN SIDE BY SIDE DATA FOR THIS CONCEPT */}
+                        {/* STRICT PARALLEL 2-COLUMN LAYOUT */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                          {/* Column 1 Data */}
-                          <div className="bg-muted/30 rounded-xl p-3 border border-border space-y-1">
-                            <div className="text-[9px] font-extrabold uppercase text-muted-foreground">
-                              {selectedOfferA?.title}:
+                          {/* Left Column: Position 1 Value */}
+                          <div
+                            className={`rounded-xl p-3 border space-y-1 ${
+                              valA !== undefined && valA !== null && valA !== 0 && valA !== false
+                                ? "bg-muted/30 border-border"
+                                : "bg-muted/10 border-border/40 opacity-70"
+                            }`}
+                          >
+                            <div className="text-[9px] font-extrabold uppercase text-muted-foreground flex justify-between">
+                              <span>{selectedOfferA?.title}</span>
+                              <span className="font-semibold text-muted-foreground/80">Puesto #1</span>
                             </div>
-                            <div className="flex justify-between items-center font-black text-foreground">
-                              <span>Valor:</span>
-                              <span>{formatValue(concept, valA)}</span>
+
+                            <div className="flex justify-between items-center font-black text-foreground pt-0.5">
+                              <span className="text-muted-foreground font-semibold text-[11px]">Valor:</span>
+                              <span
+                                className={
+                                  valA !== undefined && valA !== null && valA !== 0 && valA !== false
+                                    ? "text-foreground"
+                                    : "text-muted-foreground/80 italic font-medium"
+                                }
+                              >
+                                {formatValue(concept, valA)}
+                              </span>
                             </div>
+
                             {monA > 0 && concept.unit !== "EUR_YEAR" && (
                               <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
                                 <span>Aporte Percibido:</span>
                                 <span>+{formatCurrency(monA)}/año</span>
                               </div>
                             )}
-                            {noteA && (
+
+                            {noteA ? (
                               <p className="text-[10px] font-normal text-muted-foreground italic bg-background/60 p-1.5 rounded-md border border-border/40 mt-1">
                                 "{noteA}"
                               </p>
+                            ) : (
+                              <span className="text-[9px] text-muted-foreground/60 italic block pt-0.5">
+                                Sin nota de justificación
+                              </span>
                             )}
                           </div>
 
-                          {/* Column 2 Data */}
-                          <div className="bg-muted/30 rounded-xl p-3 border border-border space-y-1">
-                            <div className="text-[9px] font-extrabold uppercase text-muted-foreground">
-                              {selectedOfferB?.title}:
+                          {/* Right Column: Position 2 Value */}
+                          <div
+                            className={`rounded-xl p-3 border space-y-1 ${
+                              valB !== undefined && valB !== null && valB !== 0 && valB !== false
+                                ? "bg-primary/5 border-primary/30"
+                                : "bg-muted/10 border-border/40 opacity-70"
+                            }`}
+                          >
+                            <div className="text-[9px] font-extrabold uppercase text-muted-foreground flex justify-between">
+                              <span>{selectedOfferB?.title}</span>
+                              <span className="font-semibold text-primary">Puesto #2</span>
                             </div>
-                            <div className="flex justify-between items-center font-black text-foreground">
-                              <span>Valor:</span>
-                              <span>{formatValue(concept, valB)}</span>
+
+                            <div className="flex justify-between items-center font-black text-foreground pt-0.5">
+                              <span className="text-muted-foreground font-semibold text-[11px]">Valor:</span>
+                              <span
+                                className={
+                                  valB !== undefined && valB !== null && valB !== 0 && valB !== false
+                                    ? "text-foreground"
+                                    : "text-muted-foreground/80 italic font-medium"
+                                }
+                              >
+                                {formatValue(concept, valB)}
+                              </span>
                             </div>
+
                             {monB > 0 && concept.unit !== "EUR_YEAR" && (
                               <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
                                 <span>Aporte Percibido:</span>
                                 <span>+{formatCurrency(monB)}/año</span>
                               </div>
                             )}
-                            {noteB && (
+
+                            {noteB ? (
                               <p className="text-[10px] font-normal text-muted-foreground italic bg-background/60 p-1.5 rounded-md border border-border/40 mt-1">
                                 "{noteB}"
                               </p>
+                            ) : (
+                              <span className="text-[9px] text-muted-foreground/60 italic block pt-0.5">
+                                Sin nota de justificación
+                              </span>
                             )}
                           </div>
                         </div>
 
-                        {/* Delta / Difference row */}
+                        {/* Delta / Difference line below parallel cards */}
                         {diffMon !== 0 && concept.unit !== "EUR_YEAR" && (
-                          <div className="text-right text-[11px] font-black">
+                          <div className="text-right text-[11px] font-black pt-1">
                             <span
                               className={`px-2 py-0.5 rounded-md ${
                                 diffMon > 0
@@ -961,7 +1063,7 @@ export function JobOfferEvaluatorModule() {
                       -{formatCurrency(commuteCostA)}/año
                     </div>
                     <span className="text-[10px] text-muted-foreground font-semibold block">
-                      {selectedOfferA?.commuteKmOneWay} km ida • {selectedOfferA?.commuteFuelL100} L/100km @ {selectedOfferA?.fuelPriceEurL} €/L
+                      {selectedOfferA?.commuteKmOneWay || 0} km ida • {selectedOfferA?.commuteFuelL100 || 0} L/100km @ {selectedOfferA?.fuelPriceEurL || 0} €/L
                     </span>
                   </div>
 
@@ -973,7 +1075,7 @@ export function JobOfferEvaluatorModule() {
                       -{formatCurrency(commuteCostB)}/año
                     </div>
                     <span className="text-[10px] text-muted-foreground font-semibold block">
-                      {selectedOfferB?.commuteKmOneWay} km ida • {selectedOfferB?.commuteFuelL100} L/100km @ {selectedOfferB?.fuelPriceEurL} €/L
+                      {selectedOfferB?.commuteKmOneWay || 0} km ida • {selectedOfferB?.commuteFuelL100 || 0} L/100km @ {selectedOfferB?.fuelPriceEurL || 0} €/L
                     </span>
                   </div>
                 </div>
