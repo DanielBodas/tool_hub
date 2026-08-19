@@ -160,6 +160,9 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     isCurrent: true,
     status: "current",
     notes: "Mi posición actual. Conozco el equipo y los procesos.",
+    commuteKmOneWay: 25,
+    commuteFuelL100: 6.8,
+    fuelPriceEurL: 1.55,
     values: {
       c_salary_base: 45000,
       c_bonus_annual: 3000,
@@ -182,6 +185,9 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     isCurrent: false,
     status: "received",
     notes: "Oferta formal recibida. 100% en remoto, excelente paquete de beneficios.",
+    commuteKmOneWay: 0,
+    commuteFuelL100: 6.5,
+    fuelPriceEurL: 1.55,
     values: {
       c_salary_base: 58000,
       c_bonus_annual: 6000,
@@ -204,6 +210,9 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     isCurrent: false,
     status: "negotiating",
     notes: "Segunda ronda finalizada. Salario base más alto, requiere presencia física.",
+    commuteKmOneWay: 18,
+    commuteFuelL100: 7.2,
+    fuelPriceEurL: 1.55,
     values: {
       c_salary_base: 64000,
       c_bonus_annual: 8000,
@@ -220,7 +229,27 @@ export const DEFAULT_OFFERS: JobOffer[] = [
   },
 ];
 
-// Calculation engine functions
+export function calculateCommuteAnnualExpense(offer: JobOffer): number {
+  const kmOneWay = offer.commuteKmOneWay || 0;
+  if (kmOneWay <= 0) return 0;
+
+  const teleworkDays = typeof offer.values["c_telework"] === "number" ? offer.values["c_telework"] : 0;
+  const presencialDaysPerWeek = Math.max(0, 5 - teleworkDays);
+  if (presencialDaysPerWeek <= 0) return 0;
+
+  const workingWeeksPerYear = 44; // 220 working days / 5 = 44 weeks
+  const presencialDaysPerYear = presencialDaysPerWeek * workingWeeksPerYear;
+
+  const kmPerYear = presencialDaysPerYear * (kmOneWay * 2);
+  const fuelL100 = offer.commuteFuelL100 || 6.5;
+  const fuelPriceEurL = offer.fuelPriceEurL || 1.55;
+
+  const totalLitres = (kmPerYear / 100) * fuelL100;
+  const annualCost = totalLitres * fuelPriceEurL;
+
+  return Math.round(annualCost);
+}
+
 export function calculateConceptMonetaryValue(
   concept: Concept,
   rawValue: number | boolean | undefined
@@ -336,6 +365,13 @@ export function evaluateJobOffers(
         groupResultsMap[concept.groupId].weightSum += weight;
       }
     });
+
+    // Subtract car commute fuel expenses
+    const commuteExpense = calculateCommuteAnnualExpense(offer);
+    totalMonetary -= commuteExpense;
+    if (groupResultsMap["g_flexibility"]) {
+      groupResultsMap["g_flexibility"].totalMonetary -= commuteExpense;
+    }
 
     const compositeScore =
       totalWeights > 0 ? Math.round((weightedScoreSum / (totalWeights * 10)) * 100) : 0;

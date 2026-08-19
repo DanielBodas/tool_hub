@@ -1,0 +1,26 @@
+[
+  {
+    "id": "g_direct",
+    "name": "Retribución Directa",
+    "description": "Salario, bonus y compensaciones económicas líquidas o directas",
+    "color": "emerald"
+  },
+  {
+    "id": "g_flexibility",
+    "name": "Flexibilidad y Conciliación",
+    "description": "Teletrabajo, vacaciones y tiempos de desplazamiento",
+    "color": "indigo"
+  },
+  {
+    "id": "g_benefits",
+    "name": "Beneficios y Salud",
+    "description": "Seguros médicos, planes de pensiones y cheques beneficio",
+    "color": "blue"
+  },
+  {
+    "id": "g_culture",
+    "name": "Cultura y Futuro",
+    "description": "Desarrollo profesional, ambiente de equipo y proyección",
+    "color": "amber"
+  }
+]

@@ -16,6 +16,7 @@ import {
   DEFAULT_OFFERS,
   evaluateJobOffers,
   calculateConceptMonetaryValue,
+  calculateCommuteAnnualExpense,
 } from "./initialData";
 
 type ActiveTab = "comparison" | "offers" | "settings";
@@ -41,7 +42,12 @@ export function JobOfferEvaluatorModule() {
   const [offerValues, setOfferValues] = useState<Record<string, number | boolean>>({});
   const [offerConceptNotes, setOfferConceptNotes] = useState<Record<string, string>>({});
 
-  // Concept Modal State (For adding/editing custom concepts)
+  // Commute Car Inputs
+  const [offerCommuteKm, setOfferCommuteKm] = useState<number>(0);
+  const [offerCommuteFuelL100, setOfferCommuteFuelL100] = useState<number>(6.5);
+  const [offerFuelPriceEurL, setOfferFuelPriceEurL] = useState<number>(1.55);
+
+  // Concept Modal State
   const [showConceptModal, setShowConceptModal] = useState<boolean>(false);
   const [editingConcept, setEditingConcept] = useState<Concept | null>(null);
   const [conceptName, setConceptName] = useState<string>("");
@@ -160,6 +166,9 @@ export function JobOfferEvaluatorModule() {
       setOfferStatus(offerToEdit.status);
       setOfferValues(offerToEdit.values || {});
       setOfferConceptNotes(offerToEdit.conceptNotes || {});
+      setOfferCommuteKm(offerToEdit.commuteKmOneWay || 0);
+      setOfferCommuteFuelL100(offerToEdit.commuteFuelL100 || 6.5);
+      setOfferFuelPriceEurL(offerToEdit.fuelPriceEurL || 1.55);
     } else {
       setEditingOffer(null);
       setOfferTitle("");
@@ -175,6 +184,9 @@ export function JobOfferEvaluatorModule() {
       });
       setOfferValues(initialVals);
       setOfferConceptNotes({});
+      setOfferCommuteKm(0);
+      setOfferCommuteFuelL100(6.5);
+      setOfferFuelPriceEurL(1.55);
     }
     setShowOfferModal(true);
   };
@@ -205,6 +217,9 @@ export function JobOfferEvaluatorModule() {
       status: offerIsCurrent ? "current" : offerStatus,
       values: offerValues,
       conceptNotes: offerConceptNotes,
+      commuteKmOneWay: Number(offerCommuteKm),
+      commuteFuelL100: Number(offerCommuteFuelL100),
+      fuelPriceEurL: Number(offerFuelPriceEurL),
       updatedAt: new Date().toISOString(),
     };
 
@@ -224,6 +239,23 @@ export function JobOfferEvaluatorModule() {
       saveData(updated, concepts, groups);
     }
   };
+
+  // Live estimated commute cost in modal
+  const liveCommuteCost = useMemo(() => {
+    const tempOffer: JobOffer = {
+      id: "temp",
+      title: "",
+      company: "",
+      location: "",
+      isCurrent: false,
+      status: "received",
+      values: offerValues,
+      commuteKmOneWay: Number(offerCommuteKm),
+      commuteFuelL100: Number(offerCommuteFuelL100),
+      fuelPriceEurL: Number(offerFuelPriceEurL),
+    };
+    return calculateCommuteAnnualExpense(tempOffer);
+  }, [offerValues, offerCommuteKm, offerCommuteFuelL100, offerFuelPriceEurL]);
 
   // Concept Modal Handlers
   const handleOpenConceptModal = (conceptToEdit?: Concept) => {
@@ -405,7 +437,7 @@ export function JobOfferEvaluatorModule() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: STREAMLINED COMPARISON VIEW WITH CONCEPT JUSTIFICATIONS           */}
+      {/* TAB 1: STREAMLINED COMPARISON VIEW WITH CAR COMMUTE BREAKDOWN             */}
       {/* ========================================================================= */}
       {activeTab === "comparison" && (
         <div className="space-y-4">
@@ -415,6 +447,7 @@ export function JobOfferEvaluatorModule() {
               const offerObj = offers.find((o) => o.id === result.offerId);
               const isCurrent = result.isCurrent;
               const isWinner = result.rank === 1 && !isCurrent;
+              const commuteCost = offerObj ? calculateCommuteAnnualExpense(offerObj) : 0;
 
               return (
                 <div
@@ -462,7 +495,7 @@ export function JobOfferEvaluatorModule() {
                     {/* KEY FINANCIAL HIGHLIGHT */}
                     <div className="bg-muted/40 rounded-xl p-3 border border-border/60 mb-3 text-center">
                       <span className="text-[9px] font-extrabold text-muted-foreground uppercase tracking-wider block">
-                        Valor Percibido Total (Salario + Beneficios)
+                        Valor Percibido Total (Neto Combustible)
                       </span>
                       <div className="text-xl font-black text-foreground mt-0.5">
                         {formatCurrency(result.totalMonetaryValue)}
@@ -523,6 +556,23 @@ export function JobOfferEvaluatorModule() {
                           </div>
                         );
                       })}
+
+                      {/* Commute Car Expense Line Item */}
+                      {commuteCost > 0 && (
+                        <div className="py-1.5 border-b border-border/40 bg-rose-500/10 p-2 rounded-lg border border-rose-500/20">
+                          <div className="flex justify-between items-center font-black">
+                            <span className="text-rose-600 dark:text-rose-400 uppercase text-[10px]">
+                              Gasto Combustible Coche
+                            </span>
+                            <span className="text-rose-600 dark:text-rose-400">
+                              -{formatCurrency(commuteCost)}/año
+                            </span>
+                          </div>
+                          <span className="text-[9px] text-muted-foreground font-semibold block mt-0.5">
+                            {offerObj?.commuteKmOneWay} km ida • Consumo {offerObj?.commuteFuelL100} L/100km @ {offerObj?.fuelPriceEurL} €/L
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -565,7 +615,7 @@ export function JobOfferEvaluatorModule() {
                 Gestión de Puestos y Ofertas
               </h2>
               <p className="text-xs text-muted-foreground font-semibold">
-                Añade o edita los parámetros y justificaciones de cada oferta
+                Añade o edita los parámetros, desplazamiento en coche y justificaciones
               </p>
             </div>
             <button
@@ -710,7 +760,7 @@ export function JobOfferEvaluatorModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: EDIT / ADD OFFER WITH JUSTIFICATION PER CONCEPT                   */}
+      {/* MODAL: EDIT / ADD OFFER WITH CAR COMMUTE CALCULATOR                       */}
       {/* ========================================================================= */}
       {showOfferModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
@@ -777,6 +827,63 @@ export function JobOfferEvaluatorModule() {
                   />
                   ¿Es tu puesto de trabajo actual? (Punto de partida)
                 </label>
+              </div>
+            </div>
+
+            {/* DEDICATED CAR COMMUTE CALCULATOR SECTION */}
+            <div className="bg-muted/40 p-3 rounded-xl border border-border space-y-2">
+              <div className="flex justify-between items-center">
+                <h4 className="font-black uppercase text-foreground text-xs">
+                  Cálculo de Desplazamiento en Coche (Gasolina / Diésel):
+                </h4>
+                {liveCommuteCost > 0 && (
+                  <span className="text-xs font-black text-rose-500 bg-rose-500/10 px-2 py-0.5 rounded-md border border-rose-500/20">
+                    Gasto Combustible: -{formatCurrency(liveCommuteCost)}/año
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-0.5">
+                    Distancia Ida (km)
+                  </label>
+                  <input
+                    type="number"
+                    min={0}
+                    value={offerCommuteKm}
+                    onChange={(e) => setOfferCommuteKm(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-0.5">
+                    Consumo (L/100km)
+                  </label>
+                  <input
+                    type="number"
+                    step={0.1}
+                    min={0}
+                    value={offerCommuteFuelL100}
+                    onChange={(e) => setOfferCommuteFuelL100(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-muted-foreground uppercase mb-0.5">
+                    Precio Combustible (€/L)
+                  </label>
+                  <input
+                    type="number"
+                    step={0.01}
+                    min={0}
+                    value={offerFuelPriceEurL}
+                    onChange={(e) => setOfferFuelPriceEurL(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                  />
+                </div>
               </div>
             </div>
 

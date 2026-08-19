@@ -46,6 +46,9 @@ export interface JobOffer {
   notes?: string;
   values: Record<string, number | boolean>;
   conceptNotes?: Record<string, string>; // Justification / notes per concept value
+  commuteKmOneWay?: number;               // Distance in km (one-way)
+  commuteFuelL100?: number;              // Car fuel consumption in L/100km
+  fuelPriceEurL?: number;                // Fuel price in €/L
   createdAt?: string;
   updatedAt?: string;
 }
