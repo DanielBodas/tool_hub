@@ -36,11 +36,15 @@ export type OfferStatus =
   | "accepted"      // Oferta Aceptada
   | "discarded";    // Descartada
 
+export type WorkModality = "presencial" | "hibrido" | "remoto";
+
 export interface JobOffer {
   id: string;
   title: string;
   company: string;
-  location: string;
+  location: string;                       // City / Location
+  workModality?: WorkModality;            // Structured Modality
+  officeDaysPerWeek?: number;             // On-site days (0 for remote, 5 for office, 1-4 for hybrid)
   isCurrent: boolean;
   status: OfferStatus;
   notes?: string;

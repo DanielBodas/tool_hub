@@ -9,6 +9,7 @@ import {
   UnitType,
   CalculationType,
   OfferStatus,
+  WorkModality,
 } from "./types";
 import {
   DEFAULT_GROUPS,
@@ -47,6 +48,8 @@ export function JobOfferEvaluatorModule() {
   const [offerTitle, setOfferTitle] = useState<string>("");
   const [offerCompany, setOfferCompany] = useState<string>("");
   const [offerLocation, setOfferLocation] = useState<string>("");
+  const [offerWorkModality, setOfferWorkModality] = useState<WorkModality>("hibrido");
+  const [offerOfficeDays, setOfferOfficeDays] = useState<number>(3);
   const [offerIsCurrent, setOfferIsCurrent] = useState<boolean>(false);
   const [offerStatus, setOfferStatus] = useState<OfferStatus>("received");
   const [offerValues, setOfferValues] = useState<Record<string, number | boolean>>({});
@@ -230,13 +233,31 @@ export function JobOfferEvaluatorModule() {
       }));
   }, [groups, filteredConcepts]);
 
+  // Modality helper formatter
+  const formatModalityText = (offer?: JobOffer) => {
+    if (!offer) return "";
+    const city = offer.location ? `${offer.location} • ` : "";
+    if (offer.workModality === "remoto") return `${city}100% Remoto`;
+    if (offer.workModality === "presencial") return `${city}100% Presencial (5d oficina)`;
+    if (offer.workModality === "hibrido") {
+      const office = offer.officeDaysPerWeek !== undefined ? offer.officeDaysPerWeek : 3;
+      const remote = Math.max(0, 5 - office);
+      return `${city}Híbrido (${office}d oficina / ${remote}d teletrabajo)`;
+    }
+    return offer.location || "";
+  };
+
   // Handle Offer Modal
   const handleOpenOfferModal = (offerToEdit?: JobOffer) => {
     if (offerToEdit) {
       setEditingOffer(offerToEdit);
       setOfferTitle(offerToEdit.title);
       setOfferCompany(offerToEdit.company);
-      setOfferLocation(offerToEdit.location);
+      setOfferLocation(offerToEdit.location || "");
+      setOfferWorkModality(offerToEdit.workModality || "hibrido");
+      setOfferOfficeDays(
+        offerToEdit.officeDaysPerWeek !== undefined ? offerToEdit.officeDaysPerWeek : 3
+      );
       setOfferIsCurrent(offerToEdit.isCurrent);
       setOfferStatus(offerToEdit.status);
       setOfferValues(offerToEdit.values || {});
@@ -248,14 +269,20 @@ export function JobOfferEvaluatorModule() {
       setEditingOffer(null);
       setOfferTitle("");
       setOfferCompany("");
-      setOfferLocation("");
+      setOfferLocation("Madrid");
+      setOfferWorkModality("hibrido");
+      setOfferOfficeDays(3);
       setOfferIsCurrent(offers.length === 0);
       setOfferStatus("received");
-      const initialVals: Record<string, number | boolean> = {};
+      const initialVals: Record<string, number | boolean> = {
+        c_telework: 2,
+      };
       concepts.forEach((c) => {
-        if (c.unit === "BOOLEAN") initialVals[c.id] = false;
-        else if (c.unit === "SCORE_10") initialVals[c.id] = 5;
-        else initialVals[c.id] = 0;
+        if (initialVals[c.id] === undefined) {
+          if (c.unit === "BOOLEAN") initialVals[c.id] = false;
+          else if (c.unit === "SCORE_10") initialVals[c.id] = 5;
+          else initialVals[c.id] = 0;
+        }
       });
       setOfferValues(initialVals);
       setOfferConceptNotes({});
@@ -264,6 +291,32 @@ export function JobOfferEvaluatorModule() {
       setOfferFuelPriceEurL(1.55);
     }
     setShowOfferModal(true);
+  };
+
+  const handleModalityChange = (modality: WorkModality) => {
+    setOfferWorkModality(modality);
+    let officeDays = 0;
+    if (modality === "presencial") officeDays = 5;
+    else if (modality === "hibrido") officeDays = offerOfficeDays || 3;
+    else if (modality === "remoto") officeDays = 0;
+
+    setOfferOfficeDays(officeDays);
+
+    // Auto update c_telework value
+    const teleworkDays = Math.max(0, 5 - officeDays);
+    setOfferValues((prev) => ({
+      ...prev,
+      c_telework: teleworkDays,
+    }));
+  };
+
+  const handleOfficeDaysChange = (days: number) => {
+    setOfferOfficeDays(days);
+    const teleworkDays = Math.max(0, 5 - days);
+    setOfferValues((prev) => ({
+      ...prev,
+      c_telework: teleworkDays,
+    }));
   };
 
   const handleSaveOffer = () => {
@@ -282,15 +335,34 @@ export function JobOfferEvaluatorModule() {
       }));
     }
 
+    const calculatedTelework =
+      offerWorkModality === "remoto"
+        ? 5
+        : offerWorkModality === "presencial"
+        ? 0
+        : Math.max(0, 5 - offerOfficeDays);
+
+    const finalValues = {
+      ...offerValues,
+      c_telework: calculatedTelework,
+    };
+
     const offerId = editingOffer ? editingOffer.id : `offer_${Date.now()}`;
     const newOffer: JobOffer = {
       id: offerId,
       title: offerTitle,
       company: offerCompany,
       location: offerLocation,
+      workModality: offerWorkModality,
+      officeDaysPerWeek:
+        offerWorkModality === "remoto"
+          ? 0
+          : offerWorkModality === "presencial"
+          ? 5
+          : offerOfficeDays,
       isCurrent: offerIsCurrent,
       status: offerIsCurrent ? "current" : offerStatus,
-      values: offerValues,
+      values: finalValues,
       conceptNotes: offerConceptNotes,
       commuteKmOneWay: Number(offerCommuteKm),
       commuteFuelL100: Number(offerCommuteFuelL100),
@@ -321,7 +393,14 @@ export function JobOfferEvaluatorModule() {
       id: "temp",
       title: "",
       company: "",
-      location: "",
+      location: offerLocation,
+      workModality: offerWorkModality,
+      officeDaysPerWeek:
+        offerWorkModality === "remoto"
+          ? 0
+          : offerWorkModality === "presencial"
+          ? 5
+          : offerOfficeDays,
       isCurrent: false,
       status: "received",
       values: offerValues,
@@ -330,7 +409,15 @@ export function JobOfferEvaluatorModule() {
       fuelPriceEurL: Number(offerFuelPriceEurL),
     };
     return calculateCommuteAnnualExpense(tempOffer);
-  }, [offerValues, offerCommuteKm, offerCommuteFuelL100, offerFuelPriceEurL]);
+  }, [
+    offerLocation,
+    offerWorkModality,
+    offerOfficeDays,
+    offerValues,
+    offerCommuteKm,
+    offerCommuteFuelL100,
+    offerFuelPriceEurL,
+  ]);
 
   // Concept Modal Handlers
   const handleOpenConceptModal = (conceptToEdit?: Concept) => {
@@ -673,7 +760,7 @@ export function JobOfferEvaluatorModule() {
               <div>
                 <h2 className="text-base font-black text-foreground">{selectedOfferA?.title}</h2>
                 <p className="text-xs font-bold text-muted-foreground">
-                  {selectedOfferA?.company} {selectedOfferA?.location ? `• ${selectedOfferA.location}` : ""}
+                  {selectedOfferA?.company} • {formatModalityText(selectedOfferA)}
                 </p>
               </div>
 
@@ -700,7 +787,7 @@ export function JobOfferEvaluatorModule() {
               <div>
                 <h2 className="text-base font-black text-foreground">{selectedOfferB?.title}</h2>
                 <p className="text-xs font-bold text-muted-foreground">
-                  {selectedOfferB?.company} {selectedOfferB?.location ? `• ${selectedOfferB.location}` : ""}
+                  {selectedOfferB?.company} • {formatModalityText(selectedOfferB)}
                 </p>
               </div>
 
@@ -945,7 +1032,7 @@ export function JobOfferEvaluatorModule() {
                     {result.offerTitle}
                   </h3>
                   <p className="text-xs font-bold text-muted-foreground truncate mb-3">
-                    {result.company} {offerObj?.location ? `• ${offerObj.location}` : ""}
+                    {result.company} • {formatModalityText(offerObj)}
                   </p>
 
                   <div className="bg-muted/40 rounded-xl p-3 border border-border/60 mb-3 text-center">
@@ -1046,7 +1133,7 @@ export function JobOfferEvaluatorModule() {
                     )}
                   </div>
                   <p className="text-xs font-semibold text-muted-foreground">
-                    {offer.company} • {offer.location || "Sin ubicación"}
+                    {offer.company} • {formatModalityText(offer)}
                   </p>
                 </div>
 
@@ -1208,18 +1295,58 @@ export function JobOfferEvaluatorModule() {
 
               <div>
                 <label className="block font-black text-foreground uppercase mb-1">
-                  Ubicación / Modalidad
+                  Ciudad / Sede
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej. Madrid (Remoto)"
+                  placeholder="Ej. Madrid, Barcelona..."
                   value={offerLocation}
                   onChange={(e) => setOfferLocation(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
                 />
               </div>
 
-              <div className="flex items-center pt-5">
+              <div>
+                <label className="block font-black text-foreground uppercase mb-1">
+                  Modalidad de Trabajo *
+                </label>
+                <select
+                  value={offerWorkModality}
+                  onChange={(e) => handleModalityChange(e.target.value as WorkModality)}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground cursor-pointer"
+                >
+                  <option value="presencial">100% Presencial (5d oficina)</option>
+                  <option value="hibrido">Híbrido (Oficina + Teletrabajo)</option>
+                  <option value="remoto">100% Remoto (0d oficina)</option>
+                </select>
+              </div>
+
+              {/* Hybrid Days Selector */}
+              {offerWorkModality === "hibrido" && (
+                <div className="sm:col-span-2 bg-muted/30 p-3 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <label className="block font-black text-foreground uppercase text-xs mb-0.5">
+                      Días de Oficina a la Semana:
+                    </label>
+                    <span className="text-[10px] text-muted-foreground font-semibold block">
+                      Determina los viajes presenciales y auto-calcula los días de teletrabajo.
+                    </span>
+                  </div>
+
+                  <select
+                    value={offerOfficeDays}
+                    onChange={(e) => handleOfficeDaysChange(Number(e.target.value))}
+                    className="px-3 py-1.5 rounded-xl border border-border bg-background font-black text-foreground cursor-pointer text-xs shrink-0"
+                  >
+                    <option value={1}>1 día oficina / 4 días teletrabajo</option>
+                    <option value={2}>2 días oficina / 3 días teletrabajo</option>
+                    <option value={3}>3 días oficina / 2 días teletrabajo</option>
+                    <option value={4}>4 días oficina / 1 día teletrabajo</option>
+                  </select>
+                </div>
+              )}
+
+              <div className="sm:col-span-2 flex items-center pt-2">
                 <label className="flex items-center gap-2 font-black text-emerald-600 dark:text-emerald-400 cursor-pointer">
                   <input
                     type="checkbox"

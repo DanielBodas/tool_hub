@@ -156,7 +156,9 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     id: "puesto_actual",
     title: "Senior Developer",
     company: "Empresa Actual S.L.",
-    location: "Madrid (Híbrido 3d presencial)",
+    location: "Madrid",
+    workModality: "hibrido",
+    officeDaysPerWeek: 3,
     isCurrent: true,
     status: "current",
     notes: "Mi posición actual. Conozco el equipo y los procesos.",
@@ -181,7 +183,9 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     id: "oferta_tech_corp",
     title: "Lead Software Engineer",
     company: "Global Tech Solutions",
-    location: "Madrid (Remoto 100%)",
+    location: "Madrid",
+    workModality: "remoto",
+    officeDaysPerWeek: 0,
     isCurrent: false,
     status: "received",
     notes: "Oferta formal recibida. 100% en remoto, excelente paquete de beneficios.",
@@ -206,7 +210,9 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     id: "oferta_fintech",
     title: "Senior Systems Architect",
     company: "Fintech Innovators",
-    location: "Madrid (Presencial 3d)",
+    location: "Madrid",
+    workModality: "hibrido",
+    officeDaysPerWeek: 3,
     isCurrent: false,
     status: "negotiating",
     notes: "Segunda ronda finalizada. Salario base más alto, requiere presencia física.",
@@ -233,8 +239,20 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   const kmOneWay = offer.commuteKmOneWay || 0;
   if (kmOneWay <= 0) return 0;
 
-  const teleworkDays = typeof offer.values["c_telework"] === "number" ? offer.values["c_telework"] : 0;
-  const presencialDaysPerWeek = Math.max(0, 5 - teleworkDays);
+  // Determine presencial office days per week
+  let presencialDaysPerWeek = 0;
+  if (offer.workModality === "remoto") {
+    presencialDaysPerWeek = 0;
+  } else if (offer.workModality === "presencial") {
+    presencialDaysPerWeek = 5;
+  } else if (offer.workModality === "hibrido") {
+    presencialDaysPerWeek = offer.officeDaysPerWeek !== undefined ? offer.officeDaysPerWeek : 3;
+  } else {
+    // Fallback based on c_telework
+    const teleworkDays = typeof offer.values["c_telework"] === "number" ? offer.values["c_telework"] : 0;
+    presencialDaysPerWeek = Math.max(0, 5 - teleworkDays);
+  }
+
   if (presencialDaysPerWeek <= 0) return 0;
 
   const workingWeeksPerYear = 44; // 220 working days / 5 = 44 weeks
