@@ -28,7 +28,9 @@ import {
   Layers,
   Check,
   Calculator,
-  ArrowRight
+  ArrowRight,
+  Palette,
+  Star
 } from "lucide-react";
 import {
   getWHOPercentilesAtAge,
@@ -64,19 +66,24 @@ interface ClothingPreset {
   label: string;
 }
 
-// Fixed distinct colors for weighing sites/scales
+// Distinct colors for weighing sites/scales
 const COLOR_PALETTE = [
   { text: "text-indigo-500", border: "border-indigo-500", bg: "bg-indigo-500/10", fill: "rgb(99, 102, 241)", hex: "#6366f1" },
   { text: "text-emerald-500", border: "border-emerald-500", bg: "bg-emerald-500/10", fill: "rgb(16, 185, 129)", hex: "#10b981" },
   { text: "text-amber-500", border: "border-amber-500", bg: "bg-amber-500/10", fill: "rgb(245, 158, 11)", hex: "#f59e0b" },
   { text: "text-rose-500", border: "border-rose-500", bg: "bg-rose-500/10", fill: "rgb(244, 63, 94)", hex: "#f43f5e" },
   { text: "text-violet-500", border: "border-violet-500", bg: "bg-violet-500/10", fill: "rgb(139, 92, 246)", hex: "#8b5cf6" },
-  { text: "text-cyan-500", border: "border-cyan-500", bg: "bg-cyan-500/10", fill: "rgb(6, 182, 212)", hex: "#06b6d4" }
+  { text: "text-cyan-500", border: "border-cyan-500", bg: "bg-cyan-500/10", fill: "rgb(6, 182, 212)", hex: "#06b6d4" },
+  { text: "text-blue-500", border: "border-blue-500", bg: "bg-blue-500/10", fill: "rgb(59, 130, 246)", hex: "#3b82f6" },
+  { text: "text-orange-500", border: "border-orange-500", bg: "bg-orange-500/10", fill: "rgb(249, 115, 22)", hex: "#f97316" },
+  { text: "text-fuchsia-500", border: "border-fuchsia-500", bg: "bg-fuchsia-500/10", fill: "rgb(217, 70, 239)", hex: "#d946ef" },
+  { text: "text-slate-500", border: "border-slate-500", bg: "bg-slate-500/10", fill: "rgb(100, 116, 139)", hex: "#64748b" }
 ];
 
 export function BabyWeightTrackerModule() {
   const [records, setRecords] = useState<WeightRecord[]>([]);
   const [sites, setSites] = useState<string[]>([]);
+  const [siteColorsMap, setSiteColorsMap] = useState<{ [site: string]: string }>({});
   const [clothing, setClothing] = useState<ClothingPreset[]>([]);
   const [blankets, setBlankets] = useState<BlanketPreset[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -173,9 +180,11 @@ export function BabyWeightTrackerModule() {
       .then((data) => {
         setRecords(data.weights || []);
         const loadedSites = data.settings?.sites || [];
+        const loadedSiteColors = data.settings?.siteColors || {};
         const loadedClothing = data.settings?.clothing || [];
         const loadedBlankets = data.settings?.blankets || [];
         setSites(loadedSites);
+        setSiteColorsMap(loadedSiteColors);
         setClothing(loadedClothing);
         setBlankets(loadedBlankets);
         if (data.settings?.birthDate) setBabyBirthDate(data.settings.birthDate);
@@ -203,9 +212,11 @@ export function BabyWeightTrackerModule() {
       .then((data) => {
         setRecords(data.weights || []);
         const loadedSites = data.settings?.sites || [];
+        const loadedSiteColors = data.settings?.siteColors || {};
         const loadedClothing = data.settings?.clothing || [];
         const loadedBlankets = data.settings?.blankets || [];
         setSites(loadedSites);
+        setSiteColorsMap(loadedSiteColors);
         setClothing(loadedClothing);
         setBlankets(loadedBlankets);
         if (data.settings?.birthDate) setBabyBirthDate(data.settings.birthDate);
@@ -220,14 +231,25 @@ export function BabyWeightTrackerModule() {
       });
   }, []);
 
-  // Map scales/sites to distinct colors dynamically
+  // Map scales/sites to distinct colors dynamically (supporting user custom hex)
   const siteColors = useMemo(() => {
     const map: { [site: string]: typeof COLOR_PALETTE[0] } = {};
     sites.forEach((site, index) => {
-      map[site] = COLOR_PALETTE[index % COLOR_PALETTE.length];
+      const customHex = siteColorsMap[site];
+      if (customHex) {
+        map[site] = {
+          text: "",
+          border: "",
+          bg: `${customHex}18`,
+          fill: customHex,
+          hex: customHex
+        };
+      } else {
+        map[site] = COLOR_PALETTE[index % COLOR_PALETTE.length];
+      }
     });
     return map;
-  }, [sites]);
+  }, [sites, siteColorsMap]);
 
   // Preset behavior: adjust margin when clothes preset is chosen
   const handleClothesChange = (presetName: string) => {
@@ -396,7 +418,8 @@ export function BabyWeightTrackerModule() {
     updatedClothing: ClothingPreset[],
     updatedBlankets: BlanketPreset[],
     updatedBirthDate: string = babyBirthDate,
-    updatedSex: "female" | "male" = babySex
+    updatedSex: "female" | "male" = babySex,
+    updatedSiteColorsMap: { [site: string]: string } = siteColorsMap
   ) => {
     try {
       const res = await fetch("/api/baby-weight-tracker", {
@@ -405,6 +428,7 @@ export function BabyWeightTrackerModule() {
         body: JSON.stringify({
           type: "settings",
           sites: updatedSites,
+          siteColors: updatedSiteColorsMap,
           clothing: updatedClothing,
           blankets: updatedBlankets,
           birthDate: updatedBirthDate,
@@ -417,6 +441,7 @@ export function BabyWeightTrackerModule() {
       const data = await res.json();
       if (data.settings) {
         setSites(data.settings.sites);
+        if (data.settings.siteColors) setSiteColorsMap(data.settings.siteColors);
         setClothing(data.settings.clothing);
         setBlankets(data.settings.blankets);
         if (data.settings.birthDate !== undefined) setBabyBirthDate(data.settings.birthDate);
@@ -429,6 +454,19 @@ export function BabyWeightTrackerModule() {
     }
   };
 
+  const handleSetPrimarySite = (siteName: string) => {
+    if (sites[0] === siteName) return;
+    const updatedSites = [siteName, ...sites.filter((s) => s !== siteName)];
+    setSites(updatedSites);
+    handleSaveConfig(updatedSites, clothing, blankets, babyBirthDate, babySex, siteColorsMap);
+  };
+
+  const handleSetSiteColor = (siteName: string, hexColor: string) => {
+    const updatedMap = { ...siteColorsMap, [siteName]: hexColor };
+    setSiteColorsMap(updatedMap);
+    handleSaveConfig(sites, clothing, blankets, babyBirthDate, babySex, updatedMap);
+  };
+
   const handleAddSite = () => {
     if (!newSite.trim()) return;
     if (sites.includes(newSite.trim())) {
@@ -438,13 +476,16 @@ export function BabyWeightTrackerModule() {
     const updated = [...sites, newSite.trim()];
     setSites(updated);
     setNewSite("");
-    handleSaveConfig(updated, clothing, blankets);
+    handleSaveConfig(updated, clothing, blankets, babyBirthDate, babySex, siteColorsMap);
   };
 
   const handleRemoveSite = (siteToRemove: string) => {
     const updated = sites.filter((s) => s !== siteToRemove);
+    const updatedColors = { ...siteColorsMap };
+    delete updatedColors[siteToRemove];
     setSites(updated);
-    handleSaveConfig(updated, clothing, blankets);
+    setSiteColorsMap(updatedColors);
+    handleSaveConfig(updated, clothing, blankets, babyBirthDate, babySex, updatedColors);
   };
 
   const handleStartEditSite = (siteName: string) => {
@@ -485,9 +526,16 @@ export function BabyWeightTrackerModule() {
       );
     }
 
+    const updatedSiteColorsMap = { ...siteColorsMap };
+    if (updatedSiteColorsMap[oldSiteName]) {
+      updatedSiteColorsMap[trimmed] = updatedSiteColorsMap[oldSiteName];
+      delete updatedSiteColorsMap[oldSiteName];
+      setSiteColorsMap(updatedSiteColorsMap);
+    }
+
     setEditingSite(null);
     setEditSiteValue("");
-    handleSaveConfig(updatedSites, clothing, blankets);
+    handleSaveConfig(updatedSites, clothing, blankets, babyBirthDate, babySex, updatedSiteColorsMap);
   };
 
   const handleAddClothing = () => {
@@ -576,7 +624,7 @@ export function BabyWeightTrackerModule() {
   const handleAddBlanket = () => {
     if (!newBlanketName.trim() || !newBlanketMargin) return;
     if (blankets.some((p) => pName(p.name) === pName(newBlanketName))) {
-      alert("Esta manta/trapo ya existe");
+      alert("Este objeto o superficie ya existe");
       return;
     }
     const parsedMargin = parseFloat(newBlanketMargin);
@@ -616,7 +664,7 @@ export function BabyWeightTrackerModule() {
   const handleSaveEditBlanket = (oldPresetName: string) => {
     const trimmedName = editBlanketName.trim();
     if (!trimmedName) {
-      alert("El nombre del preset de manta/trapo no puede estar vacío");
+      alert("El nombre del preset no puede estar vacío");
       return;
     }
     const parsedMargin = parseFloat(editBlanketMargin);
@@ -629,7 +677,7 @@ export function BabyWeightTrackerModule() {
       pName(trimmedName) !== pName(oldPresetName) &&
       blankets.some((b) => pName(b.name) === pName(trimmedName))
     ) {
-      alert("Ya existe una manta o trapo con ese nombre");
+      alert("Ya existe un objeto o superficie con ese nombre");
       return;
     }
 
@@ -1702,8 +1750,8 @@ export function BabyWeightTrackerModule() {
                   <span className="font-mono text-foreground">-{(selectedRecord.margin * 1000).toFixed(0)}g ({selectedRecord.clothes})</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>Margen Manta:</span>
-                  <span className="font-mono text-foreground">-{((selectedRecord.blanketMargin || 0) * 1000).toFixed(0)}g ({selectedRecord.blanket || "Ninguna"})</span>
+                  <span>Margen Objeto/Superficie:</span>
+                  <span className="font-mono text-foreground">-{((selectedRecord.blanketMargin || 0) * 1000).toFixed(0)}g ({selectedRecord.blanket || "Ninguno"})</span>
                 </div>
                 {selectedRecord.notes && (
                   <div className="pt-1.5 border-t border-border/40 italic text-[11px] text-foreground">
@@ -1803,7 +1851,7 @@ export function BabyWeightTrackerModule() {
 
                     <div className="flex items-center justify-between text-[10px] text-muted-foreground">
                       <span className="truncate max-w-[200px]">
-                        Ropa: -{(record.margin * 1000).toFixed(0)}g | Manta: -{((record.blanketMargin || 0) * 1000).toFixed(0)}g
+                        Ropa: -{(record.margin * 1000).toFixed(0)}g | Objeto: -{((record.blanketMargin || 0) * 1000).toFixed(0)}g
                       </span>
                       <div className="flex items-center gap-1 shrink-0">
                         <button
@@ -2299,9 +2347,9 @@ export function BabyWeightTrackerModule() {
                 />
               </div>
 
-              {/* Blanket Pre-selection */}
+              {/* Blanket / Surface Objects Pre-selection */}
               <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px]">Manta / Trapo</label>
+                <label className="font-bold text-muted-foreground uppercase text-[9px]">Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)</label>
                 <div className="grid grid-cols-2 gap-1.5">
                   {blankets.map((preset) => (
                     <button
@@ -2466,7 +2514,7 @@ export function BabyWeightTrackerModule() {
                 }`}
               >
                 <Layers size={13} />
-                <span>Mantas</span>
+                <span>Objetos / Superficie</span>
                 <span className="text-[8px] px-1 py-0.2 bg-primary/10 text-primary rounded-full font-black">
                   {blankets.length}
                 </span>
@@ -2552,20 +2600,25 @@ export function BabyWeightTrackerModule() {
                     <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
                       Básculas y Ubicaciones
                     </span>
-                    <span className="text-[10px] text-muted-foreground">La primera báscula es la de referencia</span>
+                    <span className="text-[10px] text-muted-foreground">El primer sitio es la báscula principal</span>
                   </div>
 
-                  <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
                     {sites.map((s, idx) => {
                       const isEditing = editingSite === s;
+                      const currentColorHex = (siteColors[s] || { hex: "#888" }).hex;
+                      const isPrimary = idx === 0;
+
                       return (
                         <div
                           key={s}
-                          className="flex items-center justify-between p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border border-border/50 text-xs font-extrabold text-foreground transition gap-2"
+                          className={`p-3 bg-muted/30 hover:bg-muted/50 rounded-2xl border text-xs font-extrabold transition space-y-2 ${
+                            isPrimary ? "border-primary/50 bg-primary/5" : "border-border/50 text-foreground"
+                          }`}
                         >
                           {isEditing ? (
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (siteColors[s] || { hex: "#888" }).hex }} />
+                            <div className="flex items-center gap-2">
+                              <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: currentColorHex }} />
                               <input
                                 type="text"
                                 value={editSiteValue}
@@ -2579,7 +2632,7 @@ export function BabyWeightTrackerModule() {
                                   }
                                 }}
                                 autoFocus
-                                className="flex-1 px-2 py-1 bg-card border border-primary rounded-lg text-xs font-bold outline-none"
+                                className="flex-1 px-2.5 py-1 bg-card border border-primary rounded-lg text-xs font-bold outline-none"
                               />
                               <button
                                 onClick={() => handleSaveEditSite(s)}
@@ -2597,34 +2650,72 @@ export function BabyWeightTrackerModule() {
                               </button>
                             </div>
                           ) : (
-                            <>
-                              <div className="flex items-center gap-2 min-w-0">
-                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: (siteColors[s] || { hex: "#888" }).hex }} />
-                                <span className="truncate">{s}</span>
-                                {idx === 0 && (
-                                  <span className="px-2 py-0.5 bg-primary/15 text-primary text-[9px] font-extrabold rounded-md uppercase tracking-wider shrink-0">
-                                    Principal
-                                  </span>
-                                )}
+                            <div className="flex flex-col space-y-2">
+                              {/* Top row: Name, Principal badge / Mark principal button, Edit & Delete */}
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 min-w-0">
+                                  <span className="w-3 h-3 rounded-full shrink-0 shadow-xs" style={{ backgroundColor: currentColorHex }} />
+                                  <span className="truncate font-black text-sm">{s}</span>
+                                  {isPrimary ? (
+                                    <span className="px-2 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 text-[9px] font-extrabold rounded-md uppercase tracking-wider shrink-0 flex items-center gap-1">
+                                      <Star size={10} fill="currentColor" /> Principal
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => handleSetPrimarySite(s)}
+                                      className="px-2 py-0.5 text-[9px] font-extrabold bg-muted hover:bg-amber-500/15 hover:text-amber-600 dark:hover:text-amber-400 text-muted-foreground border border-border/60 hover:border-amber-500/40 rounded-md transition cursor-pointer flex items-center gap-1 shrink-0"
+                                      title="Establecer como báscula principal de referencia"
+                                    >
+                                      <Star size={10} />
+                                      <span>Hacer Principal</span>
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button
+                                    onClick={() => handleStartEditSite(s)}
+                                    className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition cursor-pointer"
+                                    title="Editar nombre"
+                                  >
+                                    <Edit2 size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleRemoveSite(s)}
+                                    disabled={sites.length <= 1}
+                                    className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition disabled:opacity-30 cursor-pointer"
+                                    title="Eliminar báscula"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-1 shrink-0">
-                                <button
-                                  onClick={() => handleStartEditSite(s)}
-                                  className="p-1.5 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-xl transition cursor-pointer"
-                                  title="Editar báscula"
-                                >
-                                  <Edit2 size={14} />
-                                </button>
-                                <button
-                                  onClick={() => handleRemoveSite(s)}
-                                  disabled={sites.length <= 1}
-                                  className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl transition disabled:opacity-30 cursor-pointer"
-                                  title="Eliminar báscula"
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+
+                              {/* Bottom row: Color palette swatch selection */}
+                              <div className="flex items-center gap-1.5 pt-1 border-t border-border/30 overflow-x-auto scrollbar-none">
+                                <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider shrink-0 flex items-center gap-1">
+                                  <Palette size={10} /> Color:
+                                </span>
+                                {COLOR_PALETTE.map((c) => {
+                                  const isSelected = currentColorHex === c.hex;
+                                  return (
+                                    <button
+                                      key={c.hex}
+                                      type="button"
+                                      onClick={() => handleSetSiteColor(s, c.hex)}
+                                      className={`w-5 h-5 rounded-full cursor-pointer transition shrink-0 flex items-center justify-center border ${
+                                        isSelected
+                                          ? "scale-110 ring-2 ring-primary ring-offset-1 border-white"
+                                          : "opacity-70 hover:opacity-100 border-transparent hover:scale-105"
+                                      }`}
+                                      style={{ backgroundColor: c.hex }}
+                                      title={`Elegir color ${c.hex}`}
+                                    >
+                                      {isSelected && <Check size={10} className="text-white drop-shadow-xs" />}
+                                    </button>
+                                  );
+                                })}
                               </div>
-                            </>
+                            </div>
                           )}
                         </div>
                       );
@@ -2778,11 +2869,11 @@ export function BabyWeightTrackerModule() {
                 </div>
               )}
 
-              {/* Blanket presets section */}
+              {/* Blanket / Surface presets section */}
               {configTab === "blankets" && (
                 <div className="space-y-3.5 animate-fade-in">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
-                    Presets de Mantas, Trapos y Toallas
+                    Presets de Objetos y Superficie sobre Báscula (Mantas, Toallas, Bases, etc.)
                   </span>
 
                   <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
@@ -2867,12 +2958,12 @@ export function BabyWeightTrackerModule() {
                   {/* Add blanket card container */}
                   <div className="p-3.5 bg-muted/20 border border-border/60 rounded-2xl space-y-2.5">
                     <span className="text-[10px] font-bold text-foreground block">
-                      Añadir preset de manta / trapo
+                      Añadir preset de objeto / superficie
                     </span>
                     <div className="grid grid-cols-2 gap-2">
                       <input
                         type="text"
-                        placeholder="Nombre (ej. Manta de lana)"
+                        placeholder="Nombre (ej. Base de plástico, Toalla)"
                         value={newBlanketName}
                         onChange={(e) => setNewBlanketName(e.target.value)}
                         className="px-3 py-2 bg-card border border-border/80 rounded-xl outline-none focus:ring-2 focus:ring-primary/30 font-bold text-xs"
@@ -2891,7 +2982,7 @@ export function BabyWeightTrackerModule() {
                       className="w-full py-2 bg-primary hover:bg-primary/90 text-primary-foreground font-black rounded-xl transition active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 text-xs shadow-xs"
                     >
                       <Plus size={14} />
-                      Añadir Preset Manta
+                      Añadir Preset Objeto/Superficie
                     </button>
                   </div>
                 </div>
