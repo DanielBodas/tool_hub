@@ -35,6 +35,8 @@ export function JobOfferEvaluatorModule() {
   // 2-Column Side-by-Side Selection State
   const [offerIdA, setOfferIdA] = useState<string>("");
   const [offerIdB, setOfferIdB] = useState<string>("");
+  const [showPickerA, setShowPickerA] = useState<boolean>(false);
+  const [showPickerB, setShowPickerB] = useState<boolean>(false);
 
   // Granular Filter State
   const [filterScope, setFilterScope] = useState<FilterScope>("all");
@@ -639,43 +641,63 @@ export function JobOfferEvaluatorModule() {
               Selecciona los 2 Puestos a Comparar Frente a Frente:
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Position 1 (Base / Left) Dropdown */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-muted-foreground block">
-                  PUESTO #1 (BASE / IZQUIERDA):
-                </label>
-                <select
-                  value={offerIdA}
-                  onChange={(e) => setOfferIdA(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-border bg-background font-black text-xs text-foreground cursor-pointer shadow-2xs focus:ring-2 focus:ring-primary/20"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Position 1 (Base / Left) Compact Card */}
+              <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center gap-2">
+                <div className="min-w-0">
+                  <span className="text-[9px] font-black uppercase text-muted-foreground block">
+                    PUESTO #1 (BASE / IZQUIERDA)
+                  </span>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-xs font-black text-foreground truncate">
+                      {selectedOfferA?.title || "Seleccionar Puesto"}
+                    </span>
+                    {selectedOfferA?.isCurrent && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md shrink-0">
+                        [ACTUAL]
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-semibold text-muted-foreground truncate">
+                    {selectedOfferA?.company}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowPickerA(true)}
+                  className="px-2.5 py-1.5 bg-card hover:bg-muted text-foreground font-black text-[10px] uppercase border border-border rounded-lg cursor-pointer shrink-0 transition"
                 >
-                  {offers.map((offer) => (
-                    <option key={`a_${offer.id}`} value={offer.id}>
-                      {offer.isCurrent ? "[ACTUAL] " : ""}
-                      {offer.title} ({offer.company})
-                    </option>
-                  ))}
-                </select>
+                  [CAMBIAR]
+                </button>
               </div>
 
-              {/* Position 2 (Comparison / Right) Dropdown */}
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-muted-foreground block">
-                  PUESTO #2 (COMPARAR / DERECHA):
-                </label>
-                <select
-                  value={offerIdB}
-                  onChange={(e) => setOfferIdB(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-primary/50 bg-primary/5 font-black text-xs text-foreground cursor-pointer shadow-2xs focus:ring-2 focus:ring-primary/20"
+              {/* Position 2 (Comparison / Right) Compact Card */}
+              <div className="bg-primary/5 p-3 rounded-xl border border-primary/30 flex justify-between items-center gap-2">
+                <div className="min-w-0">
+                  <span className="text-[9px] font-black uppercase text-primary block">
+                    PUESTO #2 (COMPARAR / DERECHA)
+                  </span>
+                  <div className="flex items-center gap-1.5 truncate">
+                    <span className="text-xs font-black text-foreground truncate">
+                      {selectedOfferB?.title || "Seleccionar Puesto"}
+                    </span>
+                    {selectedOfferB?.isCurrent && (
+                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md shrink-0">
+                        [ACTUAL]
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] font-semibold text-muted-foreground truncate">
+                    {selectedOfferB?.company}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setShowPickerB(true)}
+                  className="px-2.5 py-1.5 bg-primary text-primary-foreground font-black text-[10px] uppercase rounded-lg cursor-pointer shrink-0 transition hover:bg-primary-hover"
                 >
-                  {offers.map((offer) => (
-                    <option key={`b_${offer.id}`} value={offer.id}>
-                      {offer.isCurrent ? "[ACTUAL] " : ""}
-                      {offer.title} ({offer.company})
-                    </option>
-                  ))}
-                </select>
+                  [CAMBIAR]
+                </button>
               </div>
             </div>
 
@@ -1326,6 +1348,128 @@ export function JobOfferEvaluatorModule() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: POSITION PICKER A                                                 */}
+      {/* ========================================================================= */}
+      {showPickerA && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
+          <div className="bg-card rounded-2xl border border-border p-4 max-w-md w-full space-y-3 shadow-xl text-xs">
+            <div className="flex justify-between items-center border-b border-border pb-2">
+              <h3 className="text-xs font-black uppercase text-foreground">
+                Seleccionar Puesto #1 (Base / Izquierda)
+              </h3>
+              <button
+                onClick={() => setShowPickerA(false)}
+                className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-black cursor-pointer uppercase text-[10px]"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-[60dvh] overflow-y-auto pr-1">
+              {offers.map((offer) => {
+                const isSelected = offer.id === offerIdA;
+                return (
+                  <button
+                    key={`pick_a_${offer.id}`}
+                    onClick={() => {
+                      setOfferIdA(offer.id);
+                      setShowPickerA(false);
+                    }}
+                    className={`w-full p-2.5 rounded-xl border text-left transition cursor-pointer flex justify-between items-center ${
+                      isSelected
+                        ? "bg-muted text-foreground border-primary font-black shadow-2xs"
+                        : "bg-background/60 text-muted-foreground border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-foreground">{offer.title}</span>
+                        {offer.isCurrent && (
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md">
+                            [ACTUAL]
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-semibold text-muted-foreground">
+                        {offer.company} • {formatModalityText(offer)}
+                      </p>
+                    </div>
+
+                    {isSelected && (
+                      <span className="text-[9px] font-black uppercase text-primary px-2 py-0.5 bg-primary/10 rounded-md shrink-0">
+                        ACTIVO
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: POSITION PICKER B                                                 */}
+      {/* ========================================================================= */}
+      {showPickerB && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
+          <div className="bg-card rounded-2xl border border-border p-4 max-w-md w-full space-y-3 shadow-xl text-xs">
+            <div className="flex justify-between items-center border-b border-border pb-2">
+              <h3 className="text-xs font-black uppercase text-primary">
+                Seleccionar Puesto #2 (Comparar / Derecha)
+              </h3>
+              <button
+                onClick={() => setShowPickerB(false)}
+                className="px-2 py-0.5 rounded-md bg-muted text-muted-foreground font-black cursor-pointer uppercase text-[10px]"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div className="space-y-1.5 max-h-[60dvh] overflow-y-auto pr-1">
+              {offers.map((offer) => {
+                const isSelected = offer.id === offerIdB;
+                return (
+                  <button
+                    key={`pick_b_${offer.id}`}
+                    onClick={() => {
+                      setOfferIdB(offer.id);
+                      setShowPickerB(false);
+                    }}
+                    className={`w-full p-2.5 rounded-xl border text-left transition cursor-pointer flex justify-between items-center ${
+                      isSelected
+                        ? "bg-primary/10 text-foreground border-primary font-black shadow-2xs"
+                        : "bg-background/60 text-muted-foreground border-border hover:border-muted-foreground/40"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-black text-foreground">{offer.title}</span>
+                        {offer.isCurrent && (
+                          <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md">
+                            [ACTUAL]
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] font-semibold text-muted-foreground">
+                        {offer.company} • {formatModalityText(offer)}
+                      </p>
+                    </div>
+
+                    {isSelected && (
+                      <span className="text-[9px] font-black uppercase text-primary px-2 py-0.5 bg-primary/15 rounded-md shrink-0">
+                        ACTIVO
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
