@@ -1,0 +1,41 @@
+$ next dev
+▲ Next.js 16.2.9 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.0.2:3000
+✓ Ready in 514ms
+
+○ Compiling / ...
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+ HEAD / 307 in 4.2s (next.js: 3.8s, application-code: 358ms)
+ GET /tools/job-offer-evaluator 200 in 1182ms (next.js: 843ms, proxy.ts: 172ms, application-code: 167ms)
+[next-auth][warn][NEXTAUTH_URL]
+https://next-auth.js.org/warnings#nextauth_url
+ GET /api/auth/session 200 in 2.3s (next.js: 2.2s, application-code: 39ms)
+ GET /tools/job-offer-evaluator 200 in 110ms (next.js: 5ms, proxy.ts: 7ms, application-code: 98ms)
+ GET /api/auth/session 200 in 43ms (next.js: 28ms, application-code: 15ms)
+ GET /tools/job-offer-evaluator 200 in 93ms (next.js: 8ms, proxy.ts: 7ms, application-code: 78ms)
+ GET /api/auth/session 200 in 37ms (next.js: 24ms, application-code: 13ms)
+ POST /api/auth/unlock 200 in 345ms (next.js: 330ms, application-code: 16ms)
+ GET /tools/job-offer-evaluator 200 in 59ms (next.js: 5ms, proxy.ts: 7ms, application-code: 47ms)
+⚠️ Local MongoDB server is not running. Falling back to Mock DB Storage...
+GET job-offer-evaluator error: TypeError: db.collection(...).insertMany is not a function
+    at GET (src/app/api/job-offer-evaluator/route.ts:55:37)
+  53 |     // Auto-seed defaults if database collections are empty
+  54 |     if (offers.length === 0) {
+> 55 |       await db.collection("offers").insertMany(DEFAULT_OFFERS as any[]);
+     |                                     ^
+  56 |       offers = DEFAULT_OFFERS as any[];
+  57 |     }
+  58 |
+ GET /api/job-offer-evaluator 200 in 753ms (next.js: 464ms, application-code: 289ms)
+GET job-offer-evaluator error: TypeError: db.collection(...).insertMany is not a function
+    at GET (src/app/api/job-offer-evaluator/route.ts:55:37)
+  53 |     // Auto-seed defaults if database collections are empty
+  54 |     if (offers.length === 0) {
+> 55 |       await db.collection("offers").insertMany(DEFAULT_OFFERS as any[]);
+     |                                     ^
+  56 |       offers = DEFAULT_OFFERS as any[];
+  57 |     }
+  58 |
+ GET /api/job-offer-evaluator 200 in 172ms (next.js: 10ms, application-code: 162ms)
