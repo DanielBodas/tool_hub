@@ -16,6 +16,7 @@ import {
   Baby,
   Scale,
   PiggyBank,
+  Briefcase,
   LayoutGrid,
   Layers,
   Trash2,
@@ -38,6 +39,7 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string; size?: 
   "baby-leave-planner": Baby,
   "baby-weight-tracker": Scale,
   "finance-tracker": PiggyBank,
+  "job-offer-evaluator": Briefcase,
 };
 
 function getToolIcon(id: string) {
