@@ -40,6 +40,14 @@ export function JobOfferEvaluatorModule() {
   const [filterScope, setFilterScope] = useState<FilterScope>("all");
   const [selectedGroupId, setSelectedGroupId] = useState<string>("all");
   const [selectedConceptId, setSelectedConceptId] = useState<string>("all");
+  const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
+
+  const toggleGroupCollapse = (groupId: string) => {
+    setCollapsedGroups((prev) => ({
+      ...prev,
+      [groupId]: !prev[groupId],
+    }));
+  };
 
   // Offer Modal State
   const [showOfferModal, setShowOfferModal] = useState<boolean>(false);
@@ -885,19 +893,31 @@ export function JobOfferEvaluatorModule() {
 
           {/* PARALLEL CONCEPT-BY-CONCEPT COMPARISON MATRIX */}
           <div className="space-y-4">
-            {groupedConcepts.map(({ group, concepts: groupConcepts }) => (
+            {groupedConcepts.map(({ group, concepts: groupConcepts }) => {
+              const isCollapsed = Boolean(collapsedGroups[group.id]);
+              return (
               <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
                 {/* Group Section Header */}
                 <div className="bg-muted/60 px-4 py-2.5 border-b border-border flex justify-between items-center">
-                  <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
-                    {group.name}
-                  </h3>
-                  <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
-                    {groupConcepts.length} Concepto(s)
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                      {group.name}
+                    </h3>
+                    <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
+                      ({groupConcepts.length})
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => toggleGroupCollapse(group.id)}
+                    className="px-2 py-0.5 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
+                  >
+                    {isCollapsed ? "[+ VER CONCEPTOS]" : "[- OCULTAR]"}
+                  </button>
                 </div>
 
                 {/* Concept Rows - Strict Parallel Alignment */}
+                {!isCollapsed && (
                 <div className="divide-y divide-border/60">
                   {groupConcepts.map((concept) => {
                     const valA = selectedOfferA?.values[concept.id];
@@ -931,10 +951,10 @@ export function JobOfferEvaluatorModule() {
                         </div>
 
                         {/* STRICT PARALLEL 2-COLUMN LAYOUT */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs">
                           {/* Left Column: Position 1 Value */}
                           <div
-                            className={`rounded-xl p-3 border space-y-1 ${
+                            className={`rounded-xl p-2 sm:p-3 border space-y-1 ${
                               valA !== undefined && valA !== null && valA !== 0 && valA !== false
                                 ? "bg-muted/30 border-border"
                                 : "bg-muted/10 border-border/40 opacity-70"
@@ -978,7 +998,7 @@ export function JobOfferEvaluatorModule() {
 
                           {/* Right Column: Position 2 Value */}
                           <div
-                            className={`rounded-xl p-3 border space-y-1 ${
+                            className={`rounded-xl p-2 sm:p-3 border space-y-1 ${
                               valB !== undefined && valB !== null && valB !== 0 && valB !== false
                                 ? "bg-primary/5 border-primary/30"
                                 : "bg-muted/10 border-border/40 opacity-70"
@@ -1039,8 +1059,10 @@ export function JobOfferEvaluatorModule() {
                     );
                   })}
                 </div>
+                )}
               </div>
-            ))}
+            );
+            })}
 
             {/* Commute Car Expense Comparison Item */}
             {(commuteCostA > 0 || commuteCostB > 0) && (
@@ -1054,8 +1076,8 @@ export function JobOfferEvaluatorModule() {
                   </span>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                  <div className="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 space-y-1">
+                <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs">
+                  <div className="bg-rose-500/10 p-2 sm:p-3 rounded-xl border border-rose-500/20 space-y-1">
                     <div className="font-extrabold uppercase text-[9px] text-muted-foreground">
                       {selectedOfferA?.title}:
                     </div>
@@ -1067,7 +1089,7 @@ export function JobOfferEvaluatorModule() {
                     </span>
                   </div>
 
-                  <div className="bg-rose-500/10 p-3 rounded-xl border border-rose-500/20 space-y-1">
+                  <div className="bg-rose-500/10 p-2 sm:p-3 rounded-xl border border-rose-500/20 space-y-1">
                     <div className="font-extrabold uppercase text-[9px] text-muted-foreground">
                       {selectedOfferB?.title}:
                     </div>
