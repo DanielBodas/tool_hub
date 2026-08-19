@@ -43,10 +43,13 @@ export function JobOfferEvaluatorModule() {
   const [collapsedGroups, setCollapsedGroups] = useState<Record<string, boolean>>({});
 
   const toggleGroupCollapse = (groupId: string) => {
-    setCollapsedGroups((prev) => ({
-      ...prev,
-      [groupId]: !prev[groupId],
-    }));
+    setCollapsedGroups((prev) => {
+      const isCurrentlyCollapsed = prev[groupId] !== false;
+      return {
+        ...prev,
+        [groupId]: !isCurrentlyCollapsed,
+      };
+    });
   };
 
   // Offer Modal State
@@ -637,88 +640,42 @@ export function JobOfferEvaluatorModule() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Position 1 (Base / Left) Toggle Section */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-black uppercase text-muted-foreground block">
+              {/* Position 1 (Base / Left) Dropdown */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-muted-foreground block">
                   PUESTO #1 (BASE / IZQUIERDA):
-                </span>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {offers.map((offer) => {
-                    const isSelected = offer.id === offerIdA;
-                    return (
-                      <button
-                        key={`a_${offer.id}`}
-                        onClick={() => setOfferIdA(offer.id)}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex justify-between items-center ${
-                          isSelected
-                            ? "bg-muted text-foreground border-primary font-black shadow-2xs ring-1 ring-primary/20"
-                            : "bg-background/60 text-muted-foreground border-border hover:border-muted-foreground/40"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black">{offer.title}</span>
-                            {offer.isCurrent && (
-                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md">
-                                [ACTUAL]
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-semibold opacity-80">
-                            {offer.company} • {formatModalityText(offer)}
-                          </p>
-                        </div>
-                        {isSelected && (
-                          <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/10 rounded-md">
-                            SELECCIONADO
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                </label>
+                <select
+                  value={offerIdA}
+                  onChange={(e) => setOfferIdA(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-border bg-background font-black text-xs text-foreground cursor-pointer shadow-2xs focus:ring-2 focus:ring-primary/20"
+                >
+                  {offers.map((offer) => (
+                    <option key={`a_${offer.id}`} value={offer.id}>
+                      {offer.isCurrent ? "[ACTUAL] " : ""}
+                      {offer.title} ({offer.company})
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Position 2 (Comparison / Right) Toggle Section */}
-              <div className="space-y-2">
-                <span className="text-[10px] font-black uppercase text-muted-foreground block">
+              {/* Position 2 (Comparison / Right) Dropdown */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-muted-foreground block">
                   PUESTO #2 (COMPARAR / DERECHA):
-                </span>
-                <div className="grid grid-cols-1 gap-1.5">
-                  {offers.map((offer) => {
-                    const isSelected = offer.id === offerIdB;
-                    return (
-                      <button
-                        key={`b_${offer.id}`}
-                        onClick={() => setOfferIdB(offer.id)}
-                        className={`p-2.5 rounded-xl border text-left transition cursor-pointer flex justify-between items-center ${
-                          isSelected
-                            ? "bg-primary/10 text-foreground border-primary font-black shadow-2xs ring-1 ring-primary/30"
-                            : "bg-background/60 text-muted-foreground border-border hover:border-muted-foreground/40"
-                        }`}
-                      >
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-black">{offer.title}</span>
-                            {offer.isCurrent && (
-                              <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md">
-                                [ACTUAL]
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-semibold opacity-80">
-                            {offer.company} • {formatModalityText(offer)}
-                          </p>
-                        </div>
-                        {isSelected && (
-                          <span className="text-[10px] font-black uppercase text-primary px-2 py-0.5 bg-primary/15 rounded-md">
-                            SELECCIONADO
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+                </label>
+                <select
+                  value={offerIdB}
+                  onChange={(e) => setOfferIdB(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-primary/50 bg-primary/5 font-black text-xs text-foreground cursor-pointer shadow-2xs focus:ring-2 focus:ring-primary/20"
+                >
+                  {offers.map((offer) => (
+                    <option key={`b_${offer.id}`} value={offer.id}>
+                      {offer.isCurrent ? "[ACTUAL] " : ""}
+                      {offer.title} ({offer.company})
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
 
@@ -894,7 +851,8 @@ export function JobOfferEvaluatorModule() {
           {/* PARALLEL CONCEPT-BY-CONCEPT COMPARISON MATRIX */}
           <div className="space-y-4">
             {groupedConcepts.map(({ group, concepts: groupConcepts }) => {
-              const isCollapsed = Boolean(collapsedGroups[group.id]);
+              // Collapsed by default unless explicitly opened (false)
+              const isCollapsed = collapsedGroups[group.id] !== false;
               return (
               <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
                 {/* Group Section Header */}
