@@ -641,60 +641,60 @@ export function JobOfferEvaluatorModule() {
               Selecciona los 2 Puestos a Comparar Frente a Frente:
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               {/* Position 1 (Base / Left) Compact Card */}
-              <div className="bg-muted/40 p-3 rounded-xl border border-border flex justify-between items-center gap-2">
+              <div className="bg-muted/40 p-2.5 sm:p-3 rounded-xl border border-border flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <div className="min-w-0">
-                  <span className="text-[9px] font-black uppercase text-muted-foreground block">
-                    PUESTO #1 (BASE / IZQUIERDA)
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase text-muted-foreground block truncate">
+                    PUESTO #1 (BASE)
                   </span>
-                  <div className="flex items-center gap-1.5 truncate">
+                  <div className="flex items-center gap-1 truncate">
                     <span className="text-xs font-black text-foreground truncate">
                       {selectedOfferA?.title || "Seleccionar Puesto"}
                     </span>
                     {selectedOfferA?.isCurrent && (
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md shrink-0">
+                      <span className="text-[8px] sm:text-[9px] font-black uppercase px-1 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded shrink-0">
                         [ACTUAL]
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] font-semibold text-muted-foreground truncate">
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground truncate">
                     {selectedOfferA?.company}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setShowPickerA(true)}
-                  className="px-2.5 py-1.5 bg-card hover:bg-muted text-foreground font-black text-[10px] uppercase border border-border rounded-lg cursor-pointer shrink-0 transition"
+                  className="w-full sm:w-auto px-2 py-1 sm:px-2.5 sm:py-1.5 bg-card hover:bg-muted text-foreground font-black text-[9px] sm:text-[10px] uppercase border border-border rounded-lg cursor-pointer shrink-0 transition text-center"
                 >
                   [CAMBIAR]
                 </button>
               </div>
 
               {/* Position 2 (Comparison / Right) Compact Card */}
-              <div className="bg-primary/5 p-3 rounded-xl border border-primary/30 flex justify-between items-center gap-2">
+              <div className="bg-primary/5 p-2.5 sm:p-3 rounded-xl border border-primary/30 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                 <div className="min-w-0">
-                  <span className="text-[9px] font-black uppercase text-primary block">
-                    PUESTO #2 (COMPARAR / DERECHA)
+                  <span className="text-[8px] sm:text-[9px] font-black uppercase text-primary block truncate">
+                    PUESTO #2 (COMPARAR)
                   </span>
-                  <div className="flex items-center gap-1.5 truncate">
+                  <div className="flex items-center gap-1 truncate">
                     <span className="text-xs font-black text-foreground truncate">
                       {selectedOfferB?.title || "Seleccionar Puesto"}
                     </span>
                     {selectedOfferB?.isCurrent && (
-                      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded-md shrink-0">
+                      <span className="text-[8px] sm:text-[9px] font-black uppercase px-1 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded shrink-0">
                         [ACTUAL]
                       </span>
                     )}
                   </div>
-                  <p className="text-[10px] font-semibold text-muted-foreground truncate">
+                  <p className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground truncate">
                     {selectedOfferB?.company}
                   </p>
                 </div>
 
                 <button
                   onClick={() => setShowPickerB(true)}
-                  className="px-2.5 py-1.5 bg-primary text-primary-foreground font-black text-[10px] uppercase rounded-lg cursor-pointer shrink-0 transition hover:bg-primary-hover"
+                  className="w-full sm:w-auto px-2 py-1 sm:px-2.5 sm:py-1.5 bg-primary text-primary-foreground font-black text-[9px] sm:text-[10px] uppercase rounded-lg cursor-pointer shrink-0 transition hover:bg-primary-hover text-center"
                 >
                   [CAMBIAR]
                 </button>
@@ -791,56 +791,60 @@ export function JobOfferEvaluatorModule() {
           </div>
 
           {/* TOP COMPARISON SUMMARY HEADER CARDS (2 COLUMNS) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4">
             {/* Position 1 Summary */}
-            <div className="bg-card rounded-2xl border border-border p-4 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-muted text-muted-foreground rounded-md border border-border">
-                  {selectedOfferA?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #1 - BASE]"}
-                </span>
-                <span className="text-xs font-black text-primary">
-                  {evalResultA?.compositeScore || 0} / 100 PTS
-                </span>
-              </div>
-              <div>
-                <h2 className="text-base font-black text-foreground">{selectedOfferA?.title}</h2>
-                <p className="text-xs font-bold text-muted-foreground">
-                  {selectedOfferA?.company} • {formatModalityText(selectedOfferA)}
-                </p>
+            <div className="bg-card rounded-2xl border border-border p-2.5 sm:p-4 space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border truncate max-w-full">
+                    {selectedOfferA?.isCurrent ? "[ACTUAL]" : "[PUESTO #1]"}
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
+                    {evalResultA?.compositeScore || 0} / 100 PTS
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-base font-black text-foreground truncate">{selectedOfferA?.title}</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-muted-foreground truncate">
+                    {selectedOfferA?.company} • {formatModalityText(selectedOfferA)}
+                  </p>
+                </div>
               </div>
 
-              <div className="bg-muted/40 p-2.5 rounded-xl border border-border text-center">
-                <span className="text-[9px] font-extrabold uppercase text-muted-foreground block">
-                  Valor Percibido Anual Neto
+              <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
+                <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block truncate">
+                  Valor Percibido
                 </span>
-                <span className="text-xl font-black text-foreground">
+                <span className="text-sm sm:text-xl font-black text-foreground block truncate">
                   {formatCurrency(evalResultA?.totalMonetaryValue || 0)}/año
                 </span>
               </div>
             </div>
 
             {/* Position 2 Summary */}
-            <div className="bg-card rounded-2xl border border-primary/50 ring-1 ring-primary/20 p-4 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-primary text-primary-foreground rounded-md">
-                  {selectedOfferB?.isCurrent ? "[PUESTO ACTUAL]" : "[PUESTO #2 - A COMPARAR]"}
-                </span>
-                <span className="text-xs font-black text-primary">
-                  {evalResultB?.compositeScore || 0} / 100 PTS
-                </span>
-              </div>
-              <div>
-                <h2 className="text-base font-black text-foreground">{selectedOfferB?.title}</h2>
-                <p className="text-xs font-bold text-muted-foreground">
-                  {selectedOfferB?.company} • {formatModalityText(selectedOfferB)}
-                </p>
+            <div className="bg-card rounded-2xl border border-primary/50 ring-1 ring-primary/20 p-2.5 sm:p-4 space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1">
+                  <span className="text-[8px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-primary text-primary-foreground rounded truncate max-w-full">
+                    {selectedOfferB?.isCurrent ? "[ACTUAL]" : "[PUESTO #2]"}
+                  </span>
+                  <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
+                    {evalResultB?.compositeScore || 0} / 100 PTS
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-xs sm:text-base font-black text-foreground truncate">{selectedOfferB?.title}</h2>
+                  <p className="text-[10px] sm:text-xs font-bold text-muted-foreground truncate">
+                    {selectedOfferB?.company} • {formatModalityText(selectedOfferB)}
+                  </p>
+                </div>
               </div>
 
-              <div className="bg-muted/40 p-2.5 rounded-xl border border-border text-center">
-                <span className="text-[9px] font-extrabold uppercase text-muted-foreground block">
-                  Valor Percibido Anual Neto
+              <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
+                <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block truncate">
+                  Valor Percibido
                 </span>
-                <span className="text-xl font-black text-foreground">
+                <span className="text-sm sm:text-xl font-black text-foreground block truncate">
                   {formatCurrency(evalResultB?.totalMonetaryValue || 0)}/año
                 </span>
 
@@ -854,13 +858,13 @@ export function JobOfferEvaluatorModule() {
                         : 0;
                       return (
                         <span
-                          className={`text-xs font-black px-2 py-0.5 rounded-md inline-block ${
+                          className={`text-[9px] sm:text-xs font-black px-1.5 py-0.5 rounded inline-block max-w-full truncate ${
                             delta >= 0
                               ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                               : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                           }`}
                         >
-                          Diferencia vs Puesto #1: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
+                          Dif: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
                         </span>
                       );
                     })()}
