@@ -28,7 +28,7 @@ export function JobOfferEvaluatorModule() {
   const [concepts, setConcepts] = useState<Concept[]>(DEFAULT_CONCEPTS);
   const [offers, setOffers] = useState<JobOffer[]>(DEFAULT_OFFERS);
 
-  const [activeTab, setActiveTab] = useState<ActiveTab>("comparison");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("all_offers");
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [statusMessage, setStatusMessage] = useState<string>("");
 
@@ -581,17 +581,6 @@ export function JobOfferEvaluatorModule() {
       {/* -------------------- MAIN NAVIGATION TABS -------------------- */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
         <button
-          onClick={() => setActiveTab("comparison")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
-            activeTab === "comparison"
-              ? "bg-card text-foreground shadow-2xs border border-border"
-              : "text-muted-foreground hover:text-foreground"
-          }`}
-        >
-          1. Comparar 2 Puestos
-        </button>
-
-        <button
           onClick={() => setActiveTab("all_offers")}
           className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
             activeTab === "all_offers"
@@ -599,7 +588,18 @@ export function JobOfferEvaluatorModule() {
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          2. Visión General ({offers.length})
+          1. Visión General ({offers.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab("comparison")}
+          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+            activeTab === "comparison"
+              ? "bg-card text-foreground shadow-2xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          2. Comparativa Frente a Frente
         </button>
 
         <button
