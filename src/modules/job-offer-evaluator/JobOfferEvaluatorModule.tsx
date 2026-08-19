@@ -680,46 +680,50 @@ export function JobOfferEvaluatorModule() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
         <button
           onClick={() => setActiveTab("all_offers")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "all_offers"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          1. Visión General ({offers.length})
+          <span className="sm:hidden">1. General ({offers.length})</span>
+          <span className="hidden sm:inline">1. Visión General ({offers.length})</span>
         </button>
 
         <button
           onClick={() => setActiveTab("comparison")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "comparison"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          2. Comparativa Frente a Frente
+          <span className="sm:hidden">2. Comparativa</span>
+          <span className="hidden sm:inline">2. Comparativa Frente a Frente</span>
         </button>
 
         <button
           onClick={() => setActiveTab("offers_crud")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "offers_crud"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          3. Gestionar Ofertas
+          <span className="sm:hidden">3. Ofertas</span>
+          <span className="hidden sm:inline">3. Gestionar Ofertas</span>
         </button>
 
         <button
           onClick={() => setActiveTab("settings")}
-          className={`py-2 px-3 rounded-xl font-black text-xs uppercase tracking-wider transition cursor-pointer ${
+          className={`py-2 px-1.5 sm:px-3 rounded-xl font-black text-[10px] sm:text-xs uppercase tracking-wider transition cursor-pointer text-center ${
             activeTab === "settings"
               ? "bg-card text-foreground shadow-2xs border border-border"
               : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          4. Conceptos y Pesos ({concepts.length})
+          <span className="sm:hidden">4. Conceptos ({concepts.length})</span>
+          <span className="hidden sm:inline">4. Conceptos y Pesos ({concepts.length})</span>
         </button>
       </div>
 
@@ -1399,24 +1403,24 @@ export function JobOfferEvaluatorModule() {
               return (
                 <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
                   {/* Group Header */}
-                  <div className="bg-muted/60 px-3 py-2 sm:px-4 sm:py-2.5 border-b border-border flex items-center justify-between gap-2">
+                  <div className="bg-muted/60 p-3 sm:p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-xs font-black uppercase tracking-wider text-foreground">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-xs sm:text-sm font-black uppercase tracking-wider text-foreground">
                           {group.name}
                         </h3>
-                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
-                          ({groupConcepts.length} conceptos)
+                        <span className="text-[10px] font-extrabold text-muted-foreground uppercase whitespace-nowrap bg-muted px-1.5 py-0.5 rounded border border-border">
+                          {groupConcepts.length} {groupConcepts.length === 1 ? "concepto" : "conceptos"}
                         </span>
                       </div>
                       {group.description && (
-                        <p className="text-[10px] text-muted-foreground font-semibold truncate">
+                        <p className="text-[10px] sm:text-xs text-muted-foreground font-semibold mt-0.5">
                           {group.description}
                         </p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
+                    <div className="flex items-center gap-1.5 flex-wrap sm:shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-border/40">
                       <button
                         onClick={() => toggleSettingsGroupCollapse(group.id)}
                         className="px-2 py-1 rounded-md bg-card hover:bg-muted text-foreground text-[10px] font-black uppercase border border-border cursor-pointer transition"
