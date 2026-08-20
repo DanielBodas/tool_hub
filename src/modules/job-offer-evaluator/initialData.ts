@@ -12,30 +12,31 @@ export const DEFAULT_GROUPS: ConceptGroup[] = [
   {
     id: "g_direct",
     name: "Retribución Directa",
-    description: "Salario fijo, bonus con probabilidad, comisiones y compensación directa",
+    description: "Salario fijo, bonus con probabilidad, comisiones y equity",
     color: "emerald",
   },
   {
     id: "g_flexibility",
     name: "Flexibilidad y Conciliación",
-    description: "Teletrabajo, días de vacaciones extra y tiempo invertido en desplazamiento",
+    description: "Teletrabajo, días de vacaciones extra, desplazamiento y flexibilidad horaria",
     color: "indigo",
   },
   {
     id: "g_benefits",
     name: "Beneficios y Seguridad",
-    description: "Seguro médico privado, plan de pensiones y cheques de ayuda",
+    description: "Seguro médico privado, plan de pensiones, cheques comida y otros beneficios",
     color: "blue",
   },
   {
     id: "g_culture",
     name: "Cultura y Futuro",
-    description: "Desarrollo profesional, calidad del manager, cultura y estabilidad del puesto",
+    description: "Desarrollo profesional, aprendizaje, manager, cultura, autonomía, estabilidad e interés del puesto",
     color: "amber",
   },
 ];
 
 export const DEFAULT_CONCEPTS: Concept[] = [
+  // 1. Retribución Directa
   {
     id: "c_salary_base",
     groupId: "g_direct",
@@ -51,7 +52,7 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_bonus_annual",
     groupId: "g_direct",
     name: "Bonus Variable Estimado",
-    description: "Bonus máximo multiplicador por probabilidad esperada de cobro (%)",
+    description: "Bonus máximo multiplicado por la probabilidad esperada de cobro (%)",
     category: "economic",
     calculationType: "bonus_probability",
     maxPersonalValue: 0,
@@ -59,10 +60,34 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     unit: "EUR_YEAR",
   },
   {
+    id: "c_commissions",
+    groupId: "g_direct",
+    name: "Comisiones Estimadas",
+    description: "Comisiones brutas anuales esperadas por ventas u objetivos (€/año)",
+    category: "economic",
+    calculationType: "direct_monetary",
+    maxPersonalValue: 0,
+    isPositive: true,
+    unit: "EUR_YEAR",
+  },
+  {
+    id: "c_equity",
+    groupId: "g_direct",
+    name: "Equity / Stock Options / RSU",
+    description: "Valor anual estimado de las acciones o participaciones otorgadas (€/año)",
+    category: "economic",
+    calculationType: "direct_monetary",
+    maxPersonalValue: 0,
+    isPositive: true,
+    unit: "EUR_YEAR",
+  },
+
+  // 2. Flexibilidad y Conciliación
+  {
     id: "c_telework",
     groupId: "g_flexibility",
     name: "Teletrabajo (Días/Semana)",
-    description: "Valor del teletrabajo según días a la semana y semanas laborales al año",
+    description: "Valor económico anual del teletrabajo según días a la semana",
     category: "economic",
     calculationType: "telework_days",
     maxPersonalValue: 0,
@@ -73,7 +98,7 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_vacation",
     groupId: "g_flexibility",
     name: "Días de Vacaciones / Año",
-    description: "Días laborables de vacaciones retribuidas comparados con la referencia",
+    description: "Días laborables de vacaciones retribuidas en comparación con la referencia",
     category: "economic",
     calculationType: "vacation_days",
     maxPersonalValue: 0,
@@ -84,7 +109,7 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_commute",
     groupId: "g_flexibility",
     name: "Desplazamiento Diario",
-    description: "Coste de tiempo de desplazamiento en trayectos presenciales (negativo)",
+    description: "Coste anual estimado del tiempo de desplazamiento en trayectos presenciales (negativo)",
     category: "economic",
     calculationType: "commute_time",
     maxPersonalValue: 0,
@@ -92,10 +117,23 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     unit: "MINUTES_DAY",
   },
   {
+    id: "c_flexibility_schedule",
+    groupId: "g_flexibility",
+    name: "Flexibilidad Horaria y Jornada",
+    description: "Libertad de horarios, jornada intensiva en verano u opciones de conciliación (0-10)",
+    category: "subjective",
+    calculationType: "subjective_score",
+    maxPersonalValue: 3000,
+    isPositive: true,
+    unit: "SCORE_10",
+  },
+
+  // 3. Beneficios y Seguridad
+  {
     id: "c_health",
     groupId: "g_benefits",
     name: "Seguro Médico Privado",
-    description: "Valor económico personal anual estimado de la cobertura de salud",
+    description: "Valor económico anual asignado por el usuario a la póliza de seguro médico",
     category: "economic",
     calculationType: "user_valued_benefit",
     maxPersonalValue: 1200,
@@ -106,7 +144,7 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_pension",
     groupId: "g_benefits",
     name: "Plan de Pensiones (Empresa)",
-    description: "Aportación directa anual de la empresa al plan de pensiones de empleo",
+    description: "Aportación directa anual de la empresa al plan de empleo de pensiones",
     category: "economic",
     calculationType: "direct_monetary",
     maxPersonalValue: 0,
@@ -114,10 +152,34 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     unit: "EUR_YEAR",
   },
   {
+    id: "c_meal",
+    groupId: "g_benefits",
+    name: "Ayuda Comida / Ticket Restaurante",
+    description: "Valor económico anual estimado de la subvención para comida",
+    category: "economic",
+    calculationType: "user_valued_benefit",
+    maxPersonalValue: 1200,
+    isPositive: true,
+    unit: "BOOLEAN",
+  },
+  {
+    id: "c_other_benefits",
+    groupId: "g_benefits",
+    name: "Otros Beneficios (Gimnasio, Transporte...)",
+    description: "Suma anual de otros beneficios de la oferta (gimnasio, coche, etc.)",
+    category: "economic",
+    calculationType: "direct_monetary",
+    maxPersonalValue: 0,
+    isPositive: true,
+    unit: "EUR_YEAR",
+  },
+
+  // 4. Cultura y Futuro
+  {
     id: "c_growth",
     groupId: "g_culture",
     name: "Desarrollo Profesional y Proyección",
-    description: "Oportunidades de aprendizaje y crecimiento (0-10)",
+    description: "Oportunidades reales de ascenso, carrera y aprendizaje técnico (0-10)",
     category: "subjective",
     calculationType: "subjective_score",
     maxPersonalValue: 10000,
@@ -125,10 +187,21 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     unit: "SCORE_10",
   },
   {
+    id: "c_learning",
+    groupId: "g_culture",
+    name: "Aprendizaje y Presupuesto Formación",
+    description: "Cursos, conferencias y tiempo dedicado al aprendizaje tecnológico (0-10)",
+    category: "subjective",
+    calculationType: "subjective_score",
+    maxPersonalValue: 4000,
+    isPositive: true,
+    unit: "SCORE_10",
+  },
+  {
     id: "c_manager",
     groupId: "g_culture",
     name: "Calidad del Manager y Liderazgo",
-    description: "Estilo de gestión, mentoría y relación con el responsable directo (0-10)",
+    description: "Estilo de gestión, mentoría y confianza con el responsable directo (0-10)",
     category: "subjective",
     calculationType: "subjective_score",
     maxPersonalValue: 6000,
@@ -139,7 +212,7 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_culture",
     groupId: "g_culture",
     name: "Cultura y Ambiente de Equipo",
-    description: "Valores de la compañía, buen clima de trabajo y colegialidad (0-10)",
+    description: "Valores de la empresa, buen clima de trabajo y colegialidad (0-10)",
     category: "subjective",
     calculationType: "subjective_score",
     maxPersonalValue: 3000,
@@ -147,13 +220,35 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     unit: "SCORE_10",
   },
   {
+    id: "c_autonomy",
+    groupId: "g_culture",
+    name: "Autonomía e Impacto",
+    description: "Grado de independencia en la toma de decisiones y peso del trabajo (0-10)",
+    category: "subjective",
+    calculationType: "subjective_score",
+    maxPersonalValue: 5000,
+    isPositive: true,
+    unit: "SCORE_10",
+  },
+  {
     id: "c_stability",
     groupId: "g_culture",
     name: "Estabilidad y Seguridad Laboral",
-    description: "Solidez financiera de la empresa y estabilidad en la posición (0-10)",
+    description: "Solidez financiera de la empresa y estabilidad de la posición (0-10)",
     category: "subjective",
     calculationType: "subjective_score",
     maxPersonalValue: 8000,
+    isPositive: true,
+    unit: "SCORE_10",
+  },
+  {
+    id: "c_interest",
+    groupId: "g_culture",
+    name: "Interés del Puesto y Reto Técnico",
+    description: "Nivel de motivación, innovación y atracción por las tareas diarias (0-10)",
+    category: "subjective",
+    calculationType: "subjective_score",
+    maxPersonalValue: 7000,
     isPositive: true,
     unit: "SCORE_10",
   },
@@ -177,16 +272,24 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 65000,
       c_bonus_annual: 5000,
       c_bonus_annual_prob: 80,
+      c_commissions: 0,
+      c_equity: 0,
       c_telework: 2,
       c_vacation: 23,
       c_commute: 40,
+      c_flexibility_schedule: 6,
       c_health: true,
       c_health_user_val: 1200,
       c_pension: 1000,
+      c_meal: false,
+      c_other_benefits: 0,
       c_growth: 6,
+      c_learning: 6,
       c_manager: 6,
       c_culture: 6,
+      c_autonomy: 7,
       c_stability: 8,
+      c_interest: 7,
     },
   },
   {
@@ -206,16 +309,25 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 70000,
       c_bonus_annual: 10000,
       c_bonus_annual_prob: 70, // 7.000 €
+      c_commissions: 0,
+      c_equity: 0,
       c_telework: 3,           // 3 * 46 * 30 = 4.140 €
       c_vacation: 27,          // (27 - 22) * 150 = 750 €
-      c_commute: 60,           // 2d presenciales? o 2d * 46 * 1h * 20€ = -1.840€, si 3d presenciales: -2.760€
+      c_commute: 60,           // -2.760 €
+      c_flexibility_schedule: 8,
       c_health: true,
       c_health_user_val: 1000, // 1.000 €
       c_pension: 2000,         // 2.000 €
+      c_meal: true,
+      c_meal_user_val: 1000,
+      c_other_benefits: 0,
       c_growth: 8,             // 10.000 * 8/10 = 8.000 €
+      c_learning: 8,
       c_manager: 7,            // 6.000 * 7/10 = 4.200 €
       c_culture: 5,            // 3.000 * 5/10 = 1.500 €
+      c_autonomy: 8,
       c_stability: 9,          // 8.000 * 9/10 = 7.200 €
+      c_interest: 8,
     },
   },
   {
@@ -235,23 +347,28 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 75000,
       c_bonus_annual: 10000,
       c_bonus_annual_prob: 50, // 5.000 €
+      c_commissions: 0,
+      c_equity: 2000,
       c_telework: 1,           // 1 * 46 * 30 = 1.380 €
       c_vacation: 24,          // (24 - 22) * 150 = 300 €
       c_commute: 90,           // -4.140 €
+      c_flexibility_schedule: 5,
       c_health: true,
       c_health_user_val: 1000,
       c_pension: 1500,
+      c_meal: false,
+      c_other_benefits: 500,
       c_growth: 4,             // 10.000 * 4/10 = 4.000 €
+      c_learning: 5,
       c_manager: 6,            // 6.000 * 6/10 = 3.600 €
       c_culture: 6,            // 3.000 * 6/10 = 1.800 €
+      c_autonomy: 6,
       c_stability: 6,          // 8.000 * 6/10 = 4.800 €
+      c_interest: 6,
     },
   },
 ];
 
-/**
- * Calculates annual fuel cost for commute if distance and fuel consumption are given
- */
 export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   const kmOneWay = offer.commuteKmOneWay || 0;
   if (kmOneWay <= 0) return 0;
@@ -281,19 +398,6 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   return Math.round(totalLitres * fuelPriceEurL);
 }
 
-/**
- * Calculates the exact monetary value of a single concept for a specific job offer.
- * Formula rules:
- * 1. Direct monetary (Salario, pension, etc): returns directly in euros.
- * 2. Bonus with probability: bonus_max * (probability_percent / 100).
- * 3. User valued benefit (Health insurance, meal, etc): return user defined annual personal value if included.
- * 4. Telework: dias_teletrabajo * semanas * valor_dia_teletrabajo.
- * 5. Commute time: - (dias_presenciales * semanas * (minutos_diarios / 60) * valor_hora_tiempo_libre).
- * 6. Vacations: (dias_vacaciones - vacaciones_referencia) * valor_dia_vacaciones.
- * 7. Intangibles (subjective 0-10):
- *    - Positive concept: maxPersonalValue * rating / 10.
- *    - Negative concept (penalty): - maxPersonalValue * (10 - rating) / 10.
- */
 export function calculateConceptMonetaryValue(
   concept: Concept,
   offer: JobOffer,
@@ -319,7 +423,7 @@ export function calculateConceptMonetaryValue(
     return Math.round(bonusMax * probRatio);
   }
 
-  // 3. User Valued Benefit (e.g. Seguro médico, Cheque comida)
+  // 3. User Valued Benefit
   if (concept.calculationType === "user_valued_benefit") {
     const customUserValKey = `${concept.id}_user_val`;
     const customUserVal = offer.values[customUserValKey];
@@ -385,10 +489,8 @@ export function calculateConceptMonetaryValue(
     const rating = typeof rawVal === "number" ? Math.max(0, Math.min(10, rawVal)) : 0;
 
     if (concept.isPositive) {
-      // Positive concept: maxVal * rating / 10
       return Math.round((maxVal * rating) / 10);
     } else {
-      // Negative/penalty concept: - maxVal * (10 - rating) / 10
       return -Math.round((maxVal * (10 - rating)) / 10);
     }
   }
@@ -396,9 +498,6 @@ export function calculateConceptMonetaryValue(
   return 0;
 }
 
-/**
- * Legacy compatibility helper for calculating single value without full offer context
- */
 export function calculateConceptMonetaryValueSimple(
   concept: Concept,
   rawValue: number | boolean | undefined,
@@ -416,9 +515,6 @@ export function calculateConceptMonetaryValueSimple(
   return calculateConceptMonetaryValue(concept, dummyOffer, userPrefs);
 }
 
-/**
- * Normalizes score from 0 to 100 relative to maximum achievable value or range
- */
 export function calculateConceptNormalizedScore(
   concept: Concept,
   offer: JobOffer,
@@ -457,9 +553,6 @@ export function calculateConceptNormalizedScore(
   return Math.min(10, Math.max(0, (num / 70000) * 10));
 }
 
-/**
- * Evaluates all job offers calculating Personal Equivalent Salary and secondary 0-100 scores.
- */
 export function evaluateJobOffers(
   offers: JobOffer[],
   concepts: Concept[],
@@ -500,7 +593,6 @@ export function evaluateJobOffers(
         intangibleMonetary += monVal;
       }
 
-      // Weight for 0-100 composite score uses maxPersonalValue if available, or 1000
       const weight = concept.maxPersonalValue > 0 ? concept.maxPersonalValue : 1000;
       weightedScoreSum += score10 * weight;
       totalWeights += weight;
@@ -570,7 +662,6 @@ export function evaluateJobOffers(
     };
   });
 
-  // Sort by Personal Equivalent Salary (totalMonetaryValue) as primary KPI
   const sorted = [...resultsWithDeltas].sort((a, b) => {
     if (b.totalMonetaryValue !== a.totalMonetaryValue) {
       return b.totalMonetaryValue - a.totalMonetaryValue;
