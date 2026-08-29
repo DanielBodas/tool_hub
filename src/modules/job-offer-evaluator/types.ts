@@ -1,10 +1,10 @@
-export type CalculationType = "monetary_direct" | "weighted_score" | "monetary_calculated";
+export type ConceptCategory = "tangible" | "intangible" | "both";
 
 export type UnitType =
   | "EUR_YEAR"       // €/año
   | "EUR_MONTH"      // €/mes
   | "DAYS_YEAR"      // días/año
-  | "DAYS_WEEK"      // días/semana
+  | "DAYS_WEEK"      // días/semana (días presenciales o teletrabajo)
   | "SCORE_10"       // Puntuación 1-10
   | "BOOLEAN"        // Sí / No
   | "MINUTES_DAY";   // minutos/día (desplazamiento)
@@ -22,10 +22,10 @@ export interface Concept {
   name: string;
   description: string;
   unit: UnitType;
-  type: CalculationType;
+  category: ConceptCategory; // tangible (dinero), intangible (puntuación/felicidad), or both
   weight: number; // 1 to 10 (Importance weight)
   isPositive: boolean; // true if higher is better, false if lower is better
-  monetaryEquivalencePerUnit?: number; // annual monetary equivalency multiplier
+  monetaryEquivalencePerUnit?: number; // annual monetary equivalency multiplier if applicable
 }
 
 export type OfferStatus =
@@ -61,7 +61,7 @@ export interface ConceptGroupResult {
   groupId: string;
   groupName: string;
   color: string;
-  totalMonetaryValue: number;
+  totalTangibleValue: number;
   score100: number;
 }
 
@@ -71,9 +71,9 @@ export interface EvaluationResult {
   company: string;
   isCurrent: boolean;
   status: OfferStatus;
-  totalMonetaryValue: number;
-  compositeScore: number;
-  deltaMonetaryVsCurrent: number;
+  totalTangibleValue: number;  // Salario real (suma de tangibles reales en €/año)
+  compositeScore: number;      // Puntuación global del puesto (0-100 pts)
+  deltaTangibleVsCurrent: number;
   deltaPercentVsCurrent: number;
   deltaScoreVsCurrent: number;
   groupResults: ConceptGroupResult[];

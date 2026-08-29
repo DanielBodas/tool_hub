@@ -5,9 +5,8 @@ import {
   ConceptGroup,
   Concept,
   JobOffer,
-  EvaluationResult,
   UnitType,
-  CalculationType,
+  ConceptCategory,
   OfferStatus,
   WorkModality,
 } from "./types";
@@ -16,7 +15,7 @@ import {
   DEFAULT_CONCEPTS,
   DEFAULT_OFFERS,
   evaluateJobOffers,
-  calculateConceptMonetaryValue,
+  calculateConceptTangibleValue,
   calculateCommuteAnnualExpense,
 } from "./initialData";
 
@@ -91,7 +90,7 @@ export function JobOfferEvaluatorModule() {
   const [conceptGroupId, setConceptGroupId] = useState<string>("g_direct");
   const [conceptDescription, setConceptDescription] = useState<string>("");
   const [conceptUnit, setConceptUnit] = useState<UnitType>("EUR_YEAR");
-  const [conceptType, setConceptType] = useState<CalculationType>("monetary_direct");
+  const [conceptCategory, setConceptCategory] = useState<ConceptCategory>("tangible");
   const [conceptWeight, setConceptWeight] = useState<number>(7);
   const [conceptMonetaryEquivalence, setConceptMonetaryEquivalence] = useState<number>(0);
 
@@ -333,7 +332,6 @@ export function JobOfferEvaluatorModule() {
 
     setOfferOfficeDays(officeDays);
 
-    // Auto update c_telework value
     const teleworkDays = Math.max(0, 5 - officeDays);
     setOfferValues((prev) => ({
       ...prev,
@@ -458,7 +456,7 @@ export function JobOfferEvaluatorModule() {
       setConceptGroupId(conceptToEdit.groupId);
       setConceptDescription(conceptToEdit.description);
       setConceptUnit(conceptToEdit.unit);
-      setConceptType(conceptToEdit.type);
+      setConceptCategory(conceptToEdit.category || "tangible");
       setConceptWeight(conceptToEdit.weight);
       setConceptMonetaryEquivalence(conceptToEdit.monetaryEquivalencePerUnit || 0);
     } else {
@@ -467,7 +465,7 @@ export function JobOfferEvaluatorModule() {
       setConceptGroupId(groups[0]?.id || "g_direct");
       setConceptDescription("");
       setConceptUnit("EUR_YEAR");
-      setConceptType("monetary_direct");
+      setConceptCategory("tangible");
       setConceptWeight(7);
       setConceptMonetaryEquivalence(0);
     }
@@ -487,7 +485,7 @@ export function JobOfferEvaluatorModule() {
       name: conceptName,
       description: conceptDescription,
       unit: conceptUnit,
-      type: conceptType,
+      category: conceptCategory,
       weight: Number(conceptWeight),
       isPositive: true,
       monetaryEquivalencePerUnit: Number(conceptMonetaryEquivalence),
@@ -514,6 +512,13 @@ export function JobOfferEvaluatorModule() {
   const handleConceptWeightChange = (conceptId: string, newWeight: number) => {
     const updatedConcepts = concepts.map((c) =>
       c.id === conceptId ? { ...c, weight: newWeight } : c
+    );
+    saveData(offers, updatedConcepts, groups);
+  };
+
+  const handleConceptCategoryChange = (conceptId: string, newCategory: ConceptCategory) => {
+    const updatedConcepts = concepts.map((c) =>
+      c.id === conceptId ? { ...c, category: newCategory } : c
     );
     saveData(offers, updatedConcepts, groups);
   };
@@ -606,6 +611,28 @@ export function JobOfferEvaluatorModule() {
       currency: "EUR",
       maximumFractionDigits: 0,
     }).format(val);
+  };
+
+  const formatCategoryBadge = (category: ConceptCategory) => {
+    if (category === "tangible") {
+      return (
+        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded border border-emerald-500/30">
+          Tangible (Dinero)
+        </span>
+      );
+    }
+    if (category === "intangible") {
+      return (
+        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-500/30">
+          Intangible
+        </span>
+      );
+    }
+    return (
+      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded border border-amber-500/30">
+        Tangible + Intangible
+      </span>
+    );
   };
 
   const formatValue = (concept: Concept, rawVal: number | boolean | undefined) => {
@@ -723,7 +750,7 @@ export function JobOfferEvaluatorModule() {
           }`}
         >
           <span className="sm:hidden">4. Conceptos ({concepts.length})</span>
-          <span className="hidden sm:inline">4. Conceptos y Pesos ({concepts.length})</span>
+          <span className="hidden sm:inline">4. Configurar Conceptos ({concepts.length})</span>
         </button>
       </div>
 
@@ -897,7 +924,7 @@ export function JobOfferEvaluatorModule() {
                     {selectedOfferA?.isCurrent ? "[ACTUAL]" : "[PUESTO #1]"}
                   </span>
                   <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
-                    {evalResultA?.compositeScore || 0} / 100 PTS
+                    Puntuación: {evalResultA?.compositeScore || 0} / 100 PTS
                   </span>
                 </div>
                 <div>
@@ -910,10 +937,10 @@ export function JobOfferEvaluatorModule() {
 
               <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
                 <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block break-words">
-                  Valor Percibido
+                  Salario Real (Suma Tangibles)
                 </span>
                 <span className="text-sm sm:text-xl font-black text-foreground block break-words">
-                  {formatCurrency(evalResultA?.totalMonetaryValue || 0)}/año
+                  {formatCurrency(evalResultA?.totalTangibleValue || 0)}/año
                 </span>
               </div>
             </div>
@@ -926,7 +953,7 @@ export function JobOfferEvaluatorModule() {
                     {selectedOfferB?.isCurrent ? "[ACTUAL]" : "[PUESTO #2]"}
                   </span>
                   <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
-                    {evalResultB?.compositeScore || 0} / 100 PTS
+                    Puntuación: {evalResultB?.compositeScore || 0} / 100 PTS
                   </span>
                 </div>
                 <div>
@@ -939,19 +966,19 @@ export function JobOfferEvaluatorModule() {
 
               <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
                 <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block break-words">
-                  Valor Percibido
+                  Salario Real (Suma Tangibles)
                 </span>
                 <span className="text-sm sm:text-xl font-black text-foreground block break-words">
-                  {formatCurrency(evalResultB?.totalMonetaryValue || 0)}/año
+                  {formatCurrency(evalResultB?.totalTangibleValue || 0)}/año
                 </span>
 
                 {/* Net Delta position B vs position A */}
                 {evalResultA && evalResultB && (
                   <div className="mt-1">
                     {(() => {
-                      const delta = evalResultB.totalMonetaryValue - evalResultA.totalMonetaryValue;
-                      const pct = evalResultA.totalMonetaryValue > 0
-                        ? Math.round((delta / evalResultA.totalMonetaryValue) * 100)
+                      const delta = evalResultB.totalTangibleValue - evalResultA.totalTangibleValue;
+                      const pct = evalResultA.totalTangibleValue > 0
+                        ? Math.round((delta / evalResultA.totalTangibleValue) * 100)
                         : 0;
                       return (
                         <span
@@ -961,7 +988,7 @@ export function JobOfferEvaluatorModule() {
                               : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                           }`}
                         >
-                          Dif: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
+                          Dif Salario Real: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
                         </span>
                       );
                     })()}
@@ -974,7 +1001,6 @@ export function JobOfferEvaluatorModule() {
           {/* PARALLEL CONCEPT-BY-CONCEPT COMPARISON MATRIX */}
           <div className="space-y-4">
             {groupedConcepts.map(({ group, concepts: groupConcepts }) => {
-              // Collapsed by default unless explicitly opened (false)
               const isCollapsed = collapsedGroups[group.id] !== false;
               return (
               <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -1003,22 +1029,23 @@ export function JobOfferEvaluatorModule() {
                   {groupConcepts.map((concept) => {
                     const valA = selectedOfferA?.values[concept.id];
                     const noteA = selectedOfferA?.conceptNotes?.[concept.id];
-                    const monA = calculateConceptMonetaryValue(concept, valA);
+                    const tangA = calculateConceptTangibleValue(concept, valA);
 
                     const valB = selectedOfferB?.values[concept.id];
                     const noteB = selectedOfferB?.conceptNotes?.[concept.id];
-                    const monB = calculateConceptMonetaryValue(concept, valB);
+                    const tangB = calculateConceptTangibleValue(concept, valB);
 
-                    const diffMon = monB - monA;
+                    const diffTangible = tangB - tangA;
 
                     return (
                       <div key={concept.id} className="p-4 space-y-2">
-                        {/* Row Header: Concept Title & Description */}
+                        {/* Row Header: Concept Title, Category & Description */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-black text-foreground">
                               {concept.name}
                             </span>
+                            {formatCategoryBadge(concept.category)}
                             <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 bg-muted text-muted-foreground rounded-md border border-border">
                               Peso: {concept.weight}/10
                             </span>
@@ -1059,10 +1086,10 @@ export function JobOfferEvaluatorModule() {
                               </span>
                             </div>
 
-                            {monA > 0 && concept.unit !== "EUR_YEAR" && (
+                            {tangA > 0 && concept.unit !== "EUR_YEAR" && (
                               <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                                <span>Aporte Percibido:</span>
-                                <span>+{formatCurrency(monA)}/año</span>
+                                <span>Aporte Tangible Real:</span>
+                                <span>+{formatCurrency(tangA)}/año</span>
                               </div>
                             )}
 
@@ -1103,10 +1130,10 @@ export function JobOfferEvaluatorModule() {
                               </span>
                             </div>
 
-                            {monB > 0 && concept.unit !== "EUR_YEAR" && (
+                            {tangB > 0 && concept.unit !== "EUR_YEAR" && (
                               <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                                <span>Aporte Percibido:</span>
-                                <span>+{formatCurrency(monB)}/año</span>
+                                <span>Aporte Tangible Real:</span>
+                                <span>+{formatCurrency(tangB)}/año</span>
                               </div>
                             )}
 
@@ -1123,16 +1150,16 @@ export function JobOfferEvaluatorModule() {
                         </div>
 
                         {/* Delta / Difference line below parallel cards */}
-                        {diffMon !== 0 && concept.unit !== "EUR_YEAR" && (
+                        {diffTangible !== 0 && concept.unit !== "EUR_YEAR" && (
                           <div className="text-right text-[11px] font-black pt-1">
                             <span
                               className={`px-2 py-0.5 rounded-md ${
-                                diffMon > 0
+                                diffTangible > 0
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                   : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                               }`}
                             >
-                              Diferencia en {concept.name}: {diffMon > 0 ? "+" : ""}{formatCurrency(diffMon)}/año a favor de {diffMon > 0 ? selectedOfferB?.title : selectedOfferA?.title}
+                              Diferencia Tangible en {concept.name}: {diffTangible > 0 ? "+" : ""}{formatCurrency(diffTangible)}/año a favor de {diffTangible > 0 ? selectedOfferB?.title : selectedOfferA?.title}
                             </span>
                           </div>
                         )}
@@ -1150,10 +1177,10 @@ export function JobOfferEvaluatorModule() {
               <div className="bg-card rounded-2xl border border-rose-500/30 p-4 space-y-3">
                 <div className="flex justify-between items-center border-b border-border pb-2">
                   <h3 className="text-xs font-black uppercase text-rose-600 dark:text-rose-400">
-                    Desplazamiento en Coche (Gasto Anual de Combustible)
+                    Desplazamiento Diario en Coche (Gasolina Tangible que resta del salario)
                   </h3>
                   <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
-                    Gasto Deducido
+                    Gasto Tangible Restado
                   </span>
                 </div>
 
@@ -1197,7 +1224,6 @@ export function JobOfferEvaluatorModule() {
             const offerObj = offers.find((o) => o.id === result.offerId);
             const isCurrent = result.isCurrent;
             const isWinner = result.rank === 1 && !isCurrent;
-            const commuteCost = offerObj ? calculateCommuteAnnualExpense(offerObj) : 0;
 
             return (
               <div
@@ -1229,7 +1255,7 @@ export function JobOfferEvaluatorModule() {
                     </span>
 
                     <span className="text-xs font-black text-primary">
-                      {result.compositeScore} / 100 PTS
+                      Puntuación: {result.compositeScore} / 100 PTS
                     </span>
                   </div>
 
@@ -1242,23 +1268,23 @@ export function JobOfferEvaluatorModule() {
 
                   <div className="bg-muted/40 rounded-xl p-3 border border-border/60 mb-3 text-center">
                     <span className="text-[9px] font-extrabold text-muted-foreground uppercase block">
-                      Valor Percibido Total
+                      Salario Real (Suma Tangibles)
                     </span>
                     <div className="text-xl font-black text-foreground mt-0.5">
-                      {formatCurrency(result.totalMonetaryValue)}
+                      {formatCurrency(result.totalTangibleValue)}
                       <span className="text-xs font-bold text-muted-foreground">/año</span>
                     </div>
 
                     {!isCurrent && (
                       <div
                         className={`mt-1.5 text-xs font-black px-2 py-0.5 rounded-md inline-block ${
-                          result.deltaMonetaryVsCurrent >= 0
+                          result.deltaTangibleVsCurrent >= 0
                             ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                             : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                         }`}
                       >
-                        {result.deltaMonetaryVsCurrent >= 0 ? "+" : ""}
-                        {formatCurrency(result.deltaMonetaryVsCurrent)}/año ({result.deltaPercentVsCurrent > 0 ? "+" : ""}
+                        {result.deltaTangibleVsCurrent >= 0 ? "+" : ""}
+                        {formatCurrency(result.deltaTangibleVsCurrent)}/año ({result.deltaPercentVsCurrent > 0 ? "+" : ""}
                         {result.deltaPercentVsCurrent}%)
                       </div>
                     )}
@@ -1375,7 +1401,7 @@ export function JobOfferEvaluatorModule() {
                 Configuración de Grupos y Conceptos de Medición
               </h2>
               <p className="text-xs text-muted-foreground font-semibold">
-                Organiza tus criterios en grupos de análisis, muévelos fácilmente y ajusta sus pesos
+                Organiza tus criterios en grupos de análisis, clasifícalos como Tangibles o Intangibles y ajusta sus pesos
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1454,6 +1480,7 @@ export function JobOfferEvaluatorModule() {
                           <div className="space-y-1 min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
                               <h4 className="font-black text-foreground">{concept.name}</h4>
+                              {formatCategoryBadge(concept.category)}
                               <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
                                 {concept.unit}
                               </span>
@@ -1484,7 +1511,23 @@ export function JobOfferEvaluatorModule() {
                               </select>
                             </div>
 
-                            {concept.unit !== "EUR_YEAR" && (
+                            {/* Category Selector */}
+                            <div>
+                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                                Naturaleza
+                              </label>
+                              <select
+                                value={concept.category}
+                                onChange={(e) => handleConceptCategoryChange(concept.id, e.target.value as ConceptCategory)}
+                                className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer"
+                              >
+                                <option value="tangible">Tangible (Dinero)</option>
+                                <option value="intangible">Intangible</option>
+                                <option value="both">Ambos (Tangible+Intangible)</option>
+                              </select>
+                            </div>
+
+                            {(concept.category === "tangible" || concept.category === "both") && concept.unit !== "EUR_YEAR" && (
                               <div>
                                 <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
                                   Valor Anual (€/unidad)
@@ -1848,13 +1891,16 @@ export function JobOfferEvaluatorModule() {
                     key={concept.id}
                     className="bg-muted/30 p-3 rounded-xl border border-border space-y-1.5"
                   >
-                    <div className="flex justify-between items-center">
-                      <label className="font-bold text-foreground">
-                        {concept.name}{" "}
-                        <span className="text-[10px] text-muted-foreground">
-                          ({concept.unit})
-                        </span>
-                      </label>
+                    <div className="flex justify-between items-center gap-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <label className="font-bold text-foreground">
+                          {concept.name}{" "}
+                          <span className="text-[10px] text-muted-foreground">
+                            ({concept.unit})
+                          </span>
+                        </label>
+                        {formatCategoryBadge(concept.category)}
+                      </div>
 
                       {concept.unit === "BOOLEAN" ? (
                         <select
@@ -1865,7 +1911,7 @@ export function JobOfferEvaluatorModule() {
                               [concept.id]: e.target.value === "true",
                             })
                           }
-                          className="px-2 py-1 rounded-lg border border-border bg-background font-bold"
+                          className="px-2 py-1 rounded-lg border border-border bg-background font-bold shrink-0"
                         >
                           <option value="false">NO (No incluido)</option>
                           <option value="true">SÍ (Incluido)</option>
@@ -1884,7 +1930,7 @@ export function JobOfferEvaluatorModule() {
                               [concept.id]: Number(e.target.value),
                             })
                           }
-                          className="w-36 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right"
+                          className="w-36 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right shrink-0"
                         />
                       )}
                     </div>
@@ -1951,7 +1997,7 @@ export function JobOfferEvaluatorModule() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej. Retribución Directa / Beneficios"
+                  placeholder="Ej. Retribución Directa / Beneficios y Salud"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
@@ -2032,7 +2078,7 @@ export function JobOfferEvaluatorModule() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej. Cheque Guardería / Tarjeta Transportes"
+                  placeholder="Ej. Salario, Comedor, Teletrabajo..."
                   value={conceptName}
                   onChange={(e) => setConceptName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
@@ -2055,6 +2101,21 @@ export function JobOfferEvaluatorModule() {
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-black text-foreground uppercase mb-1">
+                    Naturaleza
+                  </label>
+                  <select
+                    value={conceptCategory}
+                    onChange={(e) => setConceptCategory(e.target.value as ConceptCategory)}
+                    className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground cursor-pointer"
+                  >
+                    <option value="tangible">Tangible (Dinero)</option>
+                    <option value="intangible">Intangible</option>
+                    <option value="both">Ambos (Tangible+Intangible)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-black text-foreground uppercase mb-1">
                     Unidad de Medida
                   </label>
                   <select
@@ -2071,7 +2132,9 @@ export function JobOfferEvaluatorModule() {
                     <option value="BOOLEAN">Sí / No</option>
                   </select>
                 </div>
+              </div>
 
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block font-black text-foreground uppercase mb-1">
                     Peso (Importancia 1-10)
@@ -2085,22 +2148,22 @@ export function JobOfferEvaluatorModule() {
                     className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
                   />
                 </div>
-              </div>
 
-              {conceptUnit !== "EUR_YEAR" && (
-                <div>
-                  <label className="block font-black text-foreground uppercase mb-1">
-                    Valoración Anual Equivalente (€)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Ej. 1200 por seguro médico o 900€ por día de teletrabajo"
-                    value={conceptMonetaryEquivalence}
-                    onChange={(e) => setConceptMonetaryEquivalence(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
-                  />
-                </div>
-              )}
+                {(conceptCategory === "tangible" || conceptCategory === "both") && conceptUnit !== "EUR_YEAR" && (
+                  <div>
+                    <label className="block font-black text-foreground uppercase mb-1">
+                      Valor Anual (€)
+                    </label>
+                    <input
+                      type="number"
+                      placeholder="Ej. 1200"
+                      value={conceptMonetaryEquivalence}
+                      onChange={(e) => setConceptMonetaryEquivalence(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="pt-3 border-t border-border flex justify-end gap-2">

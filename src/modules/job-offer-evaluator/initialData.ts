@@ -10,37 +10,38 @@ export const DEFAULT_GROUPS: ConceptGroup[] = [
   {
     id: "g_direct",
     name: "Retribución Directa",
-    description: "Salario, bonus y compensaciones económicas líquidas o directas",
+    description: "Salario base, bonus y beneficios económicos directos de la empresa",
     color: "emerald",
-  },
-  {
-    id: "g_flexibility",
-    name: "Flexibilidad y Conciliación",
-    description: "Teletrabajo, vacaciones y tiempos de desplazamiento",
-    color: "indigo",
   },
   {
     id: "g_benefits",
     name: "Beneficios y Salud",
-    description: "Seguros médicos, planes de pensiones y cheques beneficio",
+    description: "Comedor, seguro médico privado y plan de pensiones",
     color: "blue",
+  },
+  {
+    id: "g_flexibility",
+    name: "Flexibilidad y Conciliación",
+    description: "Teletrabajo, vacaciones y tiempo/gasto de desplazamiento",
+    color: "indigo",
   },
   {
     id: "g_culture",
     name: "Cultura y Futuro",
-    description: "Desarrollo profesional, ambiente de equipo y proyección",
+    description: "Estabilidad laboral y plan de futuro en la empresa",
     color: "amber",
   },
 ];
 
 export const DEFAULT_CONCEPTS: Concept[] = [
+  // Retribución directa
   {
     id: "c_salary_base",
     groupId: "g_direct",
     name: "Salario Base Bruto",
     description: "Sueldo fijo anual bruto en contrato",
     unit: "EUR_YEAR",
-    type: "monetary_direct",
+    category: "tangible",
     weight: 10,
     isPositive: true,
   },
@@ -48,104 +49,107 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_bonus_annual",
     groupId: "g_direct",
     name: "Bonus / Variable Estimado",
-    description: "Compensación variable anual esperada por objetivos",
+    description: "Compensación variable anual esperada",
     unit: "EUR_YEAR",
-    type: "monetary_direct",
+    category: "tangible",
     weight: 8,
     isPositive: true,
   },
   {
-    id: "c_meal_vouchers",
+    id: "c_company_benefits",
     groupId: "g_direct",
-    name: "Subvención Comedor / Cheque Gourmet",
-    description: "Importe mensual equivalente en tickets restaurante / tarjeta comedor",
-    unit: "EUR_MONTH",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 12, // 12 months = annual value
+    name: "Beneficios Económicos de Empresa",
+    description: "Cheques beneficio o retribución flexible anual aportada",
+    unit: "EUR_YEAR",
+    category: "tangible",
     weight: 6,
     isPositive: true,
   },
+
+  // Beneficios y Salud
+  {
+    id: "c_canteen",
+    groupId: "g_benefits",
+    name: "Comedor",
+    description: "Valor tangible (€/año o €/mes) y puntuación de comodidad (10 gratis / 0 tupper)",
+    unit: "SCORE_10",
+    category: "both",
+    monetaryEquivalencePerUnit: 12,
+    weight: 7,
+    isPositive: true,
+  },
+  {
+    id: "c_health_insurance",
+    groupId: "g_benefits",
+    name: "Seguro Médico Privado",
+    description: "Cobertura médica privada financiada por la empresa",
+    unit: "BOOLEAN",
+    category: "tangible",
+    monetaryEquivalencePerUnit: 1200, // Valor estimado anual de la póliza
+    weight: 7,
+    isPositive: true,
+  },
+  {
+    id: "c_pension_plan",
+    groupId: "g_benefits",
+    name: "Plan de Pensiones",
+    description: "Aportación directa anual de la empresa al plan de empleo",
+    unit: "EUR_YEAR",
+    category: "tangible",
+    weight: 6,
+    isPositive: true,
+  },
+
+  // Flexibilidad y Conciliación
   {
     id: "c_telework",
     groupId: "g_flexibility",
-    name: "Días de Teletrabajo / Semana",
-    description: "Días semanales trabajando desde casa",
+    name: "Días de Teletrabajo Semanales",
+    description: "Remoto (0d oficina) = 10 pts, 3d oficina = 4 pts, 5d oficina = 0 pts",
     unit: "DAYS_WEEK",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 900, // ~900€ anuales ahorrados por día semanal en transporte y tiempo
+    category: "intangible",
     weight: 9,
     isPositive: true,
   },
   {
-    id: "c_vacation",
+    id: "c_vacation_days",
     groupId: "g_flexibility",
     name: "Días de Vacaciones / Año",
     description: "Días laborables retribuidos de descanso anual",
     unit: "DAYS_YEAR",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 160, // Valor monetario estimado por día laborable de descanso extra
-    weight: 7,
+    category: "intangible",
+    weight: 8,
     isPositive: true,
   },
   {
     id: "c_commute",
     groupId: "g_flexibility",
-    name: "Desplazamiento Diario (Minutos)",
-    description: "Minutos de ida y vuelta al lugar de trabajo por día presencial",
+    name: "Desplazamiento Diario",
+    description: "Tangible (gasolina/gasto que resta salario) e Intangible (tiempo desperdiciado)",
     unit: "MINUTES_DAY",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: -25, // Impacto monetario negativo estimado por minuto diario de trayecto
-    weight: 6,
+    category: "both",
+    weight: 8,
     isPositive: false,
   },
+
+  // Cultura y Futuro
   {
-    id: "c_health",
-    groupId: "g_benefits",
-    name: "Seguro Médico Privado",
-    description: "Cobertura médica privada financiada por la empresa",
-    unit: "BOOLEAN",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 1200, // Valor de mercado anual de la póliza
-    weight: 7,
-    isPositive: true,
-  },
-  {
-    id: "c_pension",
-    groupId: "g_benefits",
-    name: "Plan de Pensiones (Aportación Empresa)",
-    description: "Aportación directa anual de la empresa al plan de empleo",
-    unit: "EUR_YEAR",
-    type: "monetary_direct",
-    weight: 6,
-    isPositive: true,
-  },
-  {
-    id: "c_training",
-    groupId: "g_benefits",
-    name: "Presupuesto de Formación",
-    description: "Fondo anual disponible para cursos, conferencias y certificaciones",
-    unit: "EUR_YEAR",
-    type: "monetary_direct",
-    weight: 5,
-    isPositive: true,
-  },
-  {
-    id: "c_growth",
+    id: "c_stability",
     groupId: "g_culture",
-    name: "Proyección y Plan de Carrera",
-    description: "Oportunidades reales de ascenso y aprendizaje técnico (1 al 10)",
+    name: "Estabilidad",
+    description: "Seguridad y solidez del puesto y la empresa (1 al 10)",
     unit: "SCORE_10",
-    type: "weighted_score",
+    category: "intangible",
     weight: 9,
     isPositive: true,
   },
   {
-    id: "c_environment",
+    id: "c_future_plan",
     groupId: "g_culture",
-    name: "Ambiente de Trabajo y Estabilidad",
-    description: "Cultura de empresa, relaciones con equipo y solidez (1 al 10)",
+    name: "Plan de Futuro",
+    description: "Proyección profesional, aprendizaje y crecimiento (1 al 10)",
     unit: "SCORE_10",
-    type: "weighted_score",
+    category: "intangible",
     weight: 8,
     isPositive: true,
   },
@@ -168,15 +172,15 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     values: {
       c_salary_base: 45000,
       c_bonus_annual: 3000,
-      c_meal_vouchers: 0,
-      c_telework: 2,
-      c_vacation: 23,
+      c_company_benefits: 500,
+      c_canteen: 4, // Puntuación comedor (ej. 4 pts)
+      c_health_insurance: false,
+      c_pension_plan: 0,
+      c_telework: 2, // 3d oficina -> 2d teletrabajo
+      c_vacation_days: 23,
       c_commute: 50,
-      c_health: false,
-      c_pension: 0,
-      c_training: 500,
-      c_growth: 6,
-      c_environment: 7,
+      c_stability: 8,
+      c_future_plan: 6,
     },
   },
   {
@@ -195,15 +199,15 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     values: {
       c_salary_base: 58000,
       c_bonus_annual: 6000,
-      c_meal_vouchers: 220,
-      c_telework: 5,
-      c_vacation: 26,
+      c_company_benefits: 2000,
+      c_canteen: 10, // 100% Remoto o gratis -> 10 pts
+      c_health_insurance: true,
+      c_pension_plan: 1500,
+      c_telework: 5, // 0d oficina -> 5d teletrabajo (10 pts)
+      c_vacation_days: 26,
       c_commute: 0,
-      c_health: true,
-      c_pension: 1500,
-      c_training: 2000,
-      c_growth: 8,
-      c_environment: 8,
+      c_stability: 8,
+      c_future_plan: 9,
     },
   },
   {
@@ -222,15 +226,15 @@ export const DEFAULT_OFFERS: JobOffer[] = [
     values: {
       c_salary_base: 64000,
       c_bonus_annual: 8000,
-      c_meal_vouchers: 180,
-      c_telework: 2,
-      c_vacation: 24,
+      c_company_benefits: 1000,
+      c_canteen: 7, // Comedor subvencionado -> 7 pts
+      c_health_insurance: true,
+      c_pension_plan: 2000,
+      c_telework: 2, // 3d oficina -> 2d teletrabajo (4 pts)
+      c_vacation_days: 24,
       c_commute: 35,
-      c_health: true,
-      c_pension: 2000,
-      c_training: 1000,
-      c_growth: 9,
-      c_environment: 6,
+      c_stability: 7,
+      c_future_plan: 8,
     },
   },
 ];
@@ -239,7 +243,6 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   const kmOneWay = offer.commuteKmOneWay || 0;
   if (kmOneWay <= 0) return 0;
 
-  // Determine presencial office days per week
   let presencialDaysPerWeek = 0;
   if (offer.workModality === "remoto") {
     presencialDaysPerWeek = 0;
@@ -248,7 +251,6 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   } else if (offer.workModality === "hibrido") {
     presencialDaysPerWeek = offer.officeDaysPerWeek !== undefined ? offer.officeDaysPerWeek : 3;
   } else {
-    // Fallback based on c_telework
     const teleworkDays = typeof offer.values["c_telework"] === "number" ? offer.values["c_telework"] : 0;
     presencialDaysPerWeek = Math.max(0, 5 - teleworkDays);
   }
@@ -268,33 +270,65 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   return Math.round(annualCost);
 }
 
-export function calculateConceptMonetaryValue(
+export function calculateConceptTangibleValue(
   concept: Concept,
   rawValue: number | boolean | undefined
 ): number {
   if (rawValue === undefined || rawValue === null) return 0;
 
-  if (concept.type === "monetary_direct") {
+  // Only tangible or both categories contribute to monetary real salary
+  if (concept.category !== "tangible" && concept.category !== "both") {
+    return 0;
+  }
+
+  if (concept.unit === "EUR_YEAR") {
     return typeof rawValue === "number" ? rawValue : 0;
   }
 
-  if (concept.type === "monetary_calculated") {
-    const multiplier = concept.monetaryEquivalencePerUnit ?? 1;
-    if (concept.unit === "BOOLEAN") {
-      return rawValue === true || rawValue === 1 ? multiplier : 0;
-    }
-    const numeric = typeof rawValue === "number" ? rawValue : 0;
-    return numeric * multiplier;
+  if (concept.unit === "EUR_MONTH") {
+    return typeof rawValue === "number" ? rawValue * 12 : 0;
   }
 
-  // Weighted score has no direct monetary addition (monetary = 0, computed in score)
+  if (concept.unit === "BOOLEAN") {
+    const multiplier = concept.monetaryEquivalencePerUnit ?? 0;
+    return rawValue === true || rawValue === 1 ? multiplier : 0;
+  }
+
+  if (concept.monetaryEquivalencePerUnit) {
+    const numeric = typeof rawValue === "number" ? rawValue : 0;
+    return numeric * concept.monetaryEquivalencePerUnit;
+  }
+
   return 0;
 }
 
 export function calculateConceptNormalizedScore(
   concept: Concept,
-  rawValue: number | boolean | undefined
+  rawValue: number | boolean | undefined,
+  offer?: JobOffer
 ): number {
+  let score = 0;
+
+  if (concept.id === "c_telework") {
+    // Office days logic requested:
+    // 0 office days (remoto) -> 10 pts
+    // 5 office days (oficina) -> 0 pts
+    // 3 office days -> 4 pts
+    let officeDays = 3;
+    if (offer) {
+      if (offer.workModality === "remoto") officeDays = 0;
+      else if (offer.workModality === "presencial") officeDays = 5;
+      else if (offer.officeDaysPerWeek !== undefined) officeDays = offer.officeDaysPerWeek;
+      else if (typeof rawValue === "number") officeDays = Math.max(0, 5 - rawValue);
+    } else if (typeof rawValue === "number") {
+      officeDays = Math.max(0, 5 - rawValue);
+    }
+
+    // Formula: (5 - officeDays) * 2
+    score = Math.min(10, Math.max(0, (5 - officeDays) * 2));
+    return score;
+  }
+
   if (rawValue === undefined || rawValue === null) return 0;
 
   let val = 0;
@@ -304,20 +338,19 @@ export function calculateConceptNormalizedScore(
     val = Number(rawValue);
   }
 
-  // Normalize based on unit
-  let score = 0;
   switch (concept.unit) {
     case "SCORE_10":
+      // 10 = gratis/excelente, 0 = tupper/deficiente
       score = Math.min(10, Math.max(0, val));
       break;
     case "BOOLEAN":
       score = val ? 10 : 0;
       break;
     case "DAYS_WEEK":
-      score = Math.min(10, (val / 5) * 10);
+      score = Math.min(10, Math.max(0, (val / 5) * 10));
       break;
     case "DAYS_YEAR":
-      // Baseline 22 days -> 5 pts, 30 days -> 10 pts
+      // Baseline 20 days -> 0 pts, 25 days -> 5 pts, 30 days -> 10 pts
       score = Math.min(10, Math.max(0, ((val - 20) / 10) * 10));
       break;
     case "MINUTES_DAY":
@@ -327,9 +360,7 @@ export function calculateConceptNormalizedScore(
     case "EUR_YEAR":
     case "EUR_MONTH":
     default:
-      // Monetanized scores use value scaling relative to 50k baseline
-      const annualApprox =
-        concept.unit === "EUR_MONTH" ? val * 12 : val;
+      const annualApprox = concept.unit === "EUR_MONTH" ? val * 12 : val;
       score = Math.min(10, Math.max(0, (annualApprox / 70000) * 10));
       break;
   }
@@ -338,7 +369,7 @@ export function calculateConceptNormalizedScore(
     score = 10 - score;
   }
 
-  return score;
+  return Math.round(score * 10) / 10;
 }
 
 export function evaluateJobOffers(
@@ -348,54 +379,53 @@ export function evaluateJobOffers(
 ): EvaluationResult[] {
   const currentOffer = offers.find((o) => o.isCurrent) || offers[0];
 
-  // Pre-calculate baseline values for current position if available
-  let currentTotalMonetary = 0;
+  let currentTotalTangible = 0;
   let currentCompositeScore = 0;
 
   const rawResults = offers.map((offer) => {
-    let totalMonetary = 0;
+    let totalTangible = 0;
     let weightedScoreSum = 0;
     let totalWeights = 0;
 
     const groupResultsMap: Record<
       string,
-      { totalMonetary: number; weightedScoreSum: number; weightSum: number }
+      { totalTangible: number; weightedScoreSum: number; weightSum: number }
     > = {};
 
     groups.forEach((g) => {
-      groupResultsMap[g.id] = { totalMonetary: 0, weightedScoreSum: 0, weightSum: 0 };
+      groupResultsMap[g.id] = { totalTangible: 0, weightedScoreSum: 0, weightSum: 0 };
     });
 
     concepts.forEach((concept) => {
       const rawVal = offer.values[concept.id];
-      const monVal = calculateConceptMonetaryValue(concept, rawVal);
-      const score10 = calculateConceptNormalizedScore(concept, rawVal);
+      const tangVal = calculateConceptTangibleValue(concept, rawVal);
+      const score10 = calculateConceptNormalizedScore(concept, rawVal, offer);
 
-      totalMonetary += monVal;
+      totalTangible += tangVal;
 
       const weight = concept.weight || 1;
       weightedScoreSum += score10 * weight;
       totalWeights += weight;
 
       if (groupResultsMap[concept.groupId]) {
-        groupResultsMap[concept.groupId].totalMonetary += monVal;
+        groupResultsMap[concept.groupId].totalTangible += tangVal;
         groupResultsMap[concept.groupId].weightedScoreSum += score10 * weight;
         groupResultsMap[concept.groupId].weightSum += weight;
       }
     });
 
-    // Subtract car commute fuel expenses
+    // Deduct car commute fuel expense from real salary (totalTangible)
     const commuteExpense = calculateCommuteAnnualExpense(offer);
-    totalMonetary -= commuteExpense;
+    totalTangible -= commuteExpense;
     if (groupResultsMap["g_flexibility"]) {
-      groupResultsMap["g_flexibility"].totalMonetary -= commuteExpense;
+      groupResultsMap["g_flexibility"].totalTangible -= commuteExpense;
     }
 
     const compositeScore =
       totalWeights > 0 ? Math.round((weightedScoreSum / (totalWeights * 10)) * 100) : 0;
 
     if (offer.id === currentOffer?.id) {
-      currentTotalMonetary = totalMonetary;
+      currentTotalTangible = totalTangible;
       currentCompositeScore = compositeScore;
     }
 
@@ -410,7 +440,7 @@ export function evaluateJobOffers(
         groupId: g.id,
         groupName: g.name,
         color: g.color,
-        totalMonetaryValue: gData ? gData.totalMonetary : 0,
+        totalTangibleValue: gData ? gData.totalTangible : 0,
         score100: gScore100,
       };
     });
@@ -421,9 +451,9 @@ export function evaluateJobOffers(
       company: offer.company,
       isCurrent: !!offer.isCurrent,
       status: offer.status,
-      totalMonetaryValue: totalMonetary,
+      totalTangibleValue: totalTangible,
       compositeScore,
-      deltaMonetaryVsCurrent: 0,
+      deltaTangibleVsCurrent: 0,
       deltaPercentVsCurrent: 0,
       deltaScoreVsCurrent: 0,
       groupResults,
@@ -433,27 +463,27 @@ export function evaluateJobOffers(
 
   // Calculate deltas and ranking
   const resultsWithDeltas = rawResults.map((res) => {
-    const deltaMonetary = res.totalMonetaryValue - currentTotalMonetary;
+    const deltaTangible = res.totalTangibleValue - currentTotalTangible;
     const deltaPct =
-      currentTotalMonetary > 0
-        ? Math.round((deltaMonetary / currentTotalMonetary) * 100)
+      currentTotalTangible > 0
+        ? Math.round((deltaTangible / currentTotalTangible) * 100)
         : 0;
     const deltaScore = res.compositeScore - currentCompositeScore;
 
     return {
       ...res,
-      deltaMonetaryVsCurrent: deltaMonetary,
+      deltaTangibleVsCurrent: deltaTangible,
       deltaPercentVsCurrent: deltaPct,
       deltaScoreVsCurrent: deltaScore,
     };
   });
 
-  // Sort by composite score (or monetary if equal) to determine ranking
+  // Sort by composite score (or tangible money if equal) to determine ranking
   const sorted = [...resultsWithDeltas].sort((a, b) => {
     if (b.compositeScore !== a.compositeScore) {
       return b.compositeScore - a.compositeScore;
     }
-    return b.totalMonetaryValue - a.totalMonetaryValue;
+    return b.totalTangibleValue - a.totalTangibleValue;
   });
 
   return sorted.map((res, index) => ({
