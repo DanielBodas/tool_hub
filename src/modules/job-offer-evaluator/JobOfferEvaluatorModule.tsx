@@ -1004,39 +1004,6 @@ export function JobOfferEvaluatorModule() {
                 )}
               </div>
 
-              {(conceptCategory === "intangible" || conceptCategory === "both") && (
-                <div className="bg-muted/30 p-3 rounded-xl border border-border/80 space-y-2">
-                  <span className="block font-black uppercase text-foreground text-[10px]">
-                    Escala y Significado Intangible (0 a 10 Puntos)
-                  </span>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-muted-foreground uppercase mb-0.5">
-                        🔴 Significado de 0 pts (Mínimo)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ej. 5 días oficina / Tupper"
-                        value={conceptMinLabel}
-                        onChange={(e) => setConceptMinLabel(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-semibold text-foreground text-xs"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-extrabold text-muted-foreground uppercase mb-0.5">
-                        🟢 Significado de 10 pts (Máximo)
-                      </label>
-                      <input
-                        type="text"
-                        placeholder="Ej. 100% Remoto / Comida gratis"
-                        value={conceptMaxLabel}
-                        onChange={(e) => setConceptMaxLabel(e.target.value)}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-semibold text-foreground text-xs"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 
@@ -2284,6 +2251,41 @@ export function JobOfferEvaluatorModule() {
                   </div>
                 )}
               </div>
+
+              {/* INTANGIBLE SCALE LABELS CONFIGURATION (0 PTS vs 10 PTS) */}
+              {(conceptCategory === "intangible" || conceptCategory === "both") && (
+                <div className="bg-muted/40 p-3 rounded-xl border border-border space-y-2">
+                  <span className="block font-black uppercase text-foreground text-[11px]">
+                    Definición de Escala (Qué es Malo vs Qué es Bueno)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-muted-foreground uppercase mb-0.5">
+                        🔴 0 Puntos (Lo Mínimo / Peor caso)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. Oficina todos los días / Tupper"
+                        value={conceptMinLabel}
+                        onChange={(e) => setConceptMinLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-semibold text-foreground text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-muted-foreground uppercase mb-0.5">
+                        🟢 10 Puntos (Lo Ideal / Mejor caso)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 100% Remoto / Comida gratis"
+                        value={conceptMaxLabel}
+                        onChange={(e) => setConceptMaxLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-semibold text-foreground text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="pt-3 border-t border-border flex justify-end gap-2">
