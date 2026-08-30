@@ -26,6 +26,8 @@ export interface Concept {
   weight: number; // 1 to 10 (Importance weight)
   isPositive: boolean; // true if higher is better, false if lower is better
   monetaryEquivalencePerUnit?: number; // annual monetary equivalency multiplier if applicable
+  minLabel?: string; // Meaning of 0 / minimum score (e.g., "5 días en oficina", "Tupper de casa")
+  maxLabel?: string; // Meaning of 10 / maximum score (e.g., "100% Remoto", "Comida gratis en restaurante")
 }
 
 export type OfferStatus =

@@ -93,6 +93,8 @@ export function JobOfferEvaluatorModule() {
   const [conceptCategory, setConceptCategory] = useState<ConceptCategory>("tangible");
   const [conceptWeight, setConceptWeight] = useState<number>(7);
   const [conceptMonetaryEquivalence, setConceptMonetaryEquivalence] = useState<number>(0);
+  const [conceptMinLabel, setConceptMinLabel] = useState<string>("");
+  const [conceptMaxLabel, setConceptMaxLabel] = useState<string>("");
 
   // Group Modal State
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
@@ -459,6 +461,8 @@ export function JobOfferEvaluatorModule() {
       setConceptCategory(conceptToEdit.category || "tangible");
       setConceptWeight(conceptToEdit.weight);
       setConceptMonetaryEquivalence(conceptToEdit.monetaryEquivalencePerUnit || 0);
+      setConceptMinLabel(conceptToEdit.minLabel || "");
+      setConceptMaxLabel(conceptToEdit.maxLabel || "");
     } else {
       setEditingConcept(null);
       setConceptName("");
@@ -468,6 +472,8 @@ export function JobOfferEvaluatorModule() {
       setConceptCategory("tangible");
       setConceptWeight(7);
       setConceptMonetaryEquivalence(0);
+      setConceptMinLabel("");
+      setConceptMaxLabel("");
     }
     setShowConceptModal(true);
   };
@@ -489,6 +495,8 @@ export function JobOfferEvaluatorModule() {
       weight: Number(conceptWeight),
       isPositive: true,
       monetaryEquivalencePerUnit: Number(conceptMonetaryEquivalence),
+      minLabel: conceptMinLabel,
+      maxLabel: conceptMaxLabel,
     };
 
     let updatedConcepts = [...concepts];
@@ -995,6 +1003,40 @@ export function JobOfferEvaluatorModule() {
                   </div>
                 )}
               </div>
+
+              {(conceptCategory === "intangible" || conceptCategory === "both") && (
+                <div className="bg-muted/30 p-3 rounded-xl border border-border/80 space-y-2">
+                  <span className="block font-black uppercase text-foreground text-[10px]">
+                    Escala y Significado Intangible (0 a 10 Puntos)
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-muted-foreground uppercase mb-0.5">
+                        🔴 Significado de 0 pts (Mínimo)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 5 días oficina / Tupper"
+                        value={conceptMinLabel}
+                        onChange={(e) => setConceptMinLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-semibold text-foreground text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-extrabold text-muted-foreground uppercase mb-0.5">
+                        🟢 Significado de 10 pts (Máximo)
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Ej. 100% Remoto / Comida gratis"
+                        value={conceptMaxLabel}
+                        onChange={(e) => setConceptMaxLabel(e.target.value)}
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-border bg-background font-semibold text-foreground text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -1472,110 +1514,113 @@ export function JobOfferEvaluatorModule() {
                   {!isCollapsed && (
                     groupConcepts.length > 0 ? (
                       <div className="divide-y divide-border/60 p-2 sm:p-3 space-y-2">
-                      {groupConcepts.map((concept) => (
-                        <div
-                          key={concept.id}
-                          className="bg-muted/20 rounded-xl p-3 border border-border/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-black text-foreground">{concept.name}</h4>
-                              {formatCategoryBadge(concept.category)}
-                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
-                                {concept.unit}
-                              </span>
-                            </div>
-                            {concept.description && (
-                              <p className="text-[11px] text-muted-foreground font-semibold">
-                                {concept.description}
-                              </p>
-                            )}
-                          </div>
+                      {groupConcepts.map((concept) => {
+                        // Calculate weight relative percentage in total sum
+                        const totalAllWeights = concepts.reduce((acc, c) => acc + (c.weight || 1), 0);
+                        const weightPct = totalAllWeights > 0 ? Math.round((concept.weight / totalAllWeights) * 100) : 0;
 
-                          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-                            {/* Group Reassignment Dropdown */}
-                            <div>
-                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                Grupo
-                              </label>
-                              <select
-                                value={concept.groupId}
-                                onChange={(e) => handleMoveConceptToGroup(concept.id, e.target.value)}
-                                className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer max-w-[140px]"
-                              >
-                                {groups.map((g) => (
-                                  <option key={g.id} value={g.id}>
-                                    {g.name}
-                                  </option>
-                                ))}
-                              </select>
+                        return (
+                          <div
+                            key={concept.id}
+                            className="bg-muted/20 rounded-xl p-3 border border-border/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-black text-foreground text-sm">{concept.name}</h4>
+                                {formatCategoryBadge(concept.category)}
+                                <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
+                                  {concept.unit}
+                                </span>
+                              </div>
+
+                              {concept.description && (
+                                <p className="text-[11px] text-muted-foreground font-semibold">
+                                  {concept.description}
+                                </p>
+                              )}
+
+                              {/* Display Intangible Scale Meaning (0 pts vs 10 pts) if present */}
+                              {(concept.category === "intangible" || concept.category === "both") && (concept.minLabel || concept.maxLabel) && (
+                                <div className="text-[10px] font-medium text-muted-foreground/90 bg-background/50 p-1.5 rounded-lg border border-border/40 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+                                  {concept.minLabel && <span>🔴 <strong className="text-foreground">0 pts:</strong> {concept.minLabel}</span>}
+                                  {concept.maxLabel && <span>🟢 <strong className="text-foreground">10 pts:</strong> {concept.maxLabel}</span>}
+                                </div>
+                              )}
                             </div>
 
-                            {/* Category Selector */}
-                            <div>
-                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                Naturaleza
-                              </label>
-                              <select
-                                value={concept.category}
-                                onChange={(e) => handleConceptCategoryChange(concept.id, e.target.value as ConceptCategory)}
-                                className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer"
-                              >
-                                <option value="tangible">Tangible (Dinero)</option>
-                                <option value="intangible">Intangible</option>
-                                <option value="both">Ambos (Tangible+Intangible)</option>
-                              </select>
-                            </div>
-
-                            {(concept.category === "tangible" || concept.category === "both") && concept.unit !== "EUR_YEAR" && (
+                            <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                              {/* Category Selector */}
                               <div>
                                 <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                  Valor Anual (€/unidad)
+                                  Naturaleza
                                 </label>
+                                <select
+                                  value={concept.category}
+                                  onChange={(e) => handleConceptCategoryChange(concept.id, e.target.value as ConceptCategory)}
+                                  className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer"
+                                >
+                                  <option value="tangible">Tangible (Dinero)</option>
+                                  <option value="intangible">Intangible</option>
+                                  <option value="both">Ambos (Tangible+Intangible)</option>
+                                </select>
+                              </div>
+
+                              {(concept.category === "tangible" || concept.category === "both") && concept.unit !== "EUR_YEAR" && (
+                                <div>
+                                  <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                                    Valor Anual (€/unidad)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    value={concept.monetaryEquivalencePerUnit || 0}
+                                    onChange={(e) =>
+                                      handleConceptEquivalenceChange(concept.id, Number(e.target.value))
+                                    }
+                                    className="w-24 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Weight Selector with Percentage Indicator */}
+                              <div>
+                                <div className="flex justify-between items-center mb-0.5">
+                                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground">
+                                    Peso (1-10)
+                                  </label>
+                                  <span className="text-[9px] font-black text-primary ml-1">
+                                    ~{weightPct}% total
+                                  </span>
+                                </div>
                                 <input
                                   type="number"
-                                  value={concept.monetaryEquivalencePerUnit || 0}
+                                  min={1}
+                                  max={10}
+                                  value={concept.weight}
                                   onChange={(e) =>
-                                    handleConceptEquivalenceChange(concept.id, Number(e.target.value))
+                                    handleConceptWeightChange(concept.id, Number(e.target.value))
                                   }
-                                  className="w-24 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                                  className="w-16 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
                                 />
                               </div>
-                            )}
 
-                            <div>
-                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                Peso (1-10)
-                              </label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={concept.weight}
-                                onChange={(e) =>
-                                  handleConceptWeightChange(concept.id, Number(e.target.value))
-                                }
-                                className="w-14 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
-                              />
-                            </div>
-
-                            <div className="pt-3 md:pt-0 flex gap-1">
-                              <button
-                                onClick={() => handleOpenConceptModal(concept)}
-                                className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase cursor-pointer"
-                              >
-                                Editar
-                              </button>
-                              <button
-                                onClick={() => handleDeleteConcept(concept.id)}
-                                className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase cursor-pointer"
-                              >
-                                Borrar
-                              </button>
+                              <div className="pt-3 md:pt-0 flex gap-1">
+                                <button
+                                  onClick={() => handleOpenConceptModal(concept)}
+                                  className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase cursor-pointer"
+                                >
+                                  Editar
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteConcept(concept.id)}
+                                  className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase cursor-pointer"
+                                >
+                                  Borrar
+                                </button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="p-4 text-center text-xs text-muted-foreground italic font-medium">
@@ -1886,71 +1931,146 @@ export function JobOfferEvaluatorModule() {
               </h4>
 
               <div className="space-y-2">
-                {concepts.map((concept) => (
-                  <div
-                    key={concept.id}
-                    className="bg-muted/30 p-3 rounded-xl border border-border space-y-1.5"
-                  >
-                    <div className="flex justify-between items-center gap-2">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <label className="font-bold text-foreground">
-                          {concept.name}{" "}
-                          <span className="text-[10px] text-muted-foreground">
-                            ({concept.unit})
-                          </span>
-                        </label>
-                        {formatCategoryBadge(concept.category)}
+                {concepts.map((concept) => {
+                  const isTangibleOnly = concept.category === "tangible";
+                  const isIntangibleOnly = concept.category === "intangible";
+                  const isBoth = concept.category === "both";
+
+                  return (
+                    <div
+                      key={concept.id}
+                      className="bg-muted/30 p-3 rounded-xl border border-border space-y-2"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <label className="font-black text-foreground text-xs">
+                              {concept.name}
+                            </label>
+                            {formatCategoryBadge(concept.category)}
+                          </div>
+                          {(concept.minLabel || concept.maxLabel) && (
+                            <div className="text-[10px] text-muted-foreground font-semibold flex flex-wrap gap-x-2">
+                              {concept.minLabel && <span>🔴 0 pts: {concept.minLabel}</span>}
+                              {concept.maxLabel && <span>🟢 10 pts: {concept.maxLabel}</span>}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Input tailored to concept category */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {isTangibleOnly && concept.unit === "BOOLEAN" && (
+                            <select
+                              value={offerValues[concept.id] ? "true" : "false"}
+                              onChange={(e) =>
+                                setOfferValues({
+                                  ...offerValues,
+                                  [concept.id]: e.target.value === "true",
+                                })
+                              }
+                              className="px-2 py-1 rounded-lg border border-border bg-background font-bold shrink-0 text-xs"
+                            >
+                              <option value="false">NO (No incluido)</option>
+                              <option value="true">SÍ (Incluido)</option>
+                            </select>
+                          )}
+
+                          {isTangibleOnly && concept.unit !== "BOOLEAN" && (
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="number"
+                                placeholder="0"
+                                value={
+                                  offerValues[concept.id] !== undefined
+                                    ? Number(offerValues[concept.id])
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setOfferValues({
+                                    ...offerValues,
+                                    [concept.id]: Number(e.target.value),
+                                  })
+                                }
+                                className="w-28 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
+                              />
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                                {concept.unit === "EUR_MONTH" ? "€/mes" : "€/año"}
+                              </span>
+                            </div>
+                          )}
+
+                          {isIntangibleOnly && (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                                Valoración:
+                              </span>
+                              <input
+                                type="number"
+                                min={0}
+                                max={10}
+                                placeholder="0-10"
+                                value={
+                                  offerValues[concept.id] !== undefined
+                                    ? Number(offerValues[concept.id])
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setOfferValues({
+                                    ...offerValues,
+                                    [concept.id]: Number(e.target.value),
+                                  })
+                                }
+                                className="w-20 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                              />
+                              <span className="text-[10px] font-bold text-muted-foreground">
+                                /10 pts
+                              </span>
+                            </div>
+                          )}
+
+                          {isBoth && (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="number"
+                                min={0}
+                                max={10}
+                                placeholder="Pts (0-10)"
+                                value={
+                                  offerValues[concept.id] !== undefined
+                                    ? Number(offerValues[concept.id])
+                                    : ""
+                                }
+                                onChange={(e) =>
+                                  setOfferValues({
+                                    ...offerValues,
+                                    [concept.id]: Number(e.target.value),
+                                  })
+                                }
+                                className="w-24 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                              />
+                              <span className="text-[10px] font-bold text-muted-foreground">pts</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
-                      {concept.unit === "BOOLEAN" ? (
-                        <select
-                          value={offerValues[concept.id] ? "true" : "false"}
-                          onChange={(e) =>
-                            setOfferValues({
-                              ...offerValues,
-                              [concept.id]: e.target.value === "true",
-                            })
-                          }
-                          className="px-2 py-1 rounded-lg border border-border bg-background font-bold shrink-0"
-                        >
-                          <option value="false">NO (No incluido)</option>
-                          <option value="true">SÍ (Incluido)</option>
-                        </select>
-                      ) : (
+                      <div>
                         <input
-                          type="number"
-                          value={
-                            offerValues[concept.id] !== undefined
-                              ? Number(offerValues[concept.id])
-                              : ""
-                          }
+                          type="text"
+                          placeholder="Añade una justificación o detalle sobre este valor..."
+                          value={offerConceptNotes[concept.id] || ""}
                           onChange={(e) =>
-                            setOfferValues({
-                              ...offerValues,
-                              [concept.id]: Number(e.target.value),
+                            setOfferConceptNotes({
+                              ...offerConceptNotes,
+                              [concept.id]: e.target.value,
                             })
                           }
-                          className="w-36 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right shrink-0"
+                          className="w-full px-2.5 py-1 rounded-lg border border-border/60 bg-background/80 font-normal text-[11px] text-foreground"
                         />
-                      )}
+                      </div>
                     </div>
-
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Añade una justificación o detalle sobre este valor..."
-                        value={offerConceptNotes[concept.id] || ""}
-                        onChange={(e) =>
-                          setOfferConceptNotes({
-                            ...offerConceptNotes,
-                            [concept.id]: e.target.value,
-                          })
-                        }
-                        className="w-full px-2.5 py-1 rounded-lg border border-border/60 bg-background/80 font-normal text-[11px] text-foreground"
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
