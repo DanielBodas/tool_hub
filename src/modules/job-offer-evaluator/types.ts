@@ -7,7 +7,15 @@ export type UnitType =
   | "DAYS_WEEK"      // días/semana (días presenciales o teletrabajo)
   | "SCORE_10"       // Puntuación 1-10
   | "BOOLEAN"        // Sí / No
-  | "MINUTES_DAY";   // minutos/día (desplazamiento)
+  | "MINUTES_DAY"    // minutos/día (desplazamiento)
+  | "CATEGORICAL";   // Opciones categóricas con puntuación/valor asignado
+
+export interface ConceptOption {
+  id: string;
+  label: string;      // ej: "100% Remoto", "Comida gratis", "Llevar tupper", "3 días oficina"
+  score: number;      // Puntuación 0-10
+  value?: number;     // Valor económico opcional €/año
+}
 
 export interface ConceptGroup {
   id: string;
@@ -28,6 +36,7 @@ export interface Concept {
   monetaryEquivalencePerUnit?: number; // annual monetary equivalency multiplier if applicable
   minLabel?: string; // Meaning of 0 / minimum score (e.g., "5 días en oficina", "Tupper de casa")
   maxLabel?: string; // Meaning of 10 / maximum score (e.g., "100% Remoto", "Comida gratis en restaurante")
+  options?: ConceptOption[]; // Lista de opciones categóricas personalizadas
 }
 
 export type OfferStatus =
@@ -50,7 +59,7 @@ export interface JobOffer {
   isCurrent: boolean;
   status: OfferStatus;
   notes?: string;
-  values: Record<string, number | boolean>;
+  values: Record<string, number | boolean | string>;
   conceptNotes?: Record<string, string>; // Justification / notes per concept value
   commuteKmOneWay?: number;               // Distance in km (one-way)
   commuteFuelL100?: number;              // Car fuel consumption in L/100km

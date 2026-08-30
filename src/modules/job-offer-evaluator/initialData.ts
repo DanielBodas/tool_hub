@@ -71,14 +71,17 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_canteen",
     groupId: "g_benefits",
     name: "Comedor",
-    description: "Valor tangible (€/mes) e intangible (comodidad de comer gratis vs llevar tupper)",
-    unit: "SCORE_10",
+    description: "Opción de comedor o ayuda de comida en la empresa",
+    unit: "CATEGORICAL",
     category: "both",
-    monetaryEquivalencePerUnit: 12,
     weight: 7,
     isPositive: true,
-    minLabel: "Llevar tupper de casa (0 pts)",
-    maxLabel: "Comida gratis en restaurante/empresa (10 pts)",
+    options: [
+      { id: "canteen_free", label: "Comida gratis / Ticket Restaurante total", score: 10, value: 1800 },
+      { id: "canteen_subsidized", label: "Comedor subvencionando parte del menú", score: 7, value: 900 },
+      { id: "canteen_tupper_space", label: "Oficina con office para llevar tupper", score: 3, value: 0 },
+      { id: "canteen_none", label: "Sin facilidades ni espacio de comedor", score: 0, value: 0 },
+    ],
   },
   {
     id: "c_health_insurance",
@@ -107,13 +110,19 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_telework",
     groupId: "g_flexibility",
     name: "Días de Teletrabajo Semanales",
-    description: "Valoración de teletrabajo vs días presenciales en oficina",
-    unit: "DAYS_WEEK",
+    description: "Modalidad de trabajo remoto vs oficina presencial",
+    unit: "CATEGORICAL",
     category: "intangible",
     weight: 9,
     isPositive: true,
-    minLabel: "5 días presenciales en oficina (0 pts)",
-    maxLabel: "100% Remoto / 5 días teletrabajo (10 pts)",
+    options: [
+      { id: "telework_100_remote", label: "100% Remoto (5 días teletrabajo)", score: 10 },
+      { id: "telework_4d", label: "4 días teletrabajo / 1 día oficina", score: 8 },
+      { id: "telework_3d", label: "3 días teletrabajo / 2 días oficina", score: 6 },
+      { id: "telework_2d", label: "2 días teletrabajo / 3 días oficina", score: 4 },
+      { id: "telework_1d", label: "1 día teletrabajo / 4 días oficina", score: 2 },
+      { id: "telework_0d", label: "100% Presencial (5 días oficina)", score: 0 },
+    ],
   },
   {
     id: "c_vacation_days",
@@ -141,23 +150,31 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_stability",
     groupId: "g_culture",
     name: "Estabilidad",
-    description: "Seguridad y solidez del puesto y la empresa (1 al 10)",
-    unit: "SCORE_10",
+    description: "Seguridad, solvencia y solidez del puesto y la empresa",
+    unit: "CATEGORICAL",
     category: "intangible",
     weight: 9,
     isPositive: true,
-    minLabel: "Inseguridad / Poca solidez (0 pts)",
-    maxLabel: "Máxima estabilidad y solidez (10 pts)",
+    options: [
+      { id: "stab_high", label: "Alta estabilidad (Empresa muy consolidada / Contrato indefinido)", score: 10 },
+      { id: "stab_med", label: "Estabilidad media (Sector estable / Crecimiento sostenido)", score: 6 },
+      { id: "stab_low", label: "Baja estabilidad / Startup en fase inicial", score: 2 },
+    ],
   },
   {
     id: "c_future_plan",
     groupId: "g_culture",
     name: "Plan de Futuro",
-    description: "Proyección profesional, aprendizaje y crecimiento (1 al 10)",
-    unit: "SCORE_10",
+    description: "Proyección profesional, aprendizaje y plan de carrera",
+    unit: "CATEGORICAL",
     category: "intangible",
     weight: 8,
     isPositive: true,
+    options: [
+      { id: "fut_excel", label: "Excelente plan de carrera y formación continua", score: 10 },
+      { id: "fut_good", label: "Buen recorrido profesional y crecimiento regular", score: 7 },
+      { id: "fut_flat", label: "Poca proyección / Puesto estático sin ascenso", score: 2 },
+    ],
   },
 ];
 
@@ -179,14 +196,14 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 45000,
       c_bonus_annual: 3000,
       c_company_benefits: 500,
-      c_canteen: 4, // Puntuación comedor (ej. 4 pts)
+      c_canteen: "canteen_tupper_space",
       c_health_insurance: false,
       c_pension_plan: 0,
-      c_telework: 2, // 3d oficina -> 2d teletrabajo
+      c_telework: "telework_2d",
       c_vacation_days: 23,
       c_commute: 50,
-      c_stability: 8,
-      c_future_plan: 6,
+      c_stability: "stab_high",
+      c_future_plan: "fut_good",
     },
   },
   {
@@ -206,14 +223,14 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 58000,
       c_bonus_annual: 6000,
       c_company_benefits: 2000,
-      c_canteen: 10, // 100% Remoto o gratis -> 10 pts
+      c_canteen: "canteen_free",
       c_health_insurance: true,
       c_pension_plan: 1500,
-      c_telework: 5, // 0d oficina -> 5d teletrabajo (10 pts)
+      c_telework: "telework_100_remote",
       c_vacation_days: 26,
       c_commute: 0,
-      c_stability: 8,
-      c_future_plan: 9,
+      c_stability: "stab_high",
+      c_future_plan: "fut_excel",
     },
   },
   {
@@ -233,14 +250,14 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 64000,
       c_bonus_annual: 8000,
       c_company_benefits: 1000,
-      c_canteen: 7, // Comedor subvencionado -> 7 pts
+      c_canteen: "canteen_subsidized",
       c_health_insurance: true,
       c_pension_plan: 2000,
-      c_telework: 2, // 3d oficina -> 2d teletrabajo (4 pts)
+      c_telework: "telework_2d",
       c_vacation_days: 24,
       c_commute: 35,
-      c_stability: 7,
-      c_future_plan: 8,
+      c_stability: "stab_med",
+      c_future_plan: "fut_excel",
     },
   },
 ];
@@ -278,7 +295,7 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
 
 export function calculateConceptTangibleValue(
   concept: Concept,
-  rawValue: number | boolean | undefined
+  rawValue: number | boolean | string | undefined
 ): number {
   if (rawValue === undefined || rawValue === null) return 0;
 
@@ -287,21 +304,32 @@ export function calculateConceptTangibleValue(
     return 0;
   }
 
+  // Handle CATEGORICAL unit or concepts with predefined options
+  if (concept.unit === "CATEGORICAL" || (concept.options && concept.options.length > 0)) {
+    const selectedOpt = concept.options?.find((o) => o.id === String(rawValue));
+    if (selectedOpt) {
+      if (selectedOpt.value !== undefined) return selectedOpt.value;
+      if (concept.monetaryEquivalencePerUnit) {
+        return selectedOpt.score * concept.monetaryEquivalencePerUnit;
+      }
+    }
+  }
+
   if (concept.unit === "EUR_YEAR") {
-    return typeof rawValue === "number" ? rawValue : 0;
+    return typeof rawValue === "number" ? rawValue : Number(rawValue) || 0;
   }
 
   if (concept.unit === "EUR_MONTH") {
-    return typeof rawValue === "number" ? rawValue * 12 : 0;
+    return typeof rawValue === "number" ? rawValue * 12 : (Number(rawValue) || 0) * 12;
   }
 
   if (concept.unit === "BOOLEAN") {
     const multiplier = concept.monetaryEquivalencePerUnit ?? 0;
-    return rawValue === true || rawValue === 1 ? multiplier : 0;
+    return rawValue === true || rawValue === 1 || rawValue === "true" ? multiplier : 0;
   }
 
   if (concept.monetaryEquivalencePerUnit) {
-    const numeric = typeof rawValue === "number" ? rawValue : 0;
+    const numeric = typeof rawValue === "number" ? rawValue : Number(rawValue) || 0;
     return numeric * concept.monetaryEquivalencePerUnit;
   }
 
@@ -310,16 +338,20 @@ export function calculateConceptTangibleValue(
 
 export function calculateConceptNormalizedScore(
   concept: Concept,
-  rawValue: number | boolean | undefined,
+  rawValue: number | boolean | string | undefined,
   offer?: JobOffer
 ): number {
-  let score = 0;
+  if (rawValue === undefined || rawValue === null) return 0;
+
+  // Handle CATEGORICAL options first
+  if (concept.unit === "CATEGORICAL" || (concept.options && concept.options.length > 0)) {
+    const selectedOpt = concept.options?.find((o) => o.id === String(rawValue));
+    if (selectedOpt) {
+      return Math.min(10, Math.max(0, selectedOpt.score));
+    }
+  }
 
   if (concept.id === "c_telework") {
-    // Office days logic requested:
-    // 0 office days (remoto) -> 10 pts
-    // 5 office days (oficina) -> 0 pts
-    // 3 office days -> 4 pts
     let officeDays = 3;
     if (offer) {
       if (offer.workModality === "remoto") officeDays = 0;
@@ -330,23 +362,19 @@ export function calculateConceptNormalizedScore(
       officeDays = Math.max(0, 5 - rawValue);
     }
 
-    // Formula: (5 - officeDays) * 2
-    score = Math.min(10, Math.max(0, (5 - officeDays) * 2));
-    return score;
+    return Math.min(10, Math.max(0, (5 - officeDays) * 2));
   }
-
-  if (rawValue === undefined || rawValue === null) return 0;
 
   let val = 0;
   if (typeof rawValue === "boolean") {
     val = rawValue ? 10 : 0;
   } else {
-    val = Number(rawValue);
+    val = Number(rawValue) || 0;
   }
 
+  let score = 0;
   switch (concept.unit) {
     case "SCORE_10":
-      // 10 = gratis/excelente, 0 = tupper/deficiente
       score = Math.min(10, Math.max(0, val));
       break;
     case "BOOLEAN":
@@ -356,11 +384,9 @@ export function calculateConceptNormalizedScore(
       score = Math.min(10, Math.max(0, (val / 5) * 10));
       break;
     case "DAYS_YEAR":
-      // Baseline 20 days -> 0 pts, 25 days -> 5 pts, 30 days -> 10 pts
       score = Math.min(10, Math.max(0, ((val - 20) / 10) * 10));
       break;
     case "MINUTES_DAY":
-      // 0 min -> 10 pts, 60+ min -> 0 pts
       score = Math.max(0, 10 - (val / 60) * 10);
       break;
     case "EUR_YEAR":
