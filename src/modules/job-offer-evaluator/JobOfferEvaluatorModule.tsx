@@ -1899,9 +1899,7 @@ export function JobOfferEvaluatorModule() {
 
               <div className="space-y-2">
                 {concepts.map((concept) => {
-                  const isTangibleOnly = concept.category === "tangible";
-                  const isIntangibleOnly = concept.category === "intangible";
-                  const isBoth = concept.category === "both";
+                  const val = offerValues[concept.id];
 
                   return (
                     <div
@@ -1924,100 +1922,168 @@ export function JobOfferEvaluatorModule() {
                           )}
                         </div>
 
-                        {/* Input tailored to concept category */}
+                        {/* DYNAMIC FORM FIELD BASED ON NATURAL CONCEPT NATURE */}
                         <div className="flex items-center gap-2 shrink-0">
-                          {isTangibleOnly && concept.unit === "BOOLEAN" && (
-                            <select
-                              value={offerValues[concept.id] ? "true" : "false"}
-                              onChange={(e) =>
-                                setOfferValues({
-                                  ...offerValues,
-                                  [concept.id]: e.target.value === "true",
-                                })
-                              }
-                              className="px-2 py-1 rounded-lg border border-border bg-background font-bold shrink-0 text-xs"
-                            >
-                              <option value="false">NO (No incluido)</option>
-                              <option value="true">SÍ (Incluido)</option>
-                            </select>
+                          {/* TELEWORK SPECIAL NATURAL SELECTOR */}
+                          {concept.id === "c_telework" && (
+                            <div className="flex items-center gap-1.5">
+                              <select
+                                value={offerOfficeDays}
+                                onChange={(e) => handleOfficeDaysChange(Number(e.target.value))}
+                                className="px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer"
+                              >
+                                <option value={0}>0 días oficina (100% Remoto) ➔ 10 pts</option>
+                                <option value={1}>1 día oficina / 4d teletrabajo ➔ 8 pts</option>
+                                <option value={2}>2 días oficina / 3d teletrabajo ➔ 6 pts</option>
+                                <option value={3}>3 días oficina / 2d teletrabajo ➔ 4 pts</option>
+                                <option value={4}>4 días oficina / 1d teletrabajo ➔ 2 pts</option>
+                                <option value={5}>5 días oficina (100% Presencial) ➔ 0 pts</option>
+                              </select>
+                            </div>
                           )}
 
-                          {isTangibleOnly && concept.unit !== "BOOLEAN" && (
+                          {/* CANTEEN SPECIAL COMBO INPUT (€/MES + SCORE 0-10) */}
+                          {concept.id === "c_canteen" && (
+                            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                              <div className="flex items-center gap-1">
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                                  Valor:
+                                </span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={10}
+                                  placeholder="0-10 pts"
+                                  value={val !== undefined ? Number(val) : 5}
+                                  onChange={(e) =>
+                                    setOfferValues({
+                                      ...offerValues,
+                                      [concept.id]: Number(e.target.value),
+                                    })
+                                  }
+                                  className="w-16 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                                />
+                                <span className="text-[10px] font-bold text-muted-foreground">/10 pts</span>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* VACATIONS NATURAL DAYS INPUT */}
+                          {concept.id === "c_vacation_days" && (
                             <div className="flex items-center gap-1">
                               <input
                                 type="number"
-                                placeholder="0"
-                                value={
-                                  offerValues[concept.id] !== undefined
-                                    ? Number(offerValues[concept.id])
-                                    : ""
-                                }
+                                min={0}
+                                placeholder="23"
+                                value={val !== undefined ? Number(val) : 23}
                                 onChange={(e) =>
                                   setOfferValues({
                                     ...offerValues,
                                     [concept.id]: Number(e.target.value),
                                   })
                                 }
-                                className="w-28 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
+                                className="w-20 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
                               />
                               <span className="text-[10px] font-bold text-muted-foreground uppercase">
-                                {concept.unit === "EUR_MONTH" ? "€/mes" : "€/año"}
+                                días/año
                               </span>
                             </div>
                           )}
 
-                          {isIntangibleOnly && (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
-                                Valoración:
-                              </span>
+                          {/* COMMUTE NATURAL MINUTES INPUT */}
+                          {concept.id === "c_commute" && (
+                            <div className="flex items-center gap-1">
                               <input
                                 type="number"
                                 min={0}
-                                max={10}
-                                placeholder="0-10"
-                                value={
-                                  offerValues[concept.id] !== undefined
-                                    ? Number(offerValues[concept.id])
-                                    : ""
-                                }
+                                placeholder="30"
+                                value={val !== undefined ? Number(val) : 30}
                                 onChange={(e) =>
                                   setOfferValues({
                                     ...offerValues,
                                     [concept.id]: Number(e.target.value),
                                   })
                                 }
-                                className="w-20 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                                className="w-20 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
                               />
-                              <span className="text-[10px] font-bold text-muted-foreground">
-                                /10 pts
+                              <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                                min/día
                               </span>
                             </div>
                           )}
 
-                          {isBoth && (
-                            <div className="flex items-center gap-1.5">
-                              <input
-                                type="number"
-                                min={0}
-                                max={10}
-                                placeholder="Pts (0-10)"
-                                value={
-                                  offerValues[concept.id] !== undefined
-                                    ? Number(offerValues[concept.id])
-                                    : ""
-                                }
-                                onChange={(e) =>
-                                  setOfferValues({
-                                    ...offerValues,
-                                    [concept.id]: Number(e.target.value),
-                                  })
-                                }
-                                className="w-24 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
-                              />
-                              <span className="text-[10px] font-bold text-muted-foreground">pts</span>
-                            </div>
-                          )}
+                          {/* STANDARD TANGIBLE / INTANGIBLE INPUTS FOR OTHER CUSTOM CONCEPTS */}
+                          {concept.id !== "c_telework" &&
+                            concept.id !== "c_canteen" &&
+                            concept.id !== "c_vacation_days" &&
+                            concept.id !== "c_commute" && (
+                              <>
+                                {concept.unit === "BOOLEAN" ? (
+                                  <select
+                                    value={offerValues[concept.id] ? "true" : "false"}
+                                    onChange={(e) =>
+                                      setOfferValues({
+                                        ...offerValues,
+                                        [concept.id]: e.target.value === "true",
+                                      })
+                                    }
+                                    className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-xs"
+                                  >
+                                    <option value="false">NO (No incluido)</option>
+                                    <option value="true">SÍ (Incluido)</option>
+                                  </select>
+                                ) : concept.unit === "EUR_YEAR" || concept.unit === "EUR_MONTH" ? (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      type="number"
+                                      placeholder="0"
+                                      value={
+                                        offerValues[concept.id] !== undefined
+                                          ? Number(offerValues[concept.id])
+                                          : ""
+                                      }
+                                      onChange={(e) =>
+                                        setOfferValues({
+                                          ...offerValues,
+                                          [concept.id]: Number(e.target.value),
+                                        })
+                                      }
+                                      className="w-28 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
+                                    />
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                                      {concept.unit === "EUR_MONTH" ? "€/mes" : "€/año"}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                                      Puntuación:
+                                    </span>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={10}
+                                      placeholder="0-10"
+                                      value={
+                                        offerValues[concept.id] !== undefined
+                                          ? Number(offerValues[concept.id])
+                                          : 5
+                                      }
+                                      onChange={(e) =>
+                                        setOfferValues({
+                                          ...offerValues,
+                                          [concept.id]: Number(e.target.value),
+                                        })
+                                      }
+                                      className="w-16 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                                    />
+                                    <span className="text-[10px] font-bold text-muted-foreground">
+                                      /10 pts
+                                    </span>
+                                  </div>
+                                )}
+                              </>
+                            )}
                         </div>
                       </div>
 
