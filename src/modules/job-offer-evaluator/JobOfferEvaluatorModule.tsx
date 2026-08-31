@@ -331,6 +331,29 @@ export function JobOfferEvaluatorModule() {
     setShowOfferModal(true);
   };
 
+  const autoSyncTeleworkValue = (modality: WorkModality, officeDays: number) => {
+    const teleConcept = concepts.find((c) => c.id === "c_telework");
+    if (!teleConcept) return;
+
+    if (teleConcept.options && teleConcept.options.length > 0) {
+      let matchedOpt = teleConcept.options[0];
+      if (modality === "remoto") {
+        matchedOpt = teleConcept.options.find((o) => o.id === "tw_remoto" || o.score === 10) || teleConcept.options[0];
+      } else if (modality === "presencial") {
+        matchedOpt = teleConcept.options.find((o) => o.id === "tw_presencial" || o.score === 0) || teleConcept.options[teleConcept.options.length - 1];
+      } else if (modality === "hibrido") {
+        const targetScore = Math.max(0, (5 - officeDays) * 2);
+        matchedOpt = teleConcept.options.find((o) => o.score === targetScore) || teleConcept.options[0];
+      }
+      if (matchedOpt) {
+        setOfferValues((prev) => ({ ...prev, c_telework: matchedOpt.id }));
+      }
+    } else {
+      const calculatedScore = modality === "remoto" ? 10 : modality === "presencial" ? 0 : Math.max(0, (5 - officeDays) * 2);
+      setOfferValues((prev) => ({ ...prev, c_telework: calculatedScore }));
+    }
+  };
+
   const handleModalityChange = (modality: WorkModality) => {
     setOfferWorkModality(modality);
     let officeDays = 0;
@@ -339,10 +362,12 @@ export function JobOfferEvaluatorModule() {
     else if (modality === "remoto") officeDays = 0;
 
     setOfferOfficeDays(officeDays);
+    autoSyncTeleworkValue(modality, officeDays);
   };
 
   const handleOfficeDaysChange = (days: number) => {
     setOfferOfficeDays(days);
+    autoSyncTeleworkValue("hibrido", days);
   };
 
   const handleSaveOffer = () => {
@@ -1459,7 +1484,7 @@ export function JobOfferEvaluatorModule() {
                                 </span>
                                 {concept.options && concept.options.length > 0 && (
                                   <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-primary/10 text-primary rounded border border-primary/20">
-                                    {concept.options.length} opciones en diccionario
+                                    {concept.options.length} opciones de selección
                                   </span>
                                 )}
                               </div>
@@ -1799,6 +1824,8 @@ export function JobOfferEvaluatorModule() {
 
               <div className="space-y-2">
                 {concepts.map((concept) => {
+                  const isTeleworkAutoSynced = concept.id === "c_telework";
+
                   return (
                     <div
                       key={concept.id}
@@ -1821,7 +1848,13 @@ export function JobOfferEvaluatorModule() {
 
                         {/* DYNAMIC FORM FIELD BASED STRICTLY ON NATURE OR DICTIONARY OPTIONS */}
                         <div className="flex items-center gap-2 shrink-0">
-                          {concept.options && concept.options.length > 0 ? (
+                          {isTeleworkAutoSynced && (
+                            <span className="text-[10px] font-extrabold text-primary bg-primary/10 px-2 py-1 rounded-md border border-primary/20">
+                              Vinculado a la Modalidad Seleccionada arriba ({formatModalityText({ workModality: offerWorkModality, officeDaysPerWeek: offerOfficeDays } as JobOffer)})
+                            </span>
+                          )}
+
+                          {!isTeleworkAutoSynced && concept.options && concept.options.length > 0 ? (
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
                                 Opción:
@@ -2189,101 +2222,79 @@ export function JobOfferEvaluatorModule() {
                 />
               </div>
 
-              {/* EDITABLE DICTIONARY CATEGORY OPTIONS */}
-              <div className="bg-muted/40 p-3 rounded-xl border border-border space-y-3 pt-3">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <span className="block font-black uppercase text-foreground text-xs">
-                      Diccionario de Categorías / Opciones (Opcional):
-                    </span>
-                    <p className="text-[10px] text-muted-foreground font-semibold">
-                      Crea opciones fijas personalizadas para elegir en los puestos con sus puntos (0-10) asignados
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleAddConceptOption}
-                    className="px-2.5 py-1 bg-primary text-primary-foreground font-black text-[10px] uppercase rounded-lg hover:bg-primary-hover cursor-pointer shrink-0"
-                  >
-                    + Añadir Opción
-                  </button>
-                </div>
-
-                <div className="space-y-2 max-h-[30dvh] overflow-y-auto pr-1">
-                  {conceptOptions.map((opt, idx) => (
-                    <div
-                      key={opt.id || idx}
-                      className="bg-card p-2.5 rounded-xl border border-border space-y-2 text-xs shadow-2xs"
+              {/* EDITABLE CATEGORY OPTIONS (RESTRICTED strictly TO INTANGIBLE CONCEPTS) */}
+              {conceptCategory === "intangible" && (
+                <div className="bg-muted/40 p-3 rounded-xl border border-border space-y-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="block font-black uppercase text-foreground text-xs">
+                        Opciones Seleccionables (Categorías de Evaluación):
+                      </span>
+                      <p className="text-[10px] text-muted-foreground font-semibold">
+                        Crea las categorías fijas que se podrán elegir en las ofertas con la puntuación (0-10) que para ti representa cada una
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddConceptOption}
+                      className="px-2.5 py-1 bg-primary text-primary-foreground font-black text-[10px] uppercase rounded-lg hover:bg-primary-hover cursor-pointer shrink-0"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <input
-                          type="text"
-                          placeholder="Nombre de la opción (ej: Remoto 5 días / Hybrid 3d casa 2d oficina)"
-                          value={opt.label}
-                          onChange={(e) => handleUpdateConceptOption(idx, "label", e.target.value)}
-                          className="flex-1 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteConceptOption(idx)}
-                          className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold rounded-lg text-[10px] uppercase cursor-pointer shrink-0"
-                        >
-                          Borrar
-                        </button>
-                      </div>
+                      + Añadir Opción
+                    </button>
+                  </div>
 
-                      <div className="flex items-center gap-3 flex-wrap">
-                        <div className="flex items-center gap-1">
-                          <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
-                            Puntos:
-                          </span>
+                  <div className="space-y-2 max-h-[30dvh] overflow-y-auto pr-1">
+                    {conceptOptions.map((opt, idx) => (
+                      <div
+                        key={opt.id || idx}
+                        className="bg-card p-2.5 rounded-xl border border-border space-y-2 text-xs shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
                           <input
-                            type="number"
-                            min={0}
-                            max={10}
-                            value={opt.score}
-                            onChange={(e) =>
-                              handleUpdateConceptOption(idx, "score", Number(e.target.value))
-                            }
-                            className="w-16 px-2 py-0.5 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                            type="text"
+                            placeholder="Nombre de la opción (ej: Remoto 5 días / Hybrid 3d casa 2d oficina)"
+                            value={opt.label}
+                            onChange={(e) => handleUpdateConceptOption(idx, "label", e.target.value)}
+                            className="flex-1 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
                           />
-                          <span className="text-[10px] font-bold text-muted-foreground">/10 pts</span>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteConceptOption(idx)}
+                            className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold rounded-lg text-[10px] uppercase cursor-pointer shrink-0"
+                          >
+                            Borrar
+                          </button>
                         </div>
 
-                        {(conceptCategory === "tangible" || conceptCategory === "both") && (
+                        <div className="flex items-center gap-3 flex-wrap">
                           <div className="flex items-center gap-1">
                             <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
-                              Dinero:
+                              Valoración:
                             </span>
                             <input
                               type="number"
-                              placeholder="0"
-                              value={opt.value !== undefined ? opt.value : ""}
+                              min={0}
+                              max={10}
+                              value={opt.score}
                               onChange={(e) =>
-                                handleUpdateConceptOption(
-                                  idx,
-                                  "value",
-                                  e.target.value === "" ? undefined : Number(e.target.value)
-                                )
+                                handleUpdateConceptOption(idx, "score", Number(e.target.value))
                               }
-                              className="w-24 px-2 py-0.5 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
+                              className="w-16 px-2 py-0.5 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
                             />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase">
-                              €/año
-                            </span>
+                            <span className="text-[10px] font-bold text-muted-foreground">/ 10 pts</span>
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
 
-                  {conceptOptions.length === 0 && (
-                    <div className="text-center py-2 text-xs text-muted-foreground italic font-medium">
-                      Sin opciones de diccionario. La entrada será libre en la ficha del puesto.
-                    </div>
-                  )}
+                    {conceptOptions.length === 0 && (
+                      <div className="text-center py-2 text-xs text-muted-foreground italic font-medium">
+                        Sin opciones prefijadas. Se elegirá una puntuación numérica directa (0 a 10) en cada puesto.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             <div className="pt-3 border-t border-border flex justify-end gap-2">
