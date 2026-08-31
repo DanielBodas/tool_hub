@@ -36,6 +36,8 @@ import {
   getWHOPercentilesAtAge,
   calculateWHOPercentile,
   getAgeInDays,
+  WHO_GIRLS_WEIGHT,
+  WHO_BOYS_WEIGHT,
   Sex
 } from "./whoPercentiles";
 
@@ -97,6 +99,8 @@ export function BabyWeightTrackerModule() {
 
   // Settings Config states
   const [showConfigModal, setShowConfigModal] = useState<boolean>(false);
+  const [showWHOModal, setShowWHOModal] = useState<boolean>(false);
+  const [whoModalTab, setWhoModalTab] = useState<"table" | "chart">("table");
   const [configTab, setConfigTab] = useState<"baby" | "sites" | "clothing" | "blankets">("baby");
   const [newSite, setNewSite] = useState<string>("");
   const [openColorPickerSite, setOpenColorPickerSite] = useState<string | null>(null);
@@ -1243,30 +1247,42 @@ export function BabyWeightTrackerModule() {
                 <Sparkles size={13} className="text-primary" /> Velas por pesaje
               </span>
 
-              {/* WHO Percentiles Chart Overlay Toggle Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (!babyBirthDate) {
-                    setConfigTab("baby");
-                    setShowConfigModal(true);
-                  } else {
-                    setShowPercentiles(!showPercentiles);
-                  }
-                }}
-                className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer flex items-center gap-1.5 border ${
-                  showPercentiles && babyBirthDate
-                    ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                    : "bg-muted/60 border-border/50 text-muted-foreground hover:text-foreground"
-                }`}
-                title={babyBirthDate ? "Activar/desactivar curvas de percentiles OMS" : "Configurar fecha de nacimiento para ver percentiles OMS"}
-              >
-                <TrendingUp size={12} className={showPercentiles && babyBirthDate ? "text-emerald-500" : ""} />
-                <span>Curvas OMS ({babySex === "female" ? "Niña" : "Niño"})</span>
-                <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold uppercase ${showPercentiles && babyBirthDate ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
-                  {showPercentiles && babyBirthDate ? "ON" : "OFF"}
-                </span>
-              </button>
+              {/* WHO Percentiles Controls */}
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowWHOModal(true)}
+                  className="px-2.5 py-1 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 rounded-xl text-[10px] font-extrabold transition cursor-pointer flex items-center gap-1"
+                  title="Ver tabla de pesos teóricos y gráfica detallada OMS"
+                >
+                  <Sparkles size={12} />
+                  <span>Tabla OMS 📊</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!babyBirthDate) {
+                      setConfigTab("baby");
+                      setShowConfigModal(true);
+                    } else {
+                      setShowPercentiles(!showPercentiles);
+                    }
+                  }}
+                  className={`px-2.5 py-1 rounded-xl text-[10px] font-bold transition cursor-pointer flex items-center gap-1.5 border ${
+                    showPercentiles && babyBirthDate
+                      ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                      : "bg-muted/60 border-border/50 text-muted-foreground hover:text-foreground"
+                  }`}
+                  title={babyBirthDate ? "Activar/desactivar curvas de percentiles OMS" : "Configurar fecha de nacimiento para ver percentiles OMS"}
+                >
+                  <TrendingUp size={12} className={showPercentiles && babyBirthDate ? "text-emerald-500" : ""} />
+                  <span>Curvas OMS ({babySex === "female" ? "Niña" : "Niño"})</span>
+                  <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-extrabold uppercase ${showPercentiles && babyBirthDate ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" : "bg-muted text-muted-foreground"}`}>
+                    {showPercentiles && babyBirthDate ? "ON" : "OFF"}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {loading ? (
@@ -2757,6 +2773,237 @@ export function BabyWeightTrackerModule() {
                 className="w-full py-2.5 bg-muted hover:bg-muted/80 text-foreground font-black text-xs rounded-xl cursor-pointer transition active:scale-98"
               >
                 Cerrar Configuración
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* WHO Percentiles Theoretical Standard Table & Chart Inspector Modal */}
+      {showWHOModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-card border border-border/90 w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[88dvh] sm:max-h-[92vh] overflow-hidden animate-fade-in text-xs space-y-3.5">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Sparkles size={18} />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-foreground tracking-tight text-sm leading-none flex items-center gap-1.5">
+                    Estándares de Peso OMS ({babySex === "female" ? "Niñas / Girls" : "Niños / Boys"})
+                  </h3>
+                  <p className="text-[10px] text-muted-foreground font-medium mt-1">
+                    Valores teóricos según la Organización Mundial de la Salud (0 a 12 meses)
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowWHOModal(false)}
+                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition cursor-pointer shrink-0"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Navigation Bar */}
+            <div className="grid grid-cols-2 bg-muted p-1 rounded-2xl gap-1 text-center shrink-0">
+              <button
+                type="button"
+                onClick={() => setWhoModalTab("table")}
+                className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  whoModalTab === "table"
+                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Calculator size={14} />
+                <span>Tabla de Pesos Teóricos</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setWhoModalTab("chart")}
+                className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  whoModalTab === "chart"
+                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <LineChart size={14} />
+                <span>Curvas de Crecimiento</span>
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin space-y-3.5">
+              {whoModalTab === "table" && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="flex items-center justify-between text-[11px] text-muted-foreground bg-muted/20 p-2.5 rounded-2xl border border-border/40">
+                    <span>Sexo activo: <strong className="text-foreground">{babySex === "female" ? "Niña 👧" : "Niño 👦"}</strong></span>
+                    <button
+                      onClick={() => {
+                        const newSex = babySex === "female" ? "male" : "female";
+                        setBabySex(newSex);
+                        handleSaveConfig(sites, clothing, blankets, babyBirthDate, newSex);
+                      }}
+                      className="text-primary font-bold hover:underline cursor-pointer"
+                    >
+                      Cambiar a {babySex === "female" ? "Niño" : "Niña"}
+                    </button>
+                  </div>
+
+                  {/* Theoretical Weights Milestone Table */}
+                  <div className="border border-border/60 rounded-2xl overflow-x-auto shadow-2xs">
+                    <table className="w-full text-left border-collapse text-xs">
+                      <thead>
+                        <tr className="bg-muted/60 text-muted-foreground text-[10px] uppercase font-black tracking-wider border-b border-border/60">
+                          <th className="p-2.5">Edad</th>
+                          <th className="p-2.5 text-rose-500 font-extrabold">P3 (Mín)</th>
+                          <th className="p-2.5 text-amber-500 font-extrabold">P15</th>
+                          <th className="p-2.5 text-emerald-600 dark:text-emerald-400 font-black bg-emerald-500/10">P50 (Mediana)</th>
+                          <th className="p-2.5 text-amber-500 font-extrabold">P85</th>
+                          <th className="p-2.5 text-rose-500 font-extrabold">P97 (Máx)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40 font-mono text-[11px]">
+                        {(babySex === "male" ? WHO_BOYS_WEIGHT : WHO_GIRLS_WEIGHT).map((band) => {
+                          const currentAgeDays = babyBirthDate && filteredRecords.length > 0
+                            ? getAgeInDays(babyBirthDate, filteredRecords[filteredRecords.length - 1].date)
+                            : -1;
+
+                          const isCurrentMilestone = currentAgeDays >= 0 && Math.abs(currentAgeDays - band.day) <= 15;
+
+                          const label = band.day === 0
+                            ? "Nacimiento"
+                            : band.day < 30
+                            ? `${band.day} días (${(band.day / 7).toFixed(0)} sem)`
+                            : `${(band.day / 30).toFixed(0)} meses`;
+
+                          return (
+                            <tr
+                              key={band.day}
+                              className={`transition hover:bg-muted/40 ${
+                                isCurrentMilestone ? "bg-primary/10 font-bold border-l-4 border-l-primary" : ""
+                              }`}
+                            >
+                              <td className="p-2.5 font-sans font-black text-foreground">{label}</td>
+                              <td className="p-2.5 font-bold text-rose-500">{band.p3.toFixed(2)} kg</td>
+                              <td className="p-2.5 text-amber-600 dark:text-amber-400 font-semibold">{band.p15.toFixed(2)} kg</td>
+                              <td className="p-2.5 font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10">{band.p50.toFixed(2)} kg</td>
+                              <td className="p-2.5 text-amber-600 dark:text-amber-400 font-semibold">{band.p85.toFixed(2)} kg</td>
+                              <td className="p-2.5 font-bold text-rose-500">{band.p97.toFixed(2)} kg</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground italic text-center">
+                    * El percentil 50 (P50) representa el peso teórico promedio exacto para la edad de la OMS.
+                  </p>
+                </div>
+              )}
+
+              {whoModalTab === "chart" && (
+                <div className="space-y-3 animate-fade-in">
+                  <div className="bg-card border border-border/80 rounded-2xl p-3 space-y-2">
+                    <span className="text-[11px] font-extrabold text-foreground block">
+                      Curvas de Crecimiento Oficiales OMS (0 a 365 Días)
+                    </span>
+                    <div className="flex flex-wrap gap-2 text-[10px] font-bold">
+                      <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                        <span className="w-2.5 h-1 bg-emerald-500 rounded-full" /> P50 Mediana
+                      </span>
+                      <span className="flex items-center gap-1 text-amber-500">
+                        <span className="w-2.5 h-1 bg-amber-500 rounded-full" /> P15 - P85 Rango Normal
+                      </span>
+                      <span className="flex items-center gap-1 text-rose-500">
+                        <span className="w-2.5 h-1 bg-rose-500 rounded-full" /> P3 - P97 Límites
+                      </span>
+                    </div>
+
+                    {/* Enlarged SVG Chart */}
+                    <div className="w-full overflow-x-auto bg-muted/20 border border-border/40 rounded-xl p-2">
+                      <svg width="550" height="260" className="mx-auto select-none">
+                        {/* Grid */}
+                        {Array.from({ length: 5 }).map((_, i) => {
+                          const val = 2 + i * 2.5; // 2kg to 12kg
+                          const y = 240 - (val - 2) * 20;
+                          return (
+                            <g key={i}>
+                              <line x1="35" y1={y} x2="530" y2={y} stroke="var(--color-border)" strokeWidth="0.5" strokeDasharray="3,3" />
+                              <text x="28" y={y + 3} textAnchor="end" fill="currentColor" className="text-[8px] font-mono text-muted-foreground">{val}kg</text>
+                            </g>
+                          );
+                        })}
+
+                        {/* WHO Curves */}
+                        {(() => {
+                          const dataset = babySex === "male" ? WHO_BOYS_WEIGHT : WHO_GIRLS_WEIGHT;
+                          const mapX = (day: number) => 35 + (day / 365) * 495;
+                          const mapY = (kg: number) => 240 - (kg - 2) * 20;
+
+                          const p3 = dataset.map((d) => `${mapX(d.day)},${mapY(d.p3)}`).join(" ");
+                          const p15 = dataset.map((d) => `${mapX(d.day)},${mapY(d.p15)}`).join(" ");
+                          const p50 = dataset.map((d) => `${mapX(d.day)},${mapY(d.p50)}`).join(" ");
+                          const p85 = dataset.map((d) => `${mapX(d.day)},${mapY(d.p85)}`).join(" ");
+                          const p97 = dataset.map((d) => `${mapX(d.day)},${mapY(d.p97)}`).join(" ");
+
+                          const fP15 = dataset.map((d) => `${mapX(d.day)},${mapY(d.p15)}`);
+                          const rP85 = [...dataset].reverse().map((d) => `${mapX(d.day)},${mapY(d.p85)}`);
+                          const poly = [...fP15, ...rP85].join(" ");
+
+                          return (
+                            <g>
+                              <polygon points={poly} fill="rgb(16, 185, 129)" fillOpacity="0.1" />
+                              <polyline points={p3} fill="none" stroke="rgb(239, 68, 68)" strokeWidth="1" strokeDasharray="2,2" />
+                              <polyline points={p15} fill="none" stroke="rgb(245, 158, 11)" strokeWidth="1" strokeDasharray="3,3" />
+                              <polyline points={p50} fill="none" stroke="rgb(16, 185, 129)" strokeWidth="2.5" />
+                              <polyline points={p85} fill="none" stroke="rgb(245, 158, 11)" strokeWidth="1" strokeDasharray="3,3" />
+                              <polyline points={p97} fill="none" stroke="rgb(239, 68, 68)" strokeWidth="1" strokeDasharray="2,2" />
+
+                              {/* Curve Labels */}
+                              <text x="532" y={mapY(dataset[dataset.length - 1].p97) + 3} fill="currentColor" className="text-[8px] text-rose-500 font-bold">P97</text>
+                              <text x="532" y={mapY(dataset[dataset.length - 1].p50) + 3} fill="currentColor" className="text-[8px] text-emerald-500 font-black">P50</text>
+                              <text x="532" y={mapY(dataset[dataset.length - 1].p3) + 3} fill="currentColor" className="text-[8px] text-rose-500 font-bold">P3</text>
+
+                              {/* Overlay Baby Measurements */}
+                              {babyBirthDate && filteredRecords.map((r, idx) => {
+                                const age = getAgeInDays(babyBirthDate, r.date);
+                                if (age > 365) return null;
+                                const net = r.weight - r.margin - (r.blanketMargin || 0);
+                                const cx = mapX(age);
+                                const cy = mapY(net);
+                                return (
+                                  <circle
+                                    key={idx}
+                                    cx={cx}
+                                    cy={cy}
+                                    r="3.5"
+                                    fill="var(--color-primary)"
+                                    stroke="white"
+                                    strokeWidth="1.5"
+                                  />
+                                );
+                              })}
+                            </g>
+                          );
+                        })()}
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="pt-2 border-t border-border/60 shrink-0">
+              <button
+                onClick={() => setShowWHOModal(false)}
+                className="w-full py-2.5 bg-muted hover:bg-muted/80 text-foreground font-black text-xs rounded-xl cursor-pointer transition active:scale-98"
+              >
+                Cerrar Inspector OMS
               </button>
             </div>
           </div>
