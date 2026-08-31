@@ -861,7 +861,11 @@ export function BabyWeightTrackerModule() {
         lastBlanketMargin: 0,
         totalGain: 0,
         average: 0,
-        count: 0
+        count: 0,
+        todayAgeDays: 0,
+        todayEstWeight: 0,
+        todayDaysDiff: 0,
+        todayWHOBand: null
       };
     }
 
@@ -874,6 +878,32 @@ export function BabyWeightTrackerModule() {
     const sum = filteredRecords.reduce((acc, r) => acc + (r.weight - r.margin - (r.blanketMargin || 0)), 0);
     const average = sum / filteredRecords.length;
 
+    // Current moment (today) calculations
+    const todayStr = getTodayDateString();
+    let todayAgeDays = 0;
+    let todayEstWeight = lastNet;
+    let todayDaysDiff = 0;
+    let todayWHOBand = null;
+
+    if (babyBirthDate) {
+      todayAgeDays = getAgeInDays(babyBirthDate, todayStr);
+      todayWHOBand = getWHOPercentilesAtAge(todayAgeDays, babySex);
+    }
+
+    if (filteredRecords.length >= 2) {
+      // Calculate growth rate over recent records to project today's weight
+      const tFirst = new Date(`${first.date}T${first.time || "00:00"}`).getTime();
+      const tLast = new Date(`${last.date}T${last.time || "00:00"}`).getTime();
+      const tToday = new Date(`${todayStr}T12:00`).getTime();
+
+      const totalDays = (tLast - tFirst) / (1000 * 60 * 60 * 24);
+      const totalGrams = (lastNet - firstNet) * 1000;
+      const rateGramsPerDay = totalDays > 0 ? totalGrams / totalDays : 0;
+
+      todayDaysDiff = Math.max(0, (tToday - tLast) / (1000 * 60 * 60 * 24));
+      todayEstWeight = lastNet + (rateGramsPerDay * todayDaysDiff) / 1000;
+    }
+
     return {
       lastWeight: last.weight,
       lastNetWeight: lastNet,
@@ -881,9 +911,13 @@ export function BabyWeightTrackerModule() {
       lastBlanketMargin: last.blanketMargin || 0,
       totalGain: lastNet - firstNet,
       average,
-      count: filteredRecords.length
+      count: filteredRecords.length,
+      todayAgeDays,
+      todayEstWeight,
+      todayDaysDiff,
+      todayWHOBand
     };
-  }, [filteredRecords]);
+  }, [filteredRecords, babyBirthDate, babySex]);
 
   // Dynamic Chart Parameters
   const chartDimensions = useMemo(() => {
@@ -2852,6 +2886,44 @@ export function BabyWeightTrackerModule() {
                     </button>
                   </div>
 
+                  {/* Interpolated Current Moment Banner */}
+                  {babyBirthDate && metrics.todayWHOBand && (
+                    <div className="bg-primary/10 border-2 border-primary/40 rounded-2xl p-3 space-y-1.5 animate-fade-in shadow-2xs">
+                      <div className="flex items-center justify-between text-xs font-black text-primary">
+                        <span className="flex items-center gap-1.5">
+                          <Sparkles size={14} />
+                          <span>Estimación Interpolada HOY ({metrics.todayAgeDays} días / {(metrics.todayAgeDays / 7).toFixed(1)} sem)</span>
+                        </span>
+                        <span className="px-2 py-0.5 bg-primary text-primary-foreground text-[10px] rounded-md font-extrabold uppercase">
+                          Interpolado
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1 text-xs font-semibold">
+                        <div className="bg-card p-2 rounded-xl border border-border/60">
+                          <span className="text-[9px] text-muted-foreground uppercase block font-bold">Peso OMS Mediana (P50)</span>
+                          <span className="text-sm font-black text-emerald-600 dark:text-emerald-400">
+                            {metrics.todayWHOBand.p50.toFixed(3)} kg
+                          </span>
+                        </div>
+
+                        <div className="bg-card p-2 rounded-xl border border-border/60">
+                          <span className="text-[9px] text-muted-foreground uppercase block font-bold">Estimación Bebé Hoy</span>
+                          <span className="text-sm font-black text-primary">
+                            {metrics.todayEstWeight.toFixed(3)} kg
+                          </span>
+                        </div>
+
+                        <div className="bg-card p-2 rounded-xl border border-border/60 col-span-2 sm:col-span-1">
+                          <span className="text-[9px] text-muted-foreground uppercase block font-bold">Percentil OMS Hoy</span>
+                          <span className="text-sm font-black text-foreground">
+                            {calculateWHOPercentile(metrics.todayEstWeight, metrics.todayAgeDays, babySex).label}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Theoretical Weights Milestone Table */}
                   <div className="border border-border/60 rounded-2xl overflow-x-auto shadow-2xs">
                     <table className="w-full text-left border-collapse text-xs">
@@ -2866,13 +2938,21 @@ export function BabyWeightTrackerModule() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40 font-mono text-[11px]">
+                        {/* Dedicated Interpolated Today Row */}
+                        {babyBirthDate && metrics.todayWHOBand && (
+                          <tr className="bg-primary/15 font-bold border-l-4 border-l-primary">
+                            <td className="p-2.5 font-sans font-black text-primary flex items-center gap-1 whitespace-nowrap">
+                              <span>📍 HOY ({metrics.todayAgeDays}d)</span>
+                            </td>
+                            <td className="p-2.5 font-bold text-rose-500">{metrics.todayWHOBand.p3.toFixed(2)} kg</td>
+                            <td className="p-2.5 text-amber-600 dark:text-amber-400 font-semibold">{metrics.todayWHOBand.p15.toFixed(2)} kg</td>
+                            <td className="p-2.5 font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/20">{metrics.todayWHOBand.p50.toFixed(2)} kg</td>
+                            <td className="p-2.5 text-amber-600 dark:text-amber-400 font-semibold">{metrics.todayWHOBand.p85.toFixed(2)} kg</td>
+                            <td className="p-2.5 font-bold text-rose-500">{metrics.todayWHOBand.p97.toFixed(2)} kg</td>
+                          </tr>
+                        )}
+
                         {(babySex === "male" ? WHO_BOYS_WEIGHT : WHO_GIRLS_WEIGHT).map((band) => {
-                          const currentAgeDays = babyBirthDate && filteredRecords.length > 0
-                            ? getAgeInDays(babyBirthDate, filteredRecords[filteredRecords.length - 1].date)
-                            : -1;
-
-                          const isCurrentMilestone = currentAgeDays >= 0 && Math.abs(currentAgeDays - band.day) <= 15;
-
                           const label = band.day === 0
                             ? "Nacimiento"
                             : band.day < 30
@@ -2882,9 +2962,7 @@ export function BabyWeightTrackerModule() {
                           return (
                             <tr
                               key={band.day}
-                              className={`transition hover:bg-muted/40 ${
-                                isCurrentMilestone ? "bg-primary/10 font-bold border-l-4 border-l-primary" : ""
-                              }`}
+                              className="transition hover:bg-muted/40"
                             >
                               <td className="p-2.5 font-sans font-black text-foreground">{label}</td>
                               <td className="p-2.5 font-bold text-rose-500">{band.p3.toFixed(2)} kg</td>
