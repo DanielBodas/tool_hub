@@ -2,20 +2,8 @@ export type ConceptCategory = "tangible" | "intangible" | "both";
 
 export type UnitType =
   | "EUR_YEAR"       // €/año
-  | "EUR_MONTH"      // €/mes
-  | "DAYS_YEAR"      // días/año
-  | "DAYS_WEEK"      // días/semana (días presenciales o teletrabajo)
-  | "SCORE_10"       // Puntuación 1-10
-  | "BOOLEAN"        // Sí / No
-  | "MINUTES_DAY"    // minutos/día (desplazamiento)
-  | "CATEGORICAL";   // Opciones categóricas con puntuación/valor asignado
-
-export interface ConceptOption {
-  id: string;
-  label: string;      // ej: "100% Remoto", "Comida gratis", "Llevar tupper", "3 días oficina"
-  score: number;      // Puntuación 0-10
-  value?: number;     // Valor económico opcional €/año
-}
+  | "SCORE_10"       // Puntuación 0-10
+  | "CATEGORICAL";   // Legacy compatibility
 
 export interface ConceptGroup {
   id: string;
@@ -29,14 +17,10 @@ export interface Concept {
   groupId: string;
   name: string;
   description: string;
-  unit: UnitType;
-  category: ConceptCategory; // tangible (dinero), intangible (puntuación/felicidad), or both
+  category: ConceptCategory; // tangible (dinero €/año), intangible (puntuación 0-10), or both
   weight: number; // 1 to 10 (Importance weight)
-  isPositive: boolean; // true if higher is better, false if lower is better
-  monetaryEquivalencePerUnit?: number; // annual monetary equivalency multiplier if applicable
-  minLabel?: string; // Meaning of 0 / minimum score (e.g., "5 días en oficina", "Tupper de casa")
-  maxLabel?: string; // Meaning of 10 / maximum score (e.g., "100% Remoto", "Comida gratis en restaurante")
-  options?: ConceptOption[]; // Lista de opciones categóricas personalizadas
+  unit?: UnitType; // Optional legacy field
+  isPositive?: boolean;
 }
 
 export type OfferStatus =

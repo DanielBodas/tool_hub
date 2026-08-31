@@ -34,147 +34,100 @@ export const DEFAULT_GROUPS: ConceptGroup[] = [
 ];
 
 export const DEFAULT_CONCEPTS: Concept[] = [
-  // Retribución directa
+  // Retribución directa (100% Tangibles -> Poner Dinero €/año)
   {
     id: "c_salary_base",
     groupId: "g_direct",
     name: "Salario Base Bruto",
     description: "Sueldo fijo anual bruto en contrato",
-    unit: "EUR_YEAR",
     category: "tangible",
     weight: 10,
-    isPositive: true,
   },
   {
     id: "c_bonus_annual",
     groupId: "g_direct",
     name: "Bonus / Variable Estimado",
     description: "Compensación variable anual esperada",
-    unit: "EUR_YEAR",
     category: "tangible",
     weight: 8,
-    isPositive: true,
   },
   {
     id: "c_company_benefits",
     groupId: "g_direct",
-    name: "Beneficios Económicos de Empresa",
+    name: "Beneficios de la Empresa",
     description: "Cheques beneficio o retribución flexible anual aportada",
-    unit: "EUR_YEAR",
     category: "tangible",
     weight: 6,
-    isPositive: true,
   },
 
-  // Beneficios y Salud
+  // Beneficios y Salud (Tangibles y Ambos)
   {
     id: "c_canteen",
     groupId: "g_benefits",
     name: "Comedor",
-    description: "Opción de comedor o ayuda de comida en la empresa",
-    unit: "CATEGORICAL",
+    description: "Comida gratis = 10 pts, Llevar tupper = 0 pts + Valor en dinero del ticket/menú",
     category: "both",
     weight: 7,
-    isPositive: true,
-    options: [
-      { id: "canteen_free", label: "Comida gratis / Ticket Restaurante total", score: 10, value: 1800 },
-      { id: "canteen_subsidized", label: "Comedor subvencionando parte del menú", score: 7, value: 900 },
-      { id: "canteen_tupper_space", label: "Oficina con office para llevar tupper", score: 3, value: 0 },
-      { id: "canteen_none", label: "Sin facilidades ni espacio de comedor", score: 0, value: 0 },
-    ],
   },
   {
     id: "c_health_insurance",
     groupId: "g_benefits",
     name: "Seguro Médico Privado",
-    description: "Cobertura médica privada financiada por la empresa",
-    unit: "BOOLEAN",
+    description: "Valor estimado o coste de la póliza médica privada financiada",
     category: "tangible",
-    monetaryEquivalencePerUnit: 1200, // Valor estimado anual de la póliza
     weight: 7,
-    isPositive: true,
   },
   {
     id: "c_pension_plan",
     groupId: "g_benefits",
     name: "Plan de Pensiones",
     description: "Aportación directa anual de la empresa al plan de empleo",
-    unit: "EUR_YEAR",
     category: "tangible",
     weight: 6,
-    isPositive: true,
   },
 
-  // Flexibilidad y Conciliación
+  // Flexibilidad y Conciliación (Intangibles y Ambos)
   {
     id: "c_telework",
     groupId: "g_flexibility",
     name: "Días de Teletrabajo Semanales",
-    description: "Modalidad de trabajo remoto vs oficina presencial",
-    unit: "CATEGORICAL",
+    description: "100% Remoto = 10 pts, 3 días oficina = 4 pts, Oficina 5 días = 0 pts",
     category: "intangible",
     weight: 9,
-    isPositive: true,
-    options: [
-      { id: "telework_100_remote", label: "100% Remoto (5 días teletrabajo)", score: 10 },
-      { id: "telework_4d", label: "4 días teletrabajo / 1 día oficina", score: 8 },
-      { id: "telework_3d", label: "3 días teletrabajo / 2 días oficina", score: 6 },
-      { id: "telework_2d", label: "2 días teletrabajo / 3 días oficina", score: 4 },
-      { id: "telework_1d", label: "1 día teletrabajo / 4 días oficina", score: 2 },
-      { id: "telework_0d", label: "100% Presencial (5 días oficina)", score: 0 },
-    ],
   },
   {
     id: "c_vacation_days",
     groupId: "g_flexibility",
-    name: "Días de Vacaciones / Año",
-    description: "Días laborables retribuidos de descanso anual",
-    unit: "DAYS_YEAR",
+    name: "Días de Vacaciones",
+    description: "Días anuales de vacaciones (Puntuación de felicidad 0-10)",
     category: "intangible",
     weight: 8,
-    isPositive: true,
   },
   {
     id: "c_commute",
     groupId: "g_flexibility",
     name: "Desplazamiento Diario",
-    description: "Tangible (gasolina/gasto que resta salario) e Intangible (tiempo desperdiciado)",
-    unit: "MINUTES_DAY",
+    description: "Gasto de gasolina restado del salario (€/año) y valoración de tiempo de viaje (0-10)",
     category: "both",
     weight: 8,
-    isPositive: false,
   },
 
-  // Cultura y Futuro
+  // Cultura y Futuro (100% Intangibles -> Puntuación 0-10)
   {
     id: "c_stability",
     groupId: "g_culture",
-    name: "Estabilidad",
-    description: "Seguridad, solvencia y solidez del puesto y la empresa",
-    unit: "CATEGORICAL",
+    name: "Estabilidad Laboral",
+    description: "Seguridad y solidez del puesto y la empresa (0-10 pts)",
     category: "intangible",
     weight: 9,
-    isPositive: true,
-    options: [
-      { id: "stab_high", label: "Alta estabilidad (Empresa muy consolidada / Contrato indefinido)", score: 10 },
-      { id: "stab_med", label: "Estabilidad media (Sector estable / Crecimiento sostenido)", score: 6 },
-      { id: "stab_low", label: "Baja estabilidad / Startup en fase inicial", score: 2 },
-    ],
   },
   {
     id: "c_future_plan",
     groupId: "g_culture",
     name: "Plan de Futuro",
-    description: "Proyección profesional, aprendizaje y plan de carrera",
-    unit: "CATEGORICAL",
+    description: "Proyección profesional, aprendizaje y ascenso (0-10 pts)",
     category: "intangible",
     weight: 8,
-    isPositive: true,
-    options: [
-      { id: "fut_excel", label: "Excelente plan de carrera y formación continua", score: 10 },
-      { id: "fut_good", label: "Buen recorrido profesional y crecimiento regular", score: 7 },
-      { id: "fut_flat", label: "Poca proyección / Puesto estático sin ascenso", score: 2 },
-    ],
   },
 ];
 
@@ -196,14 +149,16 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 45000,
       c_bonus_annual: 3000,
       c_company_benefits: 500,
-      c_canteen: "canteen_tupper_space",
-      c_health_insurance: false,
+      c_canteen_money: 0,
+      c_canteen_score: 3,
+      c_health_insurance: 0,
       c_pension_plan: 0,
-      c_telework: "telework_2d",
-      c_vacation_days: 23,
-      c_commute: 50,
-      c_stability: "stab_high",
-      c_future_plan: "fut_good",
+      c_telework: 4, // 2d telework / 3d office
+      c_vacation_days: 6, // 23 días
+      c_commute_money: 0,
+      c_commute_score: 5,
+      c_stability: 9,
+      c_future_plan: 7,
     },
   },
   {
@@ -223,14 +178,16 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 58000,
       c_bonus_annual: 6000,
       c_company_benefits: 2000,
-      c_canteen: "canteen_free",
-      c_health_insurance: true,
+      c_canteen_money: 1800,
+      c_canteen_score: 10,
+      c_health_insurance: 1200,
       c_pension_plan: 1500,
-      c_telework: "telework_100_remote",
-      c_vacation_days: 26,
-      c_commute: 0,
-      c_stability: "stab_high",
-      c_future_plan: "fut_excel",
+      c_telework: 10, // 100% remoto
+      c_vacation_days: 9, // 26 días
+      c_commute_money: 0,
+      c_commute_score: 10,
+      c_stability: 9,
+      c_future_plan: 10,
     },
   },
   {
@@ -250,14 +207,16 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_salary_base: 64000,
       c_bonus_annual: 8000,
       c_company_benefits: 1000,
-      c_canteen: "canteen_subsidized",
-      c_health_insurance: true,
+      c_canteen_money: 900,
+      c_canteen_score: 7,
+      c_health_insurance: 1200,
       c_pension_plan: 2000,
-      c_telework: "telework_2d",
-      c_vacation_days: 24,
-      c_commute: 35,
-      c_stability: "stab_med",
-      c_future_plan: "fut_excel",
+      c_telework: 4,
+      c_vacation_days: 7,
+      c_commute_money: 0,
+      c_commute_score: 6,
+      c_stability: 6,
+      c_future_plan: 9,
     },
   },
 ];
@@ -295,42 +254,22 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
 
 export function calculateConceptTangibleValue(
   concept: Concept,
-  rawValue: number | boolean | string | undefined
+  offerValues: Record<string, number | boolean | string> | undefined
 ): number {
-  if (rawValue === undefined || rawValue === null) return 0;
+  if (!offerValues) return 0;
 
-  // Only tangible or both categories contribute to monetary real salary
-  if (concept.category !== "tangible" && concept.category !== "both") {
-    return 0;
+  if (concept.category === "tangible") {
+    const rawVal = offerValues[concept.id];
+    return typeof rawVal === "number" ? rawVal : Number(rawVal) || 0;
   }
 
-  // Handle CATEGORICAL unit or concepts with predefined options
-  if (concept.unit === "CATEGORICAL" || (concept.options && concept.options.length > 0)) {
-    const selectedOpt = concept.options?.find((o) => o.id === String(rawValue));
-    if (selectedOpt) {
-      if (selectedOpt.value !== undefined) return selectedOpt.value;
-      if (concept.monetaryEquivalencePerUnit) {
-        return selectedOpt.score * concept.monetaryEquivalencePerUnit;
-      }
+  if (concept.category === "both") {
+    const rawMoney = offerValues[`${concept.id}_money`];
+    if (rawMoney !== undefined && rawMoney !== null) {
+      return typeof rawMoney === "number" ? rawMoney : Number(rawMoney) || 0;
     }
-  }
-
-  if (concept.unit === "EUR_YEAR") {
-    return typeof rawValue === "number" ? rawValue : Number(rawValue) || 0;
-  }
-
-  if (concept.unit === "EUR_MONTH") {
-    return typeof rawValue === "number" ? rawValue * 12 : (Number(rawValue) || 0) * 12;
-  }
-
-  if (concept.unit === "BOOLEAN") {
-    const multiplier = concept.monetaryEquivalencePerUnit ?? 0;
-    return rawValue === true || rawValue === 1 || rawValue === "true" ? multiplier : 0;
-  }
-
-  if (concept.monetaryEquivalencePerUnit) {
-    const numeric = typeof rawValue === "number" ? rawValue : Number(rawValue) || 0;
-    return numeric * concept.monetaryEquivalencePerUnit;
+    const rawVal = offerValues[concept.id];
+    return typeof rawVal === "number" ? rawVal : Number(rawVal) || 0;
   }
 
   return 0;
@@ -338,18 +277,10 @@ export function calculateConceptTangibleValue(
 
 export function calculateConceptNormalizedScore(
   concept: Concept,
-  rawValue: number | boolean | string | undefined,
+  offerValues: Record<string, number | boolean | string> | undefined,
   offer?: JobOffer
 ): number {
-  if (rawValue === undefined || rawValue === null) return 0;
-
-  // Handle CATEGORICAL options first
-  if (concept.unit === "CATEGORICAL" || (concept.options && concept.options.length > 0)) {
-    const selectedOpt = concept.options?.find((o) => o.id === String(rawValue));
-    if (selectedOpt) {
-      return Math.min(10, Math.max(0, selectedOpt.score));
-    }
-  }
+  if (!offerValues) return 0;
 
   if (concept.id === "c_telework") {
     let officeDays = 3;
@@ -357,51 +288,27 @@ export function calculateConceptNormalizedScore(
       if (offer.workModality === "remoto") officeDays = 0;
       else if (offer.workModality === "presencial") officeDays = 5;
       else if (offer.officeDaysPerWeek !== undefined) officeDays = offer.officeDaysPerWeek;
-      else if (typeof rawValue === "number") officeDays = Math.max(0, 5 - rawValue);
-    } else if (typeof rawValue === "number") {
-      officeDays = Math.max(0, 5 - rawValue);
     }
-
     return Math.min(10, Math.max(0, (5 - officeDays) * 2));
   }
 
-  let val = 0;
-  if (typeof rawValue === "boolean") {
-    val = rawValue ? 10 : 0;
+  let rawScore: unknown;
+  if (concept.category === "both") {
+    rawScore = offerValues[`${concept.id}_score`];
+    if (rawScore === undefined) rawScore = offerValues[concept.id];
   } else {
-    val = Number(rawValue) || 0;
+    rawScore = offerValues[concept.id];
   }
 
-  let score = 0;
-  switch (concept.unit) {
-    case "SCORE_10":
-      score = Math.min(10, Math.max(0, val));
-      break;
-    case "BOOLEAN":
-      score = val ? 10 : 0;
-      break;
-    case "DAYS_WEEK":
-      score = Math.min(10, Math.max(0, (val / 5) * 10));
-      break;
-    case "DAYS_YEAR":
-      score = Math.min(10, Math.max(0, ((val - 20) / 10) * 10));
-      break;
-    case "MINUTES_DAY":
-      score = Math.max(0, 10 - (val / 60) * 10);
-      break;
-    case "EUR_YEAR":
-    case "EUR_MONTH":
-    default:
-      const annualApprox = concept.unit === "EUR_MONTH" ? val * 12 : val;
-      score = Math.min(10, Math.max(0, (annualApprox / 70000) * 10));
-      break;
+  if (rawScore === undefined || rawScore === null) return 0;
+
+  if (concept.category === "tangible") {
+    const numEuro = typeof rawScore === "number" ? rawScore : Number(rawScore) || 0;
+    return Math.min(10, Math.max(0, (numEuro / 70000) * 10));
   }
 
-  if (!concept.isPositive) {
-    score = 10 - score;
-  }
-
-  return Math.round(score * 10) / 10;
+  const numScore = typeof rawScore === "number" ? rawScore : Number(rawScore) || 0;
+  return Math.min(10, Math.max(0, numScore));
 }
 
 export function evaluateJobOffers(
@@ -429,9 +336,8 @@ export function evaluateJobOffers(
     });
 
     concepts.forEach((concept) => {
-      const rawVal = offer.values[concept.id];
-      const tangVal = calculateConceptTangibleValue(concept, rawVal);
-      const score10 = calculateConceptNormalizedScore(concept, rawVal, offer);
+      const tangVal = calculateConceptTangibleValue(concept, offer.values);
+      const score10 = calculateConceptNormalizedScore(concept, offer.values, offer);
 
       totalTangible += tangVal;
 
