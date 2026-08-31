@@ -19,9 +19,17 @@ declare module "next-auth/jwt" {
   }
 }
 
+// Auto-detect Vercel URL if NEXTAUTH_URL is not explicitly set in environment variables
+if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
+}
+
+// Ensure host header is trusted in reverse proxy environments like Vercel
+process.env.AUTH_TRUST_HOST = "true";
+
 export const authOptions: NextAuthOptions = {
   // Use '1234' as ultimate fallback for the secret to avoid NO_SECRET error in production
-  secret: process.env.NEXTAUTH_SECRET || "1234",
+  secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "1234",
   session: {
     strategy: "jwt",
     maxAge: 30 * 24 * 60 * 60, // 30 days persistent session
