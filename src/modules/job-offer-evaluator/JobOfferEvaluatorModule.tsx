@@ -5,9 +5,8 @@ import {
   ConceptGroup,
   Concept,
   JobOffer,
-  EvaluationResult,
-  UnitType,
-  CalculationType,
+  ConceptCategory,
+  ConceptOption,
   OfferStatus,
   WorkModality,
 } from "./types";
@@ -16,7 +15,8 @@ import {
   DEFAULT_CONCEPTS,
   DEFAULT_OFFERS,
   evaluateJobOffers,
-  calculateConceptMonetaryValue,
+  calculateConceptTangibleValue,
+  calculateConceptNormalizedScore,
   calculateCommuteAnnualExpense,
 } from "./initialData";
 
@@ -72,11 +72,9 @@ export function JobOfferEvaluatorModule() {
   const [offerTitle, setOfferTitle] = useState<string>("");
   const [offerCompany, setOfferCompany] = useState<string>("");
   const [offerLocation, setOfferLocation] = useState<string>("");
-  const [offerWorkModality, setOfferWorkModality] = useState<WorkModality>("hibrido");
-  const [offerOfficeDays, setOfferOfficeDays] = useState<number>(3);
   const [offerIsCurrent, setOfferIsCurrent] = useState<boolean>(false);
   const [offerStatus, setOfferStatus] = useState<OfferStatus>("received");
-  const [offerValues, setOfferValues] = useState<Record<string, number | boolean>>({});
+  const [offerValues, setOfferValues] = useState<Record<string, number | boolean | string>>({});
   const [offerConceptNotes, setOfferConceptNotes] = useState<Record<string, string>>({});
 
   // Commute Car Inputs
@@ -90,10 +88,9 @@ export function JobOfferEvaluatorModule() {
   const [conceptName, setConceptName] = useState<string>("");
   const [conceptGroupId, setConceptGroupId] = useState<string>("g_direct");
   const [conceptDescription, setConceptDescription] = useState<string>("");
-  const [conceptUnit, setConceptUnit] = useState<UnitType>("EUR_YEAR");
-  const [conceptType, setConceptType] = useState<CalculationType>("monetary_direct");
+  const [conceptCategory, setConceptCategory] = useState<ConceptCategory>("tangible");
   const [conceptWeight, setConceptWeight] = useState<number>(7);
-  const [conceptMonetaryEquivalence, setConceptMonetaryEquivalence] = useState<number>(0);
+  const [conceptOptions, setConceptOptions] = useState<ConceptOption[]>([]);
 
   // Group Modal State
   const [showGroupModal, setShowGroupModal] = useState<boolean>(false);
@@ -101,6 +98,11 @@ export function JobOfferEvaluatorModule() {
   const [groupName, setGroupName] = useState<string>("");
   const [groupDescription, setGroupDescription] = useState<string>("");
   const [groupColor, setGroupColor] = useState<string>("emerald");
+
+  // Total weights across all active concepts for calculation of score contribution
+  const totalConceptWeights = useMemo(() => {
+    return concepts.reduce((sum, c) => sum + (c.weight || 1), 0);
+  }, [concepts]);
 
   // Load initial data
   useEffect(() => {
@@ -285,10 +287,6 @@ export function JobOfferEvaluatorModule() {
       setOfferTitle(offerToEdit.title);
       setOfferCompany(offerToEdit.company);
       setOfferLocation(offerToEdit.location || "");
-      setOfferWorkModality(offerToEdit.workModality || "hibrido");
-      setOfferOfficeDays(
-        offerToEdit.officeDaysPerWeek !== undefined ? offerToEdit.officeDaysPerWeek : 3
-      );
       setOfferIsCurrent(offerToEdit.isCurrent);
       setOfferStatus(offerToEdit.status);
       setOfferValues(offerToEdit.values || {});
@@ -301,18 +299,19 @@ export function JobOfferEvaluatorModule() {
       setOfferTitle("");
       setOfferCompany("");
       setOfferLocation("Madrid");
-      setOfferWorkModality("hibrido");
-      setOfferOfficeDays(3);
       setOfferIsCurrent(offers.length === 0);
       setOfferStatus("received");
-      const initialVals: Record<string, number | boolean> = {
-        c_telework: 2,
-      };
+      const initialVals: Record<string, number | boolean | string> = {};
       concepts.forEach((c) => {
-        if (initialVals[c.id] === undefined) {
-          if (c.unit === "BOOLEAN") initialVals[c.id] = false;
-          else if (c.unit === "SCORE_10") initialVals[c.id] = 5;
-          else initialVals[c.id] = 0;
+        if (c.options && c.options.length > 0) {
+          initialVals[c.id] = c.options[0].id;
+        } else if (c.category === "tangible") {
+          initialVals[c.id] = 0;
+        } else if (c.category === "intangible") {
+          initialVals[c.id] = 5;
+        } else if (c.category === "both") {
+          initialVals[`${c.id}_money`] = 0;
+          initialVals[`${c.id}_score`] = 5;
         }
       });
       setOfferValues(initialVals);
@@ -324,30 +323,30 @@ export function JobOfferEvaluatorModule() {
     setShowOfferModal(true);
   };
 
-  const handleModalityChange = (modality: WorkModality) => {
-    setOfferWorkModality(modality);
-    let officeDays = 0;
-    if (modality === "presencial") officeDays = 5;
-    else if (modality === "hibrido") officeDays = offerOfficeDays || 3;
-    else if (modality === "remoto") officeDays = 0;
+  const getDerivedModalityFromTelework = (
+    teleworkValue: number | boolean | string | undefined,
+    teleConcept?: Concept
+  ): { workModality: WorkModality; officeDaysPerWeek: number } => {
+    const valStr = String(teleworkValue ?? "");
+    if (valStr === "tw_remoto") return { workModality: "remoto", officeDaysPerWeek: 0 };
+    if (valStr === "tw_presencial") return { workModality: "presencial", officeDaysPerWeek: 5 };
+    if (valStr === "tw_h4_o1") return { workModality: "hibrido", officeDaysPerWeek: 1 };
+    if (valStr === "tw_h3_o2") return { workModality: "hibrido", officeDaysPerWeek: 2 };
+    if (valStr === "tw_h2_o3") return { workModality: "hibrido", officeDaysPerWeek: 3 };
+    if (valStr === "tw_h1_o4") return { workModality: "hibrido", officeDaysPerWeek: 4 };
 
-    setOfferOfficeDays(officeDays);
+    let score = 5;
+    if (teleConcept?.options && teleConcept.options.length > 0) {
+      const foundOpt = teleConcept.options.find((o) => o.id === valStr);
+      if (foundOpt) score = foundOpt.score;
+    } else if (typeof teleworkValue === "number") {
+      score = teleworkValue;
+    }
 
-    // Auto update c_telework value
-    const teleworkDays = Math.max(0, 5 - officeDays);
-    setOfferValues((prev) => ({
-      ...prev,
-      c_telework: teleworkDays,
-    }));
-  };
-
-  const handleOfficeDaysChange = (days: number) => {
-    setOfferOfficeDays(days);
-    const teleworkDays = Math.max(0, 5 - days);
-    setOfferValues((prev) => ({
-      ...prev,
-      c_telework: teleworkDays,
-    }));
+    if (score >= 10) return { workModality: "remoto", officeDaysPerWeek: 0 };
+    if (score <= 0) return { workModality: "presencial", officeDaysPerWeek: 5 };
+    const officeDays = Math.max(1, Math.min(4, Math.round((10 - score) / 2)));
+    return { workModality: "hibrido", officeDaysPerWeek: officeDays };
   };
 
   const handleSaveOffer = () => {
@@ -355,6 +354,12 @@ export function JobOfferEvaluatorModule() {
       alert("Introduce el título del puesto y el nombre de la empresa.");
       return;
     }
+
+    const teleConcept = concepts.find((c) => c.id === "c_telework");
+    const { workModality: derivedModality, officeDaysPerWeek: derivedOfficeDays } = getDerivedModalityFromTelework(
+      offerValues["c_telework"],
+      teleConcept
+    );
 
     let updatedOffers = [...offers];
 
@@ -366,34 +371,17 @@ export function JobOfferEvaluatorModule() {
       }));
     }
 
-    const calculatedTelework =
-      offerWorkModality === "remoto"
-        ? 5
-        : offerWorkModality === "presencial"
-        ? 0
-        : Math.max(0, 5 - offerOfficeDays);
-
-    const finalValues = {
-      ...offerValues,
-      c_telework: calculatedTelework,
-    };
-
     const offerId = editingOffer ? editingOffer.id : `offer_${Date.now()}`;
     const newOffer: JobOffer = {
       id: offerId,
       title: offerTitle,
       company: offerCompany,
       location: offerLocation,
-      workModality: offerWorkModality,
-      officeDaysPerWeek:
-        offerWorkModality === "remoto"
-          ? 0
-          : offerWorkModality === "presencial"
-          ? 5
-          : offerOfficeDays,
+      workModality: derivedModality,
+      officeDaysPerWeek: derivedOfficeDays,
       isCurrent: offerIsCurrent,
       status: offerIsCurrent ? "current" : offerStatus,
-      values: finalValues,
+      values: offerValues,
       conceptNotes: offerConceptNotes,
       commuteKmOneWay: Number(offerCommuteKm),
       commuteFuelL100: Number(offerCommuteFuelL100),
@@ -420,18 +408,19 @@ export function JobOfferEvaluatorModule() {
 
   // Live estimated commute cost in modal
   const liveCommuteCost = useMemo(() => {
+    const teleConcept = concepts.find((c) => c.id === "c_telework");
+    const { workModality: derivedModality, officeDaysPerWeek: derivedOfficeDays } = getDerivedModalityFromTelework(
+      offerValues["c_telework"],
+      teleConcept
+    );
+
     const tempOffer: JobOffer = {
       id: "temp",
       title: "",
       company: "",
       location: offerLocation,
-      workModality: offerWorkModality,
-      officeDaysPerWeek:
-        offerWorkModality === "remoto"
-          ? 0
-          : offerWorkModality === "presencial"
-          ? 5
-          : offerOfficeDays,
+      workModality: derivedModality,
+      officeDaysPerWeek: derivedOfficeDays,
       isCurrent: false,
       status: "received",
       values: offerValues,
@@ -441,9 +430,8 @@ export function JobOfferEvaluatorModule() {
     };
     return calculateCommuteAnnualExpense(tempOffer);
   }, [
+    concepts,
     offerLocation,
-    offerWorkModality,
-    offerOfficeDays,
     offerValues,
     offerCommuteKm,
     offerCommuteFuelL100,
@@ -457,21 +445,45 @@ export function JobOfferEvaluatorModule() {
       setConceptName(conceptToEdit.name);
       setConceptGroupId(conceptToEdit.groupId);
       setConceptDescription(conceptToEdit.description);
-      setConceptUnit(conceptToEdit.unit);
-      setConceptType(conceptToEdit.type);
+      setConceptCategory(conceptToEdit.category || "tangible");
       setConceptWeight(conceptToEdit.weight);
-      setConceptMonetaryEquivalence(conceptToEdit.monetaryEquivalencePerUnit || 0);
+      setConceptOptions(conceptToEdit.options ? [...conceptToEdit.options] : []);
     } else {
       setEditingConcept(null);
       setConceptName("");
       setConceptGroupId(groups[0]?.id || "g_direct");
       setConceptDescription("");
-      setConceptUnit("EUR_YEAR");
-      setConceptType("monetary_direct");
+      setConceptCategory("tangible");
       setConceptWeight(7);
-      setConceptMonetaryEquivalence(0);
+      setConceptOptions([]);
     }
     setShowConceptModal(true);
+  };
+
+  const handleAddConceptOption = () => {
+    const newOpt: ConceptOption = {
+      id: `opt_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+      label: "",
+      score: 5,
+      value: conceptCategory === "intangible" ? undefined : 0,
+    };
+    setConceptOptions((prev) => [...prev, newOpt]);
+  };
+
+  const handleUpdateConceptOption = (
+    index: number,
+    field: keyof ConceptOption,
+    val: string | number | undefined
+  ) => {
+    setConceptOptions((prev) => {
+      const copy = [...prev];
+      copy[index] = { ...copy[index], [field]: val };
+      return copy;
+    });
+  };
+
+  const handleDeleteConceptOption = (index: number) => {
+    setConceptOptions((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSaveConcept = () => {
@@ -486,11 +498,9 @@ export function JobOfferEvaluatorModule() {
       groupId: conceptGroupId,
       name: conceptName,
       description: conceptDescription,
-      unit: conceptUnit,
-      type: conceptType,
+      category: conceptCategory,
       weight: Number(conceptWeight),
-      isPositive: true,
-      monetaryEquivalencePerUnit: Number(conceptMonetaryEquivalence),
+      options: conceptOptions.length > 0 ? conceptOptions : undefined,
     };
 
     let updatedConcepts = [...concepts];
@@ -509,20 +519,6 @@ export function JobOfferEvaluatorModule() {
       const updatedConcepts = concepts.filter((c) => c.id !== id);
       saveData(offers, updatedConcepts, groups);
     }
-  };
-
-  const handleConceptWeightChange = (conceptId: string, newWeight: number) => {
-    const updatedConcepts = concepts.map((c) =>
-      c.id === conceptId ? { ...c, weight: newWeight } : c
-    );
-    saveData(offers, updatedConcepts, groups);
-  };
-
-  const handleMoveConceptToGroup = (conceptId: string, newGroupId: string) => {
-    const updatedConcepts = concepts.map((c) =>
-      c.id === conceptId ? { ...c, groupId: newGroupId } : c
-    );
-    saveData(offers, updatedConcepts, groups);
   };
 
   // Group Management Handlers
@@ -593,13 +589,6 @@ export function JobOfferEvaluatorModule() {
     saveData(offers, updatedConcepts, updatedGroups);
   };
 
-  const handleConceptEquivalenceChange = (conceptId: string, newEq: number) => {
-    const updatedConcepts = concepts.map((c) =>
-      c.id === conceptId ? { ...c, monetaryEquivalencePerUnit: newEq } : c
-    );
-    saveData(offers, updatedConcepts, groups);
-  };
-
   const formatCurrency = (val: number) => {
     return new Intl.NumberFormat("es-ES", {
       style: "currency",
@@ -608,34 +597,66 @@ export function JobOfferEvaluatorModule() {
     }).format(val);
   };
 
-  const formatValue = (concept: Concept, rawVal: number | boolean | undefined) => {
-    if (rawVal === undefined || rawVal === null) return "Sin especificar";
-    if (concept.unit === "BOOLEAN") return rawVal ? "SÍ (Incluido)" : "NO (No incluido)";
-    const num = Number(rawVal);
-    if (isNaN(num) || num === 0) {
-      if (concept.unit === "EUR_YEAR" || concept.unit === "EUR_MONTH") return "0 €";
-      if (concept.unit === "DAYS_YEAR" || concept.unit === "DAYS_WEEK") return "0 días";
-      if (concept.unit === "MINUTES_DAY") return "0 min";
-      if (concept.unit === "SCORE_10") return "0/10";
-      return "0";
+  const formatCategoryBadge = (category: ConceptCategory) => {
+    if (category === "tangible") {
+      return (
+        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 rounded border border-emerald-500/30">
+          Tangible (Dinero €/año)
+        </span>
+      );
+    }
+    if (category === "intangible") {
+      return (
+        <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 rounded border border-indigo-500/30">
+          Intangible (Puntuación 0-10)
+        </span>
+      );
+    }
+    return (
+      <span className="text-[9px] font-black uppercase px-1.5 py-0.5 bg-amber-500/15 text-amber-600 dark:text-amber-400 rounded border border-amber-500/30">
+        Dinero + Puntuación
+      </span>
+    );
+  };
+
+  const formatValue = (
+    concept: Concept,
+    vals: Record<string, number | boolean | string> | undefined
+  ) => {
+    if (!vals) return "Sin especificar";
+
+    if (concept.options && concept.options.length > 0) {
+      const selectedOptId = vals[concept.id];
+      const opt = concept.options.find((o) => o.id === String(selectedOptId));
+      if (opt) {
+        if (opt.value !== undefined && opt.value > 0) {
+          return `${opt.label} (${formatCurrency(opt.value)}/año • ${opt.score}/10 pts)`;
+        }
+        return `${opt.label} (${opt.score}/10 pts)`;
+      }
     }
 
-    switch (concept.unit) {
-      case "EUR_YEAR":
-        return `${formatCurrency(num)}/año`;
-      case "EUR_MONTH":
-        return `${formatCurrency(num)}/mes`;
-      case "DAYS_YEAR":
-        return `${num} días/año`;
-      case "DAYS_WEEK":
-        return `${num} días/sem`;
-      case "MINUTES_DAY":
-        return `${num} min/día`;
-      case "SCORE_10":
-        return `${num}/10`;
-      default:
-        return `${num}`;
+    if (concept.category === "tangible") {
+      const raw = vals[concept.id];
+      const num = typeof raw === "number" ? raw : Number(raw) || 0;
+      return `${formatCurrency(num)}/año`;
     }
+
+    if (concept.category === "intangible") {
+      const raw = vals[concept.id];
+      const num = typeof raw === "number" ? raw : Number(raw) || 0;
+      return `${num}/10 pts`;
+    }
+
+    if (concept.category === "both") {
+      const moneyRaw = vals[`${concept.id}_money`] ?? vals[concept.id];
+      const scoreRaw = vals[`${concept.id}_score`];
+      const money = typeof moneyRaw === "number" ? moneyRaw : Number(moneyRaw) || 0;
+      const score = typeof scoreRaw === "number" ? scoreRaw : Number(scoreRaw) || 0;
+      return `${formatCurrency(money)}/año • ${score}/10 pts`;
+    }
+
+    return "Sin especificar";
   };
 
   if (isLoading) {
@@ -723,7 +744,7 @@ export function JobOfferEvaluatorModule() {
           }`}
         >
           <span className="sm:hidden">4. Conceptos ({concepts.length})</span>
-          <span className="hidden sm:inline">4. Conceptos y Pesos ({concepts.length})</span>
+          <span className="hidden sm:inline">4. Configurar Conceptos ({concepts.length})</span>
         </button>
       </div>
 
@@ -897,7 +918,7 @@ export function JobOfferEvaluatorModule() {
                     {selectedOfferA?.isCurrent ? "[ACTUAL]" : "[PUESTO #1]"}
                   </span>
                   <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
-                    {evalResultA?.compositeScore || 0} / 100 PTS
+                    Puntuación: {evalResultA?.compositeScore || 0} / 100 PTS
                   </span>
                 </div>
                 <div>
@@ -910,10 +931,10 @@ export function JobOfferEvaluatorModule() {
 
               <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
                 <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block break-words">
-                  Valor Percibido
+                  Salario Real (Suma Tangibles)
                 </span>
                 <span className="text-sm sm:text-xl font-black text-foreground block break-words">
-                  {formatCurrency(evalResultA?.totalMonetaryValue || 0)}/año
+                  {formatCurrency(evalResultA?.totalTangibleValue || 0)}/año
                 </span>
               </div>
             </div>
@@ -926,7 +947,7 @@ export function JobOfferEvaluatorModule() {
                     {selectedOfferB?.isCurrent ? "[ACTUAL]" : "[PUESTO #2]"}
                   </span>
                   <span className="text-[10px] sm:text-xs font-black text-primary shrink-0">
-                    {evalResultB?.compositeScore || 0} / 100 PTS
+                    Puntuación: {evalResultB?.compositeScore || 0} / 100 PTS
                   </span>
                 </div>
                 <div>
@@ -939,19 +960,19 @@ export function JobOfferEvaluatorModule() {
 
               <div className="bg-muted/40 p-2 sm:p-2.5 rounded-xl border border-border text-center">
                 <span className="text-[8px] sm:text-[9px] font-extrabold uppercase text-muted-foreground block break-words">
-                  Valor Percibido
+                  Salario Real (Suma Tangibles)
                 </span>
                 <span className="text-sm sm:text-xl font-black text-foreground block break-words">
-                  {formatCurrency(evalResultB?.totalMonetaryValue || 0)}/año
+                  {formatCurrency(evalResultB?.totalTangibleValue || 0)}/año
                 </span>
 
                 {/* Net Delta position B vs position A */}
                 {evalResultA && evalResultB && (
                   <div className="mt-1">
                     {(() => {
-                      const delta = evalResultB.totalMonetaryValue - evalResultA.totalMonetaryValue;
-                      const pct = evalResultA.totalMonetaryValue > 0
-                        ? Math.round((delta / evalResultA.totalMonetaryValue) * 100)
+                      const delta = evalResultB.totalTangibleValue - evalResultA.totalTangibleValue;
+                      const pct = evalResultA.totalTangibleValue > 0
+                        ? Math.round((delta / evalResultA.totalTangibleValue) * 100)
                         : 0;
                       return (
                         <span
@@ -961,20 +982,20 @@ export function JobOfferEvaluatorModule() {
                               : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                           }`}
                         >
-                          Dif: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
+                          Dif Salario Real: {delta >= 0 ? "+" : ""}{formatCurrency(delta)}/año ({pct >= 0 ? "+" : ""}{pct}%)
                         </span>
                       );
                     })()}
                   </div>
                 )}
               </div>
+
             </div>
           </div>
 
           {/* PARALLEL CONCEPT-BY-CONCEPT COMPARISON MATRIX */}
           <div className="space-y-4">
             {groupedConcepts.map(({ group, concepts: groupConcepts }) => {
-              // Collapsed by default unless explicitly opened (false)
               const isCollapsed = collapsedGroups[group.id] !== false;
               return (
               <div key={group.id} className="bg-card rounded-2xl border border-border overflow-hidden">
@@ -1001,24 +1022,27 @@ export function JobOfferEvaluatorModule() {
                 {!isCollapsed && (
                 <div className="divide-y divide-border/60">
                   {groupConcepts.map((concept) => {
-                    const valA = selectedOfferA?.values[concept.id];
                     const noteA = selectedOfferA?.conceptNotes?.[concept.id];
-                    const monA = calculateConceptMonetaryValue(concept, valA);
+                    const tangA = calculateConceptTangibleValue(concept, selectedOfferA?.values);
+                    const scoreA10 = calculateConceptNormalizedScore(concept, selectedOfferA?.values, selectedOfferA);
+                    const ptsA = totalConceptWeights > 0 ? Math.round(((scoreA10 * concept.weight) / totalConceptWeights) * 10) / 10 : 0;
 
-                    const valB = selectedOfferB?.values[concept.id];
                     const noteB = selectedOfferB?.conceptNotes?.[concept.id];
-                    const monB = calculateConceptMonetaryValue(concept, valB);
+                    const tangB = calculateConceptTangibleValue(concept, selectedOfferB?.values);
+                    const scoreB10 = calculateConceptNormalizedScore(concept, selectedOfferB?.values, selectedOfferB);
+                    const ptsB = totalConceptWeights > 0 ? Math.round(((scoreB10 * concept.weight) / totalConceptWeights) * 10) / 10 : 0;
 
-                    const diffMon = monB - monA;
+                    const diffTangible = tangB - tangA;
 
                     return (
                       <div key={concept.id} className="p-4 space-y-2">
-                        {/* Row Header: Concept Title & Description */}
+                        {/* Row Header: Concept Title, Category & Description */}
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 pb-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-black text-foreground">
                               {concept.name}
                             </span>
+                            {formatCategoryBadge(concept.category)}
                             <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 bg-muted text-muted-foreground rounded-md border border-border">
                               Peso: {concept.weight}/10
                             </span>
@@ -1034,13 +1058,7 @@ export function JobOfferEvaluatorModule() {
                         {/* STRICT PARALLEL 2-COLUMN LAYOUT */}
                         <div className="grid grid-cols-2 gap-2 sm:gap-3 text-xs">
                           {/* Left Column: Position 1 Value */}
-                          <div
-                            className={`rounded-xl p-2 sm:p-3 border space-y-1 ${
-                              valA !== undefined && valA !== null && valA !== 0 && valA !== false
-                                ? "bg-muted/30 border-border"
-                                : "bg-muted/10 border-border/40 opacity-70"
-                            }`}
-                          >
+                          <div className="rounded-xl p-2 sm:p-3 border border-border bg-muted/30 space-y-1">
                             <div className="text-[9px] font-extrabold uppercase text-muted-foreground flex justify-between">
                               <span>{selectedOfferA?.title}</span>
                               <span className="font-semibold text-muted-foreground/80">Puesto #1</span>
@@ -1048,23 +1066,18 @@ export function JobOfferEvaluatorModule() {
 
                             <div className="flex justify-between items-center font-black text-foreground pt-0.5">
                               <span className="text-muted-foreground font-semibold text-[11px]">Valor:</span>
-                              <span
-                                className={
-                                  valA !== undefined && valA !== null && valA !== 0 && valA !== false
-                                    ? "text-foreground"
-                                    : "text-muted-foreground/80 italic font-medium"
-                                }
-                              >
-                                {formatValue(concept, valA)}
+                              <span className="text-foreground">
+                                {formatValue(concept, selectedOfferA?.values)}
                               </span>
                             </div>
 
-                            {monA > 0 && concept.unit !== "EUR_YEAR" && (
-                              <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                                <span>Aporte Percibido:</span>
-                                <span>+{formatCurrency(monA)}/año</span>
-                              </div>
-                            )}
+                            {/* EXACT POINTS CONTRIBUTED TO TOTAL 0-100 SCORE */}
+                            <div className="flex justify-between items-center font-extrabold text-primary text-[10px] pt-1 border-t border-border/40">
+                              <span>Suma a Puntuación Final:</span>
+                              <span className="bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                                +{ptsA} pts / 100
+                              </span>
+                            </div>
 
                             {noteA ? (
                               <p className="text-[10px] font-normal text-muted-foreground italic bg-background/60 p-1.5 rounded-md border border-border/40 mt-1">
@@ -1078,13 +1091,7 @@ export function JobOfferEvaluatorModule() {
                           </div>
 
                           {/* Right Column: Position 2 Value */}
-                          <div
-                            className={`rounded-xl p-2 sm:p-3 border space-y-1 ${
-                              valB !== undefined && valB !== null && valB !== 0 && valB !== false
-                                ? "bg-primary/5 border-primary/30"
-                                : "bg-muted/10 border-border/40 opacity-70"
-                            }`}
-                          >
+                          <div className="rounded-xl p-2 sm:p-3 border border-primary/30 bg-primary/5 space-y-1">
                             <div className="text-[9px] font-extrabold uppercase text-muted-foreground flex justify-between">
                               <span>{selectedOfferB?.title}</span>
                               <span className="font-semibold text-primary">Puesto #2</span>
@@ -1092,23 +1099,18 @@ export function JobOfferEvaluatorModule() {
 
                             <div className="flex justify-between items-center font-black text-foreground pt-0.5">
                               <span className="text-muted-foreground font-semibold text-[11px]">Valor:</span>
-                              <span
-                                className={
-                                  valB !== undefined && valB !== null && valB !== 0 && valB !== false
-                                    ? "text-foreground"
-                                    : "text-muted-foreground/80 italic font-medium"
-                                }
-                              >
-                                {formatValue(concept, valB)}
+                              <span className="text-foreground">
+                                {formatValue(concept, selectedOfferB?.values)}
                               </span>
                             </div>
 
-                            {monB > 0 && concept.unit !== "EUR_YEAR" && (
-                              <div className="flex justify-between items-center font-bold text-emerald-600 dark:text-emerald-400 text-[11px]">
-                                <span>Aporte Percibido:</span>
-                                <span>+{formatCurrency(monB)}/año</span>
-                              </div>
-                            )}
+                            {/* EXACT POINTS CONTRIBUTED TO TOTAL 0-100 SCORE */}
+                            <div className="flex justify-between items-center font-extrabold text-primary text-[10px] pt-1 border-t border-primary/20">
+                              <span>Suma a Puntuación Final:</span>
+                              <span className="bg-primary/15 text-primary px-1.5 py-0.5 rounded">
+                                +{ptsB} pts / 100
+                              </span>
+                            </div>
 
                             {noteB ? (
                               <p className="text-[10px] font-normal text-muted-foreground italic bg-background/60 p-1.5 rounded-md border border-border/40 mt-1">
@@ -1123,16 +1125,16 @@ export function JobOfferEvaluatorModule() {
                         </div>
 
                         {/* Delta / Difference line below parallel cards */}
-                        {diffMon !== 0 && concept.unit !== "EUR_YEAR" && (
+                        {diffTangible !== 0 && (concept.category === "tangible" || concept.category === "both") && (
                           <div className="text-right text-[11px] font-black pt-1">
                             <span
                               className={`px-2 py-0.5 rounded-md ${
-                                diffMon > 0
+                                diffTangible > 0
                                   ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                                   : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                               }`}
                             >
-                              Diferencia en {concept.name}: {diffMon > 0 ? "+" : ""}{formatCurrency(diffMon)}/año a favor de {diffMon > 0 ? selectedOfferB?.title : selectedOfferA?.title}
+                              Diferencia Tangible en {concept.name}: {diffTangible > 0 ? "+" : ""}{formatCurrency(diffTangible)}/año a favor de {diffTangible > 0 ? selectedOfferB?.title : selectedOfferA?.title}
                             </span>
                           </div>
                         )}
@@ -1150,10 +1152,10 @@ export function JobOfferEvaluatorModule() {
               <div className="bg-card rounded-2xl border border-rose-500/30 p-4 space-y-3">
                 <div className="flex justify-between items-center border-b border-border pb-2">
                   <h3 className="text-xs font-black uppercase text-rose-600 dark:text-rose-400">
-                    Desplazamiento en Coche (Gasto Anual de Combustible)
+                    Desplazamiento Diario en Coche (Gasolina Tangible que resta del salario)
                   </h3>
                   <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
-                    Gasto Deducido
+                    Gasto Tangible Restado
                   </span>
                 </div>
 
@@ -1197,7 +1199,6 @@ export function JobOfferEvaluatorModule() {
             const offerObj = offers.find((o) => o.id === result.offerId);
             const isCurrent = result.isCurrent;
             const isWinner = result.rank === 1 && !isCurrent;
-            const commuteCost = offerObj ? calculateCommuteAnnualExpense(offerObj) : 0;
 
             return (
               <div
@@ -1229,7 +1230,7 @@ export function JobOfferEvaluatorModule() {
                     </span>
 
                     <span className="text-xs font-black text-primary">
-                      {result.compositeScore} / 100 PTS
+                      Puntuación: {result.compositeScore} / 100 PTS
                     </span>
                   </div>
 
@@ -1242,23 +1243,23 @@ export function JobOfferEvaluatorModule() {
 
                   <div className="bg-muted/40 rounded-xl p-3 border border-border/60 mb-3 text-center">
                     <span className="text-[9px] font-extrabold text-muted-foreground uppercase block">
-                      Valor Percibido Total
+                      Salario Real (Suma Tangibles)
                     </span>
                     <div className="text-xl font-black text-foreground mt-0.5">
-                      {formatCurrency(result.totalMonetaryValue)}
+                      {formatCurrency(result.totalTangibleValue)}
                       <span className="text-xs font-bold text-muted-foreground">/año</span>
                     </div>
 
                     {!isCurrent && (
                       <div
                         className={`mt-1.5 text-xs font-black px-2 py-0.5 rounded-md inline-block ${
-                          result.deltaMonetaryVsCurrent >= 0
+                          result.deltaTangibleVsCurrent >= 0
                             ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                             : "bg-rose-500/15 text-rose-600 dark:text-rose-400"
                         }`}
                       >
-                        {result.deltaMonetaryVsCurrent >= 0 ? "+" : ""}
-                        {formatCurrency(result.deltaMonetaryVsCurrent)}/año ({result.deltaPercentVsCurrent > 0 ? "+" : ""}
+                        {result.deltaTangibleVsCurrent >= 0 ? "+" : ""}
+                        {formatCurrency(result.deltaTangibleVsCurrent)}/año ({result.deltaPercentVsCurrent > 0 ? "+" : ""}
                         {result.deltaPercentVsCurrent}%)
                       </div>
                     )}
@@ -1266,11 +1267,10 @@ export function JobOfferEvaluatorModule() {
 
                   <div className="space-y-1 text-xs">
                     {concepts.slice(0, 5).map((concept) => {
-                      const val = offerObj?.values[concept.id];
                       return (
                         <div key={concept.id} className="flex justify-between py-0.5 border-b border-border/40">
                           <span className="text-muted-foreground font-semibold truncate pr-2">{concept.name}</span>
-                          <span className="font-bold text-foreground">{formatValue(concept, val)}</span>
+                          <span className="font-bold text-foreground">{formatValue(concept, offerObj?.values)}</span>
                         </div>
                       );
                     })}
@@ -1375,7 +1375,7 @@ export function JobOfferEvaluatorModule() {
                 Configuración de Grupos y Conceptos de Medición
               </h2>
               <p className="text-xs text-muted-foreground font-semibold">
-                Organiza tus criterios en grupos de análisis, muévelos fácilmente y ajusta sus pesos
+                Organiza tus criterios en grupos de análisis, clasifícalos como Tangibles o Intangibles y ajusta sus pesos u opciones
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -1446,93 +1446,53 @@ export function JobOfferEvaluatorModule() {
                   {!isCollapsed && (
                     groupConcepts.length > 0 ? (
                       <div className="divide-y divide-border/60 p-2 sm:p-3 space-y-2">
-                      {groupConcepts.map((concept) => (
-                        <div
-                          key={concept.id}
-                          className="bg-muted/20 rounded-xl p-3 border border-border/60 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
-                        >
-                          <div className="space-y-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-black text-foreground">{concept.name}</h4>
-                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
-                                {concept.unit}
-                              </span>
-                            </div>
-                            {concept.description && (
-                              <p className="text-[11px] text-muted-foreground font-semibold">
-                                {concept.description}
-                              </p>
-                            )}
-                          </div>
+                      {groupConcepts.map((concept) => {
+                        const totalAllWeights = concepts.reduce((acc, c) => acc + (c.weight || 1), 0);
+                        const weightPct = totalAllWeights > 0 ? Math.round((concept.weight / totalAllWeights) * 100) : 0;
 
-                          <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-                            {/* Group Reassignment Dropdown */}
-                            <div>
-                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                Grupo
-                              </label>
-                              <select
-                                value={concept.groupId}
-                                onChange={(e) => handleMoveConceptToGroup(concept.id, e.target.value)}
-                                className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer max-w-[140px]"
-                              >
-                                {groups.map((g) => (
-                                  <option key={g.id} value={g.id}>
-                                    {g.name}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-
-                            {concept.unit !== "EUR_YEAR" && (
-                              <div>
-                                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                  Valor Anual (€/unidad)
-                                </label>
-                                <input
-                                  type="number"
-                                  value={concept.monetaryEquivalencePerUnit || 0}
-                                  onChange={(e) =>
-                                    handleConceptEquivalenceChange(concept.id, Number(e.target.value))
-                                  }
-                                  className="w-24 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
-                                />
+                        return (
+                          <div
+                            key={concept.id}
+                            className="bg-card rounded-xl p-3 border border-border/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-2xs hover:border-border transition"
+                          >
+                            <div className="space-y-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <h4 className="font-black text-foreground text-sm">{concept.name}</h4>
+                                {formatCategoryBadge(concept.category)}
+                                <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-muted text-muted-foreground rounded border border-border">
+                                  Peso: {concept.weight}/10 (~{weightPct}%)
+                                </span>
+                                {concept.options && concept.options.length > 0 && (
+                                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 bg-primary/10 text-primary rounded border border-primary/20">
+                                    {concept.options.length} opciones de selección
+                                  </span>
+                                )}
                               </div>
-                            )}
 
-                            <div>
-                              <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                                Peso (1-10)
-                              </label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={10}
-                                value={concept.weight}
-                                onChange={(e) =>
-                                  handleConceptWeightChange(concept.id, Number(e.target.value))
-                                }
-                                className="w-14 px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
-                              />
+                              {concept.description && (
+                                <p className="text-[11px] text-muted-foreground font-semibold">
+                                  {concept.description}
+                                </p>
+                              )}
                             </div>
 
-                            <div className="pt-3 md:pt-0 flex gap-1">
+                            <div className="flex items-center gap-1.5 shrink-0">
                               <button
                                 onClick={() => handleOpenConceptModal(concept)}
-                                className="px-2 py-1 bg-card hover:bg-muted text-foreground font-extrabold rounded-lg border border-border text-[10px] uppercase cursor-pointer"
+                                className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-foreground font-extrabold rounded-xl border border-border text-xs uppercase cursor-pointer transition"
                               >
-                                Editar
+                                Editar Concepto
                               </button>
                               <button
                                 onClick={() => handleDeleteConcept(concept.id)}
-                                className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-lg border border-rose-500/20 text-[10px] uppercase cursor-pointer"
+                                className="px-2.5 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold rounded-xl border border-rose-500/20 text-xs uppercase cursor-pointer transition"
                               >
                                 Borrar
                               </button>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="p-4 text-center text-xs text-muted-foreground italic font-medium">
@@ -1726,45 +1686,6 @@ export function JobOfferEvaluatorModule() {
                 />
               </div>
 
-              <div>
-                <label className="block font-black text-foreground uppercase mb-1">
-                  Modalidad de Trabajo *
-                </label>
-                <select
-                  value={offerWorkModality}
-                  onChange={(e) => handleModalityChange(e.target.value as WorkModality)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground cursor-pointer"
-                >
-                  <option value="presencial">100% Presencial (5d oficina)</option>
-                  <option value="hibrido">Híbrido (Oficina + Teletrabajo)</option>
-                  <option value="remoto">100% Remoto (0d oficina)</option>
-                </select>
-              </div>
-
-              {/* Hybrid Days Selector */}
-              {offerWorkModality === "hibrido" && (
-                <div className="sm:col-span-2 bg-muted/30 p-3 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <label className="block font-black text-foreground uppercase text-xs mb-0.5">
-                      Días de Oficina a la Semana:
-                    </label>
-                    <span className="text-[10px] text-muted-foreground font-semibold block">
-                      Determina los viajes presenciales y auto-calcula los días de teletrabajo.
-                    </span>
-                  </div>
-
-                  <select
-                    value={offerOfficeDays}
-                    onChange={(e) => handleOfficeDaysChange(Number(e.target.value))}
-                    className="px-3 py-1.5 rounded-xl border border-border bg-background font-black text-foreground cursor-pointer text-xs shrink-0"
-                  >
-                    <option value={1}>1 día oficina / 4 días teletrabajo</option>
-                    <option value={2}>2 días oficina / 3 días teletrabajo</option>
-                    <option value={3}>3 días oficina / 2 días teletrabajo</option>
-                    <option value={4}>4 días oficina / 1 día teletrabajo</option>
-                  </select>
-                </div>
-              )}
 
               <div className="sm:col-span-2 flex items-center pt-2">
                 <label className="flex items-center gap-2 font-black text-emerald-600 dark:text-emerald-400 cursor-pointer">
@@ -1839,72 +1760,194 @@ export function JobOfferEvaluatorModule() {
             {/* Concept Values & Per-Concept Justification Notes */}
             <div className="pt-2 border-t border-border space-y-3">
               <h4 className="font-black uppercase text-foreground">
-                Valores y Justificación por Concepto:
+                Valores del Puesto por Concepto:
               </h4>
 
               <div className="space-y-2">
-                {concepts.map((concept) => (
-                  <div
-                    key={concept.id}
-                    className="bg-muted/30 p-3 rounded-xl border border-border space-y-1.5"
-                  >
-                    <div className="flex justify-between items-center">
-                      <label className="font-bold text-foreground">
-                        {concept.name}{" "}
-                        <span className="text-[10px] text-muted-foreground">
-                          ({concept.unit})
-                        </span>
-                      </label>
+                {concepts.map((concept) => {
+                  return (
+                    <div
+                      key={concept.id}
+                      className="bg-muted/30 p-3 rounded-xl border border-border space-y-2"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <label className="font-black text-foreground text-xs">
+                              {concept.name}
+                            </label>
+                            {formatCategoryBadge(concept.category)}
+                          </div>
+                          {concept.description && (
+                            <span className="text-[10px] text-muted-foreground font-semibold block">
+                              {concept.description}
+                            </span>
+                          )}
+                        </div>
 
-                      {concept.unit === "BOOLEAN" ? (
-                        <select
-                          value={offerValues[concept.id] ? "true" : "false"}
-                          onChange={(e) =>
-                            setOfferValues({
-                              ...offerValues,
-                              [concept.id]: e.target.value === "true",
-                            })
-                          }
-                          className="px-2 py-1 rounded-lg border border-border bg-background font-bold"
-                        >
-                          <option value="false">NO (No incluido)</option>
-                          <option value="true">SÍ (Incluido)</option>
-                        </select>
-                      ) : (
+                        {/* DYNAMIC FORM FIELD BASED STRICTLY ON NATURE OR DICTIONARY OPTIONS */}
+                        <div className="flex items-center gap-2 shrink-0">
+                          {concept.options && concept.options.length > 0 ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                                Opción:
+                              </span>
+                              <select
+                                value={
+                                  offerValues[concept.id] !== undefined
+                                    ? String(offerValues[concept.id])
+                                    : concept.options[0]?.id || ""
+                                }
+                                onChange={(e) =>
+                                  setOfferValues({
+                                    ...offerValues,
+                                    [concept.id]: e.target.value,
+                                  })
+                                }
+                                className="px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer max-w-[280px] truncate"
+                              >
+                                {concept.options.map((opt) => (
+                                  <option key={opt.id} value={opt.id}>
+                                    {opt.label}{" "}
+                                    {opt.value !== undefined && opt.value > 0
+                                      ? `(${formatCurrency(opt.value)}/año • ${opt.score}/10 pts)`
+                                      : `(${opt.score}/10 pts)`}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          ) : (
+                            <>
+                              {concept.category === "tangible" && (
+                                <div className="flex items-center gap-1.5">
+                                  <input
+                                    type="number"
+                                    placeholder="0"
+                                    value={
+                                      offerValues[concept.id] !== undefined
+                                        ? Number(offerValues[concept.id])
+                                        : ""
+                                    }
+                                    onChange={(e) =>
+                                      setOfferValues({
+                                        ...offerValues,
+                                        [concept.id]: Number(e.target.value),
+                                      })
+                                    }
+                                    className="w-32 px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
+                                  />
+                                  <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
+                                    €/año
+                                  </span>
+                                </div>
+                              )}
+
+                              {concept.category === "intangible" && (
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                                    Puntuación:
+                                  </span>
+                                  <select
+                                    value={
+                                      offerValues[concept.id] !== undefined
+                                        ? Number(offerValues[concept.id])
+                                        : 5
+                                    }
+                                    onChange={(e) =>
+                                      setOfferValues({
+                                        ...offerValues,
+                                        [concept.id]: Number(e.target.value),
+                                      })
+                                    }
+                                    className="px-2.5 py-1.5 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer"
+                                  >
+                                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                      <option key={num} value={num}>
+                                        {num} / 10 pts {num === 10 ? "(Excelente)" : num === 0 ? "(Pésimo)" : ""}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              )}
+
+                              {concept.category === "both" && (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                                      Dinero:
+                                    </span>
+                                    <input
+                                      type="number"
+                                      placeholder="0"
+                                      value={
+                                        offerValues[`${concept.id}_money`] !== undefined
+                                          ? Number(offerValues[`${concept.id}_money`])
+                                          : offerValues[concept.id] !== undefined
+                                          ? Number(offerValues[concept.id])
+                                          : ""
+                                      }
+                                      onChange={(e) =>
+                                        setOfferValues({
+                                          ...offerValues,
+                                          [`${concept.id}_money`]: Number(e.target.value),
+                                        })
+                                      }
+                                      className="w-28 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right text-xs"
+                                    />
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                                      €/año
+                                    </span>
+                                  </div>
+
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
+                                      Puntuación:
+                                    </span>
+                                    <select
+                                      value={
+                                        offerValues[`${concept.id}_score`] !== undefined
+                                          ? Number(offerValues[`${concept.id}_score`])
+                                          : 5
+                                      }
+                                      onChange={(e) =>
+                                        setOfferValues({
+                                          ...offerValues,
+                                          [`${concept.id}_score`]: Number(e.target.value),
+                                        })
+                                      }
+                                      className="px-2 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs cursor-pointer"
+                                    >
+                                      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                        <option key={num} value={num}>
+                                          {num}/10 pts
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
                         <input
-                          type="number"
-                          value={
-                            offerValues[concept.id] !== undefined
-                              ? Number(offerValues[concept.id])
-                              : ""
-                          }
+                          type="text"
+                          placeholder="Añade una justificación o detalle sobre este valor..."
+                          value={offerConceptNotes[concept.id] || ""}
                           onChange={(e) =>
-                            setOfferValues({
-                              ...offerValues,
-                              [concept.id]: Number(e.target.value),
+                            setOfferConceptNotes({
+                              ...offerConceptNotes,
+                              [concept.id]: e.target.value,
                             })
                           }
-                          className="w-36 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-right"
+                          className="w-full px-2.5 py-1 rounded-lg border border-border/60 bg-background/80 font-normal text-[11px] text-foreground"
                         />
-                      )}
+                      </div>
                     </div>
-
-                    <div>
-                      <input
-                        type="text"
-                        placeholder="Añade una justificación o detalle sobre este valor..."
-                        value={offerConceptNotes[concept.id] || ""}
-                        onChange={(e) =>
-                          setOfferConceptNotes({
-                            ...offerConceptNotes,
-                            [concept.id]: e.target.value,
-                          })
-                        }
-                        className="w-full px-2.5 py-1 rounded-lg border border-border/60 bg-background/80 font-normal text-[11px] text-foreground"
-                      />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
@@ -1951,7 +1994,7 @@ export function JobOfferEvaluatorModule() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej. Retribución Directa / Beneficios"
+                  placeholder="Ej. Retribución Directa / Beneficios y Salud"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
@@ -1991,7 +2034,7 @@ export function JobOfferEvaluatorModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL: ADD / EDIT CONCEPT                                                */}
+      {/* MODAL: ADD / EDIT CONCEPT WITH EDITABLE DICTIONARY OPTIONS                */}
       {/* ========================================================================= */}
       {showConceptModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 overflow-y-auto">
@@ -2011,7 +2054,7 @@ export function JobOfferEvaluatorModule() {
             <div className="space-y-3">
               <div>
                 <label className="block font-black text-foreground uppercase mb-1">
-                  Grupo Pertenece *
+                  1. Grupo Pertenece *
                 </label>
                 <select
                   value={conceptGroupId}
@@ -2028,11 +2071,11 @@ export function JobOfferEvaluatorModule() {
 
               <div>
                 <label className="block font-black text-foreground uppercase mb-1">
-                  Nombre del Concepto *
+                  2. Nombre del Concepto *
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej. Cheque Guardería / Tarjeta Transportes"
+                  placeholder="Ej. Salario, Comedor, Teletrabajo..."
                   value={conceptName}
                   onChange={(e) => setConceptName(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
@@ -2041,64 +2084,148 @@ export function JobOfferEvaluatorModule() {
 
               <div>
                 <label className="block font-black text-foreground uppercase mb-1">
-                  Descripción
+                  3. Descripción
                 </label>
                 <input
                   type="text"
-                  placeholder="Explicación del concepto"
+                  placeholder="Explicación o notas del concepto"
                   value={conceptDescription}
                   onChange={(e) => setConceptDescription(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-border bg-background font-semibold text-foreground"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-black text-foreground uppercase mb-1">
-                    Unidad de Medida
-                  </label>
-                  <select
-                    value={conceptUnit}
-                    onChange={(e) => setConceptUnit(e.target.value as UnitType)}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground cursor-pointer"
+              <div>
+                <label className="block font-black text-foreground uppercase mb-1">
+                  4. Tipo / Naturaleza del Concepto *
+                </label>
+                <div className="grid grid-cols-3 gap-1 bg-muted/60 p-1 rounded-xl border border-border">
+                  <button
+                    type="button"
+                    onClick={() => setConceptCategory("tangible")}
+                    className={`py-2 px-2 rounded-lg font-black text-xs uppercase transition cursor-pointer text-center ${
+                      conceptCategory === "tangible"
+                        ? "bg-card text-emerald-600 dark:text-emerald-400 shadow-2xs border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
-                    <option value="EUR_YEAR">€/año</option>
-                    <option value="EUR_MONTH">€/mes</option>
-                    <option value="DAYS_YEAR">días/año</option>
-                    <option value="DAYS_WEEK">días/semana</option>
-                    <option value="MINUTES_DAY">minutos/día</option>
-                    <option value="SCORE_10">Puntuación 1-10</option>
-                    <option value="BOOLEAN">Sí / No</option>
-                  </select>
+                    Tangible
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConceptCategory("intangible")}
+                    className={`py-2 px-2 rounded-lg font-black text-xs uppercase transition cursor-pointer text-center ${
+                      conceptCategory === "intangible"
+                        ? "bg-card text-indigo-600 dark:text-indigo-400 shadow-2xs border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Intangible
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConceptCategory("both")}
+                    className={`py-2 px-2 rounded-lg font-black text-xs uppercase transition cursor-pointer text-center ${
+                      conceptCategory === "both"
+                        ? "bg-card text-amber-600 dark:text-amber-400 shadow-2xs border border-border"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    Ambos
+                  </button>
                 </div>
-
-                <div>
-                  <label className="block font-black text-foreground uppercase mb-1">
-                    Peso (Importancia 1-10)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={conceptWeight}
-                    onChange={(e) => setConceptWeight(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
-                  />
-                </div>
+                <span className="text-[10px] text-muted-foreground font-semibold block mt-1">
+                  {conceptCategory === "tangible" && "Pones el dinero en €/año."}
+                  {conceptCategory === "intangible" && "Valoras de 0 a 10 puntos."}
+                  {conceptCategory === "both" && "Pones el dinero en €/año Y valoras de 0 a 10 puntos."}
+                </span>
               </div>
 
-              {conceptUnit !== "EUR_YEAR" && (
-                <div>
-                  <label className="block font-black text-foreground uppercase mb-1">
-                    Valoración Anual Equivalente (€)
-                  </label>
-                  <input
-                    type="number"
-                    placeholder="Ej. 1200 por seguro médico o 900€ por día de teletrabajo"
-                    value={conceptMonetaryEquivalence}
-                    onChange={(e) => setConceptMonetaryEquivalence(Number(e.target.value))}
-                    className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
-                  />
+              <div>
+                <label className="block font-black text-foreground uppercase mb-1">
+                  5. Peso (Importancia 1 a 10)
+                </label>
+                <input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={conceptWeight}
+                  onChange={(e) => setConceptWeight(Number(e.target.value))}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground"
+                />
+              </div>
+
+              {/* EDITABLE CATEGORY OPTIONS (RESTRICTED strictly TO INTANGIBLE CONCEPTS) */}
+              {conceptCategory === "intangible" && (
+                <div className="bg-muted/40 p-3 rounded-xl border border-border space-y-3 pt-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="block font-black uppercase text-foreground text-xs">
+                        Opciones Seleccionables (Categorías de Evaluación):
+                      </span>
+                      <p className="text-[10px] text-muted-foreground font-semibold">
+                        Crea las categorías fijas que se podrán elegir en las ofertas con la puntuación (0-10) que para ti representa cada una
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleAddConceptOption}
+                      className="px-2.5 py-1 bg-primary text-primary-foreground font-black text-[10px] uppercase rounded-lg hover:bg-primary-hover cursor-pointer shrink-0"
+                    >
+                      + Añadir Opción
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-[30dvh] overflow-y-auto pr-1">
+                    {conceptOptions.map((opt, idx) => (
+                      <div
+                        key={opt.id || idx}
+                        className="bg-card p-2.5 rounded-xl border border-border space-y-2 text-xs shadow-2xs"
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <input
+                            type="text"
+                            placeholder="Nombre de la opción (ej: Remoto 5 días / Hybrid 3d casa 2d oficina)"
+                            value={opt.label}
+                            onChange={(e) => handleUpdateConceptOption(idx, "label", e.target.value)}
+                            className="flex-1 px-2.5 py-1 rounded-lg border border-border bg-background font-bold text-foreground text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteConceptOption(idx)}
+                            className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-bold rounded-lg text-[10px] uppercase cursor-pointer shrink-0"
+                          >
+                            Borrar
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] font-extrabold text-muted-foreground uppercase">
+                              Valoración:
+                            </span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={10}
+                              value={opt.score}
+                              onChange={(e) =>
+                                handleUpdateConceptOption(idx, "score", Number(e.target.value))
+                              }
+                              className="w-16 px-2 py-0.5 rounded-lg border border-border bg-background font-bold text-foreground text-center text-xs"
+                            />
+                            <span className="text-[10px] font-bold text-muted-foreground">/ 10 pts</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {conceptOptions.length === 0 && (
+                      <div className="text-center py-2 text-xs text-muted-foreground italic font-medium">
+                        Sin opciones prefijadas. Se elegirá una puntuación numérica directa (0 a 10) en cada puesto.
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
