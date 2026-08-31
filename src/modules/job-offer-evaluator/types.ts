@@ -12,6 +12,13 @@ export interface ConceptGroup {
   color: string;
 }
 
+export interface ConceptOption {
+  id: string;
+  label: string;      // ej: "100% Remoto", "Comida gratis", "Llevar tupper", "3 días oficina"
+  score: number;      // Puntuación 0-10
+  value?: number;     // Valor económico opcional €/año
+}
+
 export interface Concept {
   id: string;
   groupId: string;
@@ -21,6 +28,7 @@ export interface Concept {
   weight: number; // 1 to 10 (Importance weight)
   unit?: UnitType; // Optional legacy field
   isPositive?: boolean;
+  options?: ConceptOption[]; // Lista de opciones personalizables/diccionario
 }
 
 export type OfferStatus =

@@ -91,9 +91,17 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     id: "c_telework",
     groupId: "g_flexibility",
     name: "Días de Teletrabajo Semanales",
-    description: "100% Remoto = 10 pts, 3 días oficina = 4 pts, Oficina 5 días = 0 pts",
+    description: "Modalidad de trabajo remoto vs presencial con puntuaciones editables",
     category: "intangible",
     weight: 9,
+    options: [
+      { id: "tw_remoto", label: "Remoto (5 días en casa)", score: 10 },
+      { id: "tw_h4_o1", label: "Hybrid work (4 días casa / 1 día oficina)", score: 8 },
+      { id: "tw_h3_o2", label: "Hybrid work (3 días casa / 2 días oficina)", score: 6 },
+      { id: "tw_h2_o3", label: "Hybrid work (2 días casa / 3 días oficina)", score: 4 },
+      { id: "tw_h1_o4", label: "Hybrid work (1 día casa / 4 días oficina)", score: 2 },
+      { id: "tw_presencial", label: "100% Presencial (5 días en oficina)", score: 0 },
+    ],
   },
   {
     id: "c_vacation_days",
@@ -153,8 +161,8 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_canteen_score: 3,
       c_health_insurance: 0,
       c_pension_plan: 0,
-      c_telework: 4, // 2d telework / 3d office
-      c_vacation_days: 6, // 23 días
+      c_telework: "tw_h2_o3",
+      c_vacation_days: 6,
       c_commute_money: 0,
       c_commute_score: 5,
       c_stability: 9,
@@ -182,8 +190,8 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_canteen_score: 10,
       c_health_insurance: 1200,
       c_pension_plan: 1500,
-      c_telework: 10, // 100% remoto
-      c_vacation_days: 9, // 26 días
+      c_telework: "tw_remoto",
+      c_vacation_days: 9,
       c_commute_money: 0,
       c_commute_score: 10,
       c_stability: 9,
@@ -211,7 +219,7 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_canteen_score: 7,
       c_health_insurance: 1200,
       c_pension_plan: 2000,
-      c_telework: 4,
+      c_telework: "tw_h2_o3",
       c_vacation_days: 7,
       c_commute_money: 0,
       c_commute_score: 6,
@@ -258,6 +266,14 @@ export function calculateConceptTangibleValue(
 ): number {
   if (!offerValues) return 0;
 
+  if (concept.options && concept.options.length > 0) {
+    const selectedOptId = offerValues[concept.id];
+    const opt = concept.options.find((o) => o.id === String(selectedOptId));
+    if (opt && opt.value !== undefined) {
+      return opt.value;
+    }
+  }
+
   if (concept.category === "tangible") {
     const rawVal = offerValues[concept.id];
     return typeof rawVal === "number" ? rawVal : Number(rawVal) || 0;
@@ -282,7 +298,15 @@ export function calculateConceptNormalizedScore(
 ): number {
   if (!offerValues) return 0;
 
-  if (concept.id === "c_telework") {
+  if (concept.options && concept.options.length > 0) {
+    const selectedOptId = offerValues[concept.id];
+    const opt = concept.options.find((o) => o.id === String(selectedOptId));
+    if (opt) {
+      return Math.min(10, Math.max(0, opt.score));
+    }
+  }
+
+  if (concept.id === "c_telework" && (!concept.options || concept.options.length === 0)) {
     let officeDays = 3;
     if (offer) {
       if (offer.workModality === "remoto") officeDays = 0;
