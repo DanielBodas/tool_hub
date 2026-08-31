@@ -1703,50 +1703,7 @@ export function BabyWeightTrackerModule() {
               </p>
             </div>
 
-            {/* SUBPILL NAVIGATION BAR (Resumen, Pesajes, Desglose) */}
-            <div className="grid grid-cols-3 bg-muted p-1 rounded-2xl gap-1 text-center">
-              <button
-                type="button"
-                onClick={() => setCalcSubTab("summary")}
-                className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  calcSubTab === "summary"
-                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Calculator size={14} />
-                <span>Resumen</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalcSubTab("records")}
-                className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  calcSubTab === "records"
-                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <Check size={14} />
-                <span>Pesajes</span>
-                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded-full font-bold">
-                  {selectedCalcRecordIds.filter((id) => calcAvailableRecords.some((r) => r._id === id)).length}
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setCalcSubTab("breakdown")}
-                className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  calcSubTab === "breakdown"
-                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <TrendingUp size={14} />
-                <span>Desglose</span>
-              </button>
-            </div>
-
-            {/* WEIGHING SITE FILTER PILLS */}
+            {/* WEIGHING SITE FILTER PILLS (Placed above subpills as it applies globally to all tabs) */}
             <div className="space-y-1.5 bg-muted/20 p-2.5 rounded-2xl border border-border/40">
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
@@ -1792,6 +1749,49 @@ export function BabyWeightTrackerModule() {
                   );
                 })}
               </div>
+            </div>
+
+            {/* SUBPILL NAVIGATION BAR (Resumen, Pesajes, Desglose) */}
+            <div className="grid grid-cols-3 bg-muted p-1 rounded-2xl gap-1 text-center">
+              <button
+                type="button"
+                onClick={() => setCalcSubTab("summary")}
+                className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  calcSubTab === "summary"
+                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Calculator size={14} />
+                <span>Resumen</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalcSubTab("records")}
+                className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  calcSubTab === "records"
+                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Check size={14} />
+                <span>Pesajes</span>
+                <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded-full font-bold">
+                  {selectedCalcRecordIds.filter((id) => calcAvailableRecords.some((r) => r._id === id)).length}
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setCalcSubTab("breakdown")}
+                className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  calcSubTab === "breakdown"
+                    ? "bg-card text-foreground shadow-xs border border-border/40 text-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <TrendingUp size={14} />
+                <span>Desglose</span>
+              </button>
             </div>
 
             {/* CONTENT BASED ON ACTIVE SUBPILL */}
@@ -1923,23 +1923,31 @@ export function BabyWeightTrackerModule() {
                       <span>Incremento entre pesajes consecutivos ({comparativeMultiResult.steps.length} tramos):</span>
                     </div>
 
-                    <div className="p-2 bg-muted/20 border border-border/40 rounded-2xl max-h-[320px] overflow-y-auto space-y-1.5 scrollbar-thin">
+                    <div className="p-2 bg-muted/20 border border-border/40 rounded-2xl max-h-[340px] overflow-y-auto space-y-2 scrollbar-thin">
                       {comparativeMultiResult.steps.map((step, idx) => (
                         <div
                           key={idx}
-                          className="p-3 bg-card border border-border/40 rounded-xl flex items-center justify-between text-xs font-bold shadow-2xs"
+                          className="p-3 bg-card border border-border/40 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs font-bold shadow-2xs"
                         >
-                          <div className="flex items-center gap-1.5 truncate">
-                            <span className="text-muted-foreground font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded-md">
+                          {/* Tramo badge and full visible date range */}
+                          <div className="flex items-center gap-2 min-w-0">
+                            <span className="text-muted-foreground font-mono text-[10px] bg-muted px-2 py-0.5 rounded-md shrink-0 font-bold">
                               #{idx + 1}
                             </span>
-                            <span className="truncate">{step.prev.date} → {step.curr.date}</span>
+                            <div className="flex flex-wrap items-center gap-1 text-foreground font-extrabold text-[11px] leading-tight">
+                              <span className="whitespace-nowrap">{step.prev.date}</span>
+                              <span className="text-muted-foreground font-mono text-[10px] font-normal">→</span>
+                              <span className="whitespace-nowrap">{step.curr.date}</span>
+                              <span className="text-[10px] text-muted-foreground font-semibold">({step.days.toFixed(1)}d)</span>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className={`font-mono font-black text-sm ${step.grams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
+
+                          {/* Metric Indicators */}
+                          <div className="flex items-center justify-between sm:justify-end gap-2.5 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-border/30 shrink-0">
+                            <span className={`font-mono font-black text-sm whitespace-nowrap ${step.grams >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}`}>
                               {step.grams >= 0 ? "+" : ""}{step.grams.toFixed(0)}g
                             </span>
-                            <span className="px-2 py-0.5 bg-primary/10 text-primary font-mono text-[10px] rounded-md font-extrabold">
+                            <span className="px-2.5 py-1 bg-primary/10 text-primary font-mono text-[11px] rounded-lg font-black whitespace-nowrap">
                               {step.rate.toFixed(1)}g/día
                             </span>
                           </div>
