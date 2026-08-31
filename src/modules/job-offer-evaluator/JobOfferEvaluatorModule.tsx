@@ -72,8 +72,6 @@ export function JobOfferEvaluatorModule() {
   const [offerTitle, setOfferTitle] = useState<string>("");
   const [offerCompany, setOfferCompany] = useState<string>("");
   const [offerLocation, setOfferLocation] = useState<string>("");
-  const [offerWorkModality, setOfferWorkModality] = useState<WorkModality>("hibrido");
-  const [offerOfficeDays, setOfferOfficeDays] = useState<number>(3);
   const [offerIsCurrent, setOfferIsCurrent] = useState<boolean>(false);
   const [offerStatus, setOfferStatus] = useState<OfferStatus>("received");
   const [offerValues, setOfferValues] = useState<Record<string, number | boolean | string>>({});
@@ -289,10 +287,6 @@ export function JobOfferEvaluatorModule() {
       setOfferTitle(offerToEdit.title);
       setOfferCompany(offerToEdit.company);
       setOfferLocation(offerToEdit.location || "");
-      setOfferWorkModality(offerToEdit.workModality || "hibrido");
-      setOfferOfficeDays(
-        offerToEdit.officeDaysPerWeek !== undefined ? offerToEdit.officeDaysPerWeek : 3
-      );
       setOfferIsCurrent(offerToEdit.isCurrent);
       setOfferStatus(offerToEdit.status);
       setOfferValues(offerToEdit.values || {});
@@ -305,8 +299,6 @@ export function JobOfferEvaluatorModule() {
       setOfferTitle("");
       setOfferCompany("");
       setOfferLocation("Madrid");
-      setOfferWorkModality("hibrido");
-      setOfferOfficeDays(3);
       setOfferIsCurrent(offers.length === 0);
       setOfferStatus("received");
       const initialVals: Record<string, number | boolean | string> = {};
@@ -331,43 +323,30 @@ export function JobOfferEvaluatorModule() {
     setShowOfferModal(true);
   };
 
-  const autoSyncTeleworkValue = (modality: WorkModality, officeDays: number) => {
-    const teleConcept = concepts.find((c) => c.id === "c_telework");
-    if (!teleConcept) return;
+  const getDerivedModalityFromTelework = (
+    teleworkValue: number | boolean | string | undefined,
+    teleConcept?: Concept
+  ): { workModality: WorkModality; officeDaysPerWeek: number } => {
+    const valStr = String(teleworkValue ?? "");
+    if (valStr === "tw_remoto") return { workModality: "remoto", officeDaysPerWeek: 0 };
+    if (valStr === "tw_presencial") return { workModality: "presencial", officeDaysPerWeek: 5 };
+    if (valStr === "tw_h4_o1") return { workModality: "hibrido", officeDaysPerWeek: 1 };
+    if (valStr === "tw_h3_o2") return { workModality: "hibrido", officeDaysPerWeek: 2 };
+    if (valStr === "tw_h2_o3") return { workModality: "hibrido", officeDaysPerWeek: 3 };
+    if (valStr === "tw_h1_o4") return { workModality: "hibrido", officeDaysPerWeek: 4 };
 
-    if (teleConcept.options && teleConcept.options.length > 0) {
-      let matchedOpt = teleConcept.options[0];
-      if (modality === "remoto") {
-        matchedOpt = teleConcept.options.find((o) => o.id === "tw_remoto" || o.score === 10) || teleConcept.options[0];
-      } else if (modality === "presencial") {
-        matchedOpt = teleConcept.options.find((o) => o.id === "tw_presencial" || o.score === 0) || teleConcept.options[teleConcept.options.length - 1];
-      } else if (modality === "hibrido") {
-        const targetScore = Math.max(0, (5 - officeDays) * 2);
-        matchedOpt = teleConcept.options.find((o) => o.score === targetScore) || teleConcept.options[0];
-      }
-      if (matchedOpt) {
-        setOfferValues((prev) => ({ ...prev, c_telework: matchedOpt.id }));
-      }
-    } else {
-      const calculatedScore = modality === "remoto" ? 10 : modality === "presencial" ? 0 : Math.max(0, (5 - officeDays) * 2);
-      setOfferValues((prev) => ({ ...prev, c_telework: calculatedScore }));
+    let score = 5;
+    if (teleConcept?.options && teleConcept.options.length > 0) {
+      const foundOpt = teleConcept.options.find((o) => o.id === valStr);
+      if (foundOpt) score = foundOpt.score;
+    } else if (typeof teleworkValue === "number") {
+      score = teleworkValue;
     }
-  };
 
-  const handleModalityChange = (modality: WorkModality) => {
-    setOfferWorkModality(modality);
-    let officeDays = 0;
-    if (modality === "presencial") officeDays = 5;
-    else if (modality === "hibrido") officeDays = offerOfficeDays || 3;
-    else if (modality === "remoto") officeDays = 0;
-
-    setOfferOfficeDays(officeDays);
-    autoSyncTeleworkValue(modality, officeDays);
-  };
-
-  const handleOfficeDaysChange = (days: number) => {
-    setOfferOfficeDays(days);
-    autoSyncTeleworkValue("hibrido", days);
+    if (score >= 10) return { workModality: "remoto", officeDaysPerWeek: 0 };
+    if (score <= 0) return { workModality: "presencial", officeDaysPerWeek: 5 };
+    const officeDays = Math.max(1, Math.min(4, Math.round((10 - score) / 2)));
+    return { workModality: "hibrido", officeDaysPerWeek: officeDays };
   };
 
   const handleSaveOffer = () => {
@@ -375,6 +354,12 @@ export function JobOfferEvaluatorModule() {
       alert("Introduce el título del puesto y el nombre de la empresa.");
       return;
     }
+
+    const teleConcept = concepts.find((c) => c.id === "c_telework");
+    const { workModality: derivedModality, officeDaysPerWeek: derivedOfficeDays } = getDerivedModalityFromTelework(
+      offerValues["c_telework"],
+      teleConcept
+    );
 
     let updatedOffers = [...offers];
 
@@ -392,13 +377,8 @@ export function JobOfferEvaluatorModule() {
       title: offerTitle,
       company: offerCompany,
       location: offerLocation,
-      workModality: offerWorkModality,
-      officeDaysPerWeek:
-        offerWorkModality === "remoto"
-          ? 0
-          : offerWorkModality === "presencial"
-          ? 5
-          : offerOfficeDays,
+      workModality: derivedModality,
+      officeDaysPerWeek: derivedOfficeDays,
       isCurrent: offerIsCurrent,
       status: offerIsCurrent ? "current" : offerStatus,
       values: offerValues,
@@ -428,18 +408,19 @@ export function JobOfferEvaluatorModule() {
 
   // Live estimated commute cost in modal
   const liveCommuteCost = useMemo(() => {
+    const teleConcept = concepts.find((c) => c.id === "c_telework");
+    const { workModality: derivedModality, officeDaysPerWeek: derivedOfficeDays } = getDerivedModalityFromTelework(
+      offerValues["c_telework"],
+      teleConcept
+    );
+
     const tempOffer: JobOffer = {
       id: "temp",
       title: "",
       company: "",
       location: offerLocation,
-      workModality: offerWorkModality,
-      officeDaysPerWeek:
-        offerWorkModality === "remoto"
-          ? 0
-          : offerWorkModality === "presencial"
-          ? 5
-          : offerOfficeDays,
+      workModality: derivedModality,
+      officeDaysPerWeek: derivedOfficeDays,
       isCurrent: false,
       status: "received",
       values: offerValues,
@@ -449,9 +430,8 @@ export function JobOfferEvaluatorModule() {
     };
     return calculateCommuteAnnualExpense(tempOffer);
   }, [
+    concepts,
     offerLocation,
-    offerWorkModality,
-    offerOfficeDays,
     offerValues,
     offerCommuteKm,
     offerCommuteFuelL100,
@@ -1706,45 +1686,6 @@ export function JobOfferEvaluatorModule() {
                 />
               </div>
 
-              <div>
-                <label className="block font-black text-foreground uppercase mb-1">
-                  Modalidad de Trabajo *
-                </label>
-                <select
-                  value={offerWorkModality}
-                  onChange={(e) => handleModalityChange(e.target.value as WorkModality)}
-                  className="w-full px-3 py-2 rounded-xl border border-border bg-background font-bold text-foreground cursor-pointer"
-                >
-                  <option value="presencial">100% Presencial (5d oficina)</option>
-                  <option value="hibrido">Híbrido (Oficina + Teletrabajo)</option>
-                  <option value="remoto">100% Remoto (0d oficina)</option>
-                </select>
-              </div>
-
-              {/* Hybrid Days Selector */}
-              {offerWorkModality === "hibrido" && (
-                <div className="sm:col-span-2 bg-muted/30 p-3 rounded-xl border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <label className="block font-black text-foreground uppercase text-xs mb-0.5">
-                      Días de Oficina a la Semana:
-                    </label>
-                    <span className="text-[10px] text-muted-foreground font-semibold block">
-                      Determina los viajes presenciales y auto-calcula los días de teletrabajo.
-                    </span>
-                  </div>
-
-                  <select
-                    value={offerOfficeDays}
-                    onChange={(e) => handleOfficeDaysChange(Number(e.target.value))}
-                    className="px-3 py-1.5 rounded-xl border border-border bg-background font-black text-foreground cursor-pointer text-xs shrink-0"
-                  >
-                    <option value={1}>1 día oficina / 4 días teletrabajo</option>
-                    <option value={2}>2 días oficina / 3 días teletrabajo</option>
-                    <option value={3}>3 días oficina / 2 días teletrabajo</option>
-                    <option value={4}>4 días oficina / 1 día teletrabajo</option>
-                  </select>
-                </div>
-              )}
 
               <div className="sm:col-span-2 flex items-center pt-2">
                 <label className="flex items-center gap-2 font-black text-emerald-600 dark:text-emerald-400 cursor-pointer">
@@ -1824,8 +1765,6 @@ export function JobOfferEvaluatorModule() {
 
               <div className="space-y-2">
                 {concepts.map((concept) => {
-                  const isTeleworkAutoSynced = concept.id === "c_telework";
-
                   return (
                     <div
                       key={concept.id}
@@ -1848,13 +1787,7 @@ export function JobOfferEvaluatorModule() {
 
                         {/* DYNAMIC FORM FIELD BASED STRICTLY ON NATURE OR DICTIONARY OPTIONS */}
                         <div className="flex items-center gap-2 shrink-0">
-                          {isTeleworkAutoSynced && (
-                            <span className="text-[10px] font-extrabold text-primary bg-primary/10 px-2 py-1 rounded-md border border-primary/20">
-                              Vinculado a la Modalidad Seleccionada arriba ({formatModalityText({ workModality: offerWorkModality, officeDaysPerWeek: offerOfficeDays } as JobOffer)})
-                            </span>
-                          )}
-
-                          {!isTeleworkAutoSynced && concept.options && concept.options.length > 0 ? (
+                          {concept.options && concept.options.length > 0 ? (
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-extrabold uppercase text-muted-foreground">
                                 Opción:
