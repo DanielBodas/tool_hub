@@ -2015,14 +2015,14 @@ export function BabyWeightTrackerModule() {
       {/* Popover Form Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-4 sm:p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-x-hidden overflow-y-auto animate-fade-in min-w-0">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
                   <Scale size={18} />
                 </div>
-                <h3 className="font-extrabold text-foreground text-sm tracking-tight">
+                <h3 className="font-extrabold text-foreground text-sm tracking-tight truncate">
                   {formId ? "Editar Pesaje" : "Nuevo Registro de Peso"}
                 </h3>
               </div>
@@ -2031,52 +2031,52 @@ export function BabyWeightTrackerModule() {
                   setShowAddModal(false);
                   resetForm();
                 }}
-                className="p-1 hover:bg-muted rounded-xl transition cursor-pointer"
+                className="p-1 hover:bg-muted rounded-xl transition cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <div className="flex-1 overflow-y-auto py-3 pr-1 scrollbar-thin">
-              <form onSubmit={handleSave} className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 pr-1 scrollbar-thin min-w-0">
+              <form onSubmit={handleSave} className="space-y-3 text-xs min-w-0 max-w-full">
+              <div className="grid grid-cols-2 gap-2 min-w-0">
                 {/* Date Input */}
-                <div className="space-y-1">
-                  <label className="font-bold text-muted-foreground uppercase text-[9px]">Fecha</label>
-                  <div className="relative">
-                    <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="space-y-1 min-w-0">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Fecha</label>
+                  <div className="relative min-w-0">
+                    <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <input
                       type="date"
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="block w-full pl-8 pr-2 py-2 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none"
+                      className="block w-full min-w-0 pl-7 pr-1.5 py-1.5 bg-muted/60 border border-border rounded-xl font-bold text-[11px] sm:text-xs outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Time Input */}
-                <div className="space-y-1">
-                  <label className="font-bold text-muted-foreground uppercase text-[9px]">Hora</label>
-                  <div className="relative">
-                    <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <div className="space-y-1 min-w-0">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Hora</label>
+                  <div className="relative min-w-0">
+                    <Clock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
                     <input
                       type="time"
                       required
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="block w-full pl-8 pr-2 py-2 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none"
+                      className="block w-full min-w-0 pl-7 pr-1.5 py-1.5 bg-muted/60 border border-border rounded-xl font-bold text-[11px] sm:text-xs outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Weight Input */}
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between">
-                  <span>Peso Bruto en Báscula (kg)</span>
-                  <span className="text-[9px] text-primary lowercase font-medium">e.g. 2.570 = 2kg 570g</span>
+              <div className="space-y-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between gap-1 min-w-0">
+                  <span className="truncate">Peso Bruto en Báscula (kg)</span>
+                  <span className="text-[9px] text-primary lowercase font-medium shrink-0">e.g. 2.570 = 2kg 570g</span>
                 </label>
                 <input
                   type="number"
@@ -2085,36 +2085,38 @@ export function BabyWeightTrackerModule() {
                   placeholder="2.570"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  className="block w-full px-4 py-2.5 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base"
+                  className="block w-full min-w-0 px-3.5 py-2 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base"
                 />
               </div>
 
               {/* Vestimenta Pre-selection */}
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px]">Vestimenta</label>
-                <div className="grid grid-cols-2 gap-1.5">
+              <div className="space-y-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Vestimenta</label>
+                <div className="grid grid-cols-2 gap-1.5 min-w-0">
                   {clothing.map((preset) => (
                     <button
                       type="button"
                       key={preset.name}
                       onClick={() => handleClothesChange(preset.name)}
-                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer ${
+                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 truncate block w-full ${
                         clothes === preset.name
                           ? "bg-primary/10 border-primary text-primary"
                           : "bg-muted/40 border-border text-muted-foreground"
                       }`}
                     >
-                      {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
+                      <span className="truncate block max-w-full">
+                        {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Margin Input */}
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between">
-                  <span>Margen Ropa (kg)</span>
-                  <span className="font-mono text-primary text-[10px]">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
+              <div className="space-y-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between gap-1 min-w-0">
+                  <span className="truncate">Margen Ropa (kg)</span>
+                  <span className="font-mono text-primary text-[10px] shrink-0">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
                 </label>
                 <input
                   type="number"
@@ -2122,41 +2124,45 @@ export function BabyWeightTrackerModule() {
                   required
                   value={margin}
                   onChange={(e) => handleMarginChange(e.target.value)}
-                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs"
+                  className="block w-full min-w-0 px-3 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs"
                 />
               </div>
 
               {/* Blanket / Surface Objects Pre-selection */}
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px]">Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)</label>
-                <div className="grid grid-cols-2 gap-1.5">
+              <div className="space-y-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">
+                  Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 min-w-0">
                   {blankets.map((preset) => (
                     <button
                       type="button"
                       key={preset.name}
                       onClick={() => handleBlanketChange(preset.name)}
-                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer ${
+                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 truncate block w-full ${
                         blanket === preset.name
                           ? "bg-primary/10 border-primary text-primary"
                           : "bg-muted/40 border-border text-muted-foreground"
                       }`}
                     >
-                      {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
+                      <span className="truncate block max-w-full">
+                        {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
+                      </span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Scale selection */}
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px]">Sitio de pesaje</label>
-                <div className="flex flex-wrap gap-1 mb-1">
+              <div className="space-y-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Sitio de pesaje</label>
+                <div className="flex flex-wrap gap-1 mb-1 max-w-full">
                   {sites.map((siteName) => (
                     <button
                       type="button"
                       key={siteName}
                       onClick={() => setScale(siteName)}
-                      className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition cursor-pointer ${
+                      className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition cursor-pointer truncate max-w-full ${
                         scale === siteName
                           ? "bg-primary text-primary-foreground border-primary"
                           : "bg-muted/60 border-border text-muted-foreground"
@@ -2169,43 +2175,43 @@ export function BabyWeightTrackerModule() {
               </div>
 
               {/* Notes */}
-              <div className="space-y-1">
-                <label className="font-bold text-muted-foreground uppercase text-[9px]">Notas (Opcional)</label>
+              <div className="space-y-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Notas (Opcional)</label>
                 <textarea
                   placeholder="Notas adicionales..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="block w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none"
+                  className="block w-full min-w-0 px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none"
                 />
               </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-2 border-t border-border">
+              <div className="flex gap-2 pt-2 border-t border-border min-w-0">
                   <button
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                    className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer"
+                  className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer truncate"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                  className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5 min-w-0 truncate"
                   >
                     {saving ? (
                       <>
-                        <RefreshCw className="animate-spin" size={14} />
-                        Guardando...
+                      <RefreshCw className="animate-spin shrink-0" size={14} />
+                      <span className="truncate">Guardando...</span>
                       </>
                     ) : (
                       <>
-                        <PlusCircle size={14} />
-                        Guardar
+                      <PlusCircle className="shrink-0" size={14} />
+                      <span className="truncate">Guardar</span>
                       </>
                     )}
                   </button>
