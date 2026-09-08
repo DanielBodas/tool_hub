@@ -1064,33 +1064,32 @@ export function BabyWeightTrackerModule() {
   };
 
   return (
-    <div className="space-y-3 md:space-y-5 flex-1 flex flex-col pb-6 w-full max-w-full overflow-x-hidden">
+    <div className="space-y-3 md:space-y-5 flex-1 flex flex-col pb-6">
       {/* Error alert banner */}
       {error && (
-        <div className="bg-destructive/10 text-destructive text-xs font-bold p-3 rounded-2xl flex items-center gap-2 border border-destructive/20 animate-fade-in min-w-0">
+        <div className="bg-destructive/10 text-destructive text-xs font-bold p-3 rounded-2xl flex items-center gap-2 border border-destructive/20 animate-fade-in">
           <AlertCircle size={15} className="shrink-0" />
-          <span className="truncate flex-1 min-w-0">{error}</span>
+          <span className="truncate">{error}</span>
           <button onClick={handleRefresh} className="ml-auto underline cursor-pointer shrink-0">Reintentar</button>
         </div>
       )}
 
       {/* MOBILE COMPACT HERO & ACTION HEADER */}
-      <div className="bg-card border border-border/80 p-3 md:p-4 rounded-3xl shadow-xs space-y-3 min-w-0">
-        <div className="flex items-center justify-between gap-2 min-w-0">
+      <div className="bg-card border border-border/80 p-3 md:p-4 rounded-3xl shadow-xs space-y-3">
+        <div className="flex items-center justify-between gap-2">
           {/* Main Title & Key Stats Badge */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
-              <Scale size={18} className="sm:hidden" />
-              <Scale size={20} className="hidden sm:block" />
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
+              <Scale size={20} />
             </div>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-xs sm:text-base md:text-lg font-black text-foreground tracking-tight leading-tight flex items-center gap-1.5 truncate">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base md:text-lg font-black text-foreground tracking-tight leading-tight flex items-center gap-1.5">
                 Seguimiento de Peso
               </h2>
-              <div className="flex flex-wrap items-center gap-1 text-[10px] sm:text-[11px] text-muted-foreground font-semibold mt-0.5">
+              <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground font-semibold mt-0.5">
                 <span className="whitespace-nowrap">Neto actual: <strong className="text-foreground">{metrics.lastNetWeight > 0 ? `${metrics.lastNetWeight.toFixed(3)} kg` : "—"}</strong></span>
                 {metrics.lastNetWeight > 0 && metrics.totalGain !== 0 && (
-                  <span className={`px-1.5 py-0.2 rounded-full font-bold text-[9px] sm:text-[10px] whitespace-nowrap inline-flex items-center shrink-0 ${metrics.totalGain >= 0 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/15 text-rose-600"}`}>
+                  <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] whitespace-nowrap inline-flex items-center shrink-0 ${metrics.totalGain >= 0 ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-rose-500/15 text-rose-600"}`}>
                     {metrics.totalGain >= 0 ? "+" : ""}{metrics.totalGain.toFixed(3)} kg
                   </span>
                 )}
@@ -1100,7 +1099,7 @@ export function BabyWeightTrackerModule() {
                     const age = getAgeInDays(babyBirthDate, lastRec.date);
                     const pInfo = calculateWHOPercentile(metrics.lastNetWeight, age, babySex);
                     return (
-                      <span className="px-1.5 py-0.2 bg-primary/15 text-primary rounded-full font-extrabold text-[9px] sm:text-[10px] whitespace-nowrap inline-flex items-center shrink-0" title={`Percentil OMS a los ${age} días (${(age / 7).toFixed(1)} sem)`}>
+                      <span className="px-2 py-0.5 bg-primary/15 text-primary rounded-full font-extrabold text-[10px] whitespace-nowrap inline-flex items-center shrink-0" title={`Percentil OMS a los ${age} días (${(age / 7).toFixed(1)} sem)`}>
                         {pInfo.label}
                       </span>
                     );
@@ -1114,62 +1113,61 @@ export function BabyWeightTrackerModule() {
           <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={() => setShowConfigModal(true)}
-              className="p-2 sm:p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl border border-border transition active:scale-95 cursor-pointer shrink-0"
+              className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl border border-border transition active:scale-95 cursor-pointer"
               title="Ajustes"
             >
-              <Settings size={16} className="sm:hidden" />
-              <Settings size={18} className="hidden sm:block" />
+              <Settings size={18} />
             </button>
             <button
               onClick={() => {
                 resetForm();
                 setShowAddModal(true);
               }}
-              className="px-3 py-2 sm:px-3.5 sm:py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5 shrink-0"
+              className="px-3.5 py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs rounded-xl shadow-md transition active:scale-95 cursor-pointer flex items-center gap-1.5"
             >
-              <PlusCircle size={15} className="shrink-0" />
+              <PlusCircle size={16} />
               <span>+ Peso</span>
             </button>
           </div>
         </div>
 
         {/* TOP-LEVEL NAVIGATION SEGMENTS (OPTIMIZED FOR MOBILE UX) */}
-        <div className="grid grid-cols-3 bg-muted p-1 rounded-2xl gap-1 text-center min-w-0">
+        <div className="grid grid-cols-3 bg-muted p-1 rounded-2xl gap-1 text-center">
           <button
             onClick={() => setMainTab("chart")}
-            className={`py-2 px-1 text-[11px] sm:text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer min-w-0 ${
+            className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mainTab === "chart"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <LineChart size={13} className="shrink-0" />
-            <span className="truncate">Gráfico</span>
+            <LineChart size={14} />
+            <span>Gráfico</span>
           </button>
           <button
             onClick={() => setMainTab("history")}
-            className={`py-2 px-1 text-[11px] sm:text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer min-w-0 ${
+            className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mainTab === "history"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <History size={13} className="shrink-0" />
-            <span className="truncate">Histórico</span>
-            <span className="text-[9px] bg-primary/10 text-primary px-1.5 py-0.2 rounded-full font-bold ml-0.5 shrink-0">
+            <History size={14} />
+            <span>Histórico</span>
+            <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.2 rounded-full font-bold ml-0.5">
               {filteredRecords.length}
             </span>
           </button>
           <button
             onClick={() => setMainTab("analysis")}
-            className={`py-2 px-1 text-[11px] sm:text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer min-w-0 ${
+            className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               mainTab === "analysis"
                 ? "bg-card text-foreground shadow-xs border border-border/40"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Activity size={13} className="shrink-0" />
-            <span className="truncate">Análisis</span>
+            <Activity size={14} />
+            <span>Análisis</span>
           </button>
         </div>
       </div>
@@ -2016,15 +2014,15 @@ export function BabyWeightTrackerModule() {
 
       {/* Popover Form Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto overflow-x-hidden animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-4 sm:p-6 flex flex-col my-auto max-h-[90dvh] overflow-hidden min-w-0 max-w-full animate-fade-in">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0 min-w-0">
-              <div className="flex items-center gap-2 min-w-0">
-                <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
                   <Scale size={18} />
                 </div>
-                <h3 className="font-extrabold text-foreground text-sm tracking-tight truncate">
+                <h3 className="font-extrabold text-foreground text-sm tracking-tight">
                   {formId ? "Editar Pesaje" : "Nuevo Registro de Peso"}
                 </h3>
               </div>
@@ -2033,53 +2031,52 @@ export function BabyWeightTrackerModule() {
                   setShowAddModal(false);
                   resetForm();
                 }}
-                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition cursor-pointer shrink-0"
+                className="p-1 hover:bg-muted rounded-xl transition cursor-pointer"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-0.5 scrollbar-thin min-w-0">
-              <form onSubmit={handleSave} className="space-y-3.5 text-xs w-full min-w-0">
-              {/* Date and Time Stacked on Mobile to prevent browser native input collisions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0">
+            <div className="flex-1 overflow-y-auto py-3 pr-1 scrollbar-thin">
+              <form onSubmit={handleSave} className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2">
                 {/* Date Input */}
-                <div className="space-y-1 min-w-0">
-                  <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Fecha</label>
-                  <div className="relative min-w-0">
-                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 pointer-events-none" />
+                <div className="space-y-1">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px]">Fecha</label>
+                  <div className="relative">
+                    <Calendar size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="date"
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="block w-full pl-9 pr-3 py-2.5 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none min-w-0 box-border"
+                      className="block w-full pl-8 pr-2 py-2 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Time Input */}
-                <div className="space-y-1 min-w-0">
-                  <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Hora</label>
-                  <div className="relative min-w-0">
-                    <Clock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 pointer-events-none" />
+                <div className="space-y-1">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px]">Hora</label>
+                  <div className="relative">
+                    <Clock size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                     <input
                       type="time"
                       required
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="block w-full pl-9 pr-3 py-2.5 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none min-w-0 box-border"
+                      className="block w-full pl-8 pr-2 py-2 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Weight Input */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[10px] flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0">
-                  <span className="truncate">Peso Bruto en Báscula (kg)</span>
-                  <span className="text-[10px] text-primary lowercase font-semibold shrink-0">e.g. 2.570 = 2kg 570g</span>
+              <div className="space-y-1">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between">
+                  <span>Peso Bruto en Báscula (kg)</span>
+                  <span className="text-[9px] text-primary lowercase font-medium">e.g. 2.570 = 2kg 570g</span>
                 </label>
                 <input
                   type="number"
@@ -2088,39 +2085,36 @@ export function BabyWeightTrackerModule() {
                   placeholder="2.570"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  className="block w-full px-3.5 py-2.5 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base min-w-0 box-border"
+                  className="block w-full px-4 py-2.5 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base"
                 />
               </div>
 
               {/* Vestimenta Pre-selection */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Vestimenta</label>
-                <div className="grid grid-cols-2 gap-1.5 min-w-0">
+              <div className="space-y-1">
+                <label className="font-bold text-muted-foreground uppercase text-[9px]">Vestimenta</label>
+                <div className="grid grid-cols-2 gap-1.5">
                   {clothing.map((preset) => (
                     <button
                       type="button"
                       key={preset.name}
                       onClick={() => handleClothesChange(preset.name)}
-                      className={`px-2 py-2 rounded-xl text-center font-bold text-[11px] border transition cursor-pointer min-w-0 leading-tight ${
+                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer ${
                         clothes === preset.name
-                          ? "bg-primary/10 border-primary text-primary shadow-2xs"
-                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-muted/40 border-border text-muted-foreground"
                       }`}
-                      title={`${preset.name} (-${(preset.margin * 1000).toFixed(0)}g)`}
                     >
-                      <span className="truncate block">
-                        {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
-                      </span>
+                      {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Margin Input */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[10px] flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0">
-                  <span className="truncate">Margen Ropa (kg)</span>
-                  <span className="font-mono text-primary text-[10px] font-bold shrink-0">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
+              <div className="space-y-1">
+                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between">
+                  <span>Margen Ropa (kg)</span>
+                  <span className="font-mono text-primary text-[10px]">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
                 </label>
                 <input
                   type="number"
@@ -2128,95 +2122,90 @@ export function BabyWeightTrackerModule() {
                   required
                   value={margin}
                   onChange={(e) => handleMarginChange(e.target.value)}
-                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs min-w-0 box-border"
+                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs"
                 />
               </div>
 
               {/* Blanket / Surface Objects Pre-selection */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[10px] block leading-tight">
-                  Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 min-w-0">
+              <div className="space-y-1">
+                <label className="font-bold text-muted-foreground uppercase text-[9px]">Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)</label>
+                <div className="grid grid-cols-2 gap-1.5">
                   {blankets.map((preset) => (
                     <button
                       type="button"
                       key={preset.name}
                       onClick={() => handleBlanketChange(preset.name)}
-                      className={`px-2 py-2 rounded-xl text-center font-bold text-[11px] border transition cursor-pointer min-w-0 leading-tight ${
+                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer ${
                         blanket === preset.name
-                          ? "bg-primary/10 border-primary text-primary shadow-2xs"
-                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
+                          ? "bg-primary/10 border-primary text-primary"
+                          : "bg-muted/40 border-border text-muted-foreground"
                       }`}
-                      title={`${preset.name} (-${(preset.margin * 1000).toFixed(0)}g)`}
                     >
-                      <span className="truncate block">
-                        {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
-                      </span>
+                      {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Scale selection */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Sitio de pesaje</label>
-                <div className="flex flex-wrap gap-1.5 mb-1 min-w-0">
+              <div className="space-y-1">
+                <label className="font-bold text-muted-foreground uppercase text-[9px]">Sitio de pesaje</label>
+                <div className="flex flex-wrap gap-1 mb-1">
                   {sites.map((siteName) => (
                     <button
                       type="button"
                       key={siteName}
                       onClick={() => setScale(siteName)}
-                      className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition cursor-pointer max-w-full min-w-0 ${
+                      className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition cursor-pointer ${
                         scale === siteName
-                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
-                          : "bg-muted/60 border-border text-muted-foreground hover:text-foreground"
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/60 border-border text-muted-foreground"
                       }`}
                     >
-                      <span className="truncate block max-w-[200px]">{siteName}</span>
+                      {siteName}
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Notes */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Notas (Opcional)</label>
+              <div className="space-y-1">
+                <label className="font-bold text-muted-foreground uppercase text-[9px]">Notas (Opcional)</label>
                 <textarea
                   placeholder="Notas adicionales..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none min-w-0 resize-none box-border"
+                  className="block w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none"
                 />
               </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-3 border-t border-border min-w-0 mt-1">
+                <div className="flex gap-2 pt-2 border-t border-border">
                   <button
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                    className="flex-1 py-2.5 bg-muted hover:bg-muted/80 rounded-xl font-extrabold text-xs cursor-pointer min-w-0 transition active:scale-98"
+                    className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="flex-[2] py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5 min-w-0 transition active:scale-98"
+                    className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5"
                   >
                     {saving ? (
                       <>
-                        <RefreshCw className="animate-spin shrink-0" size={14} />
-                        <span className="truncate">Guardando...</span>
+                        <RefreshCw className="animate-spin" size={14} />
+                        Guardando...
                       </>
                     ) : (
                       <>
-                        <PlusCircle size={14} className="shrink-0" />
-                        <span className="truncate">Guardar</span>
+                        <PlusCircle size={14} />
+                        Guardar
                       </>
                     )}
                   </button>
@@ -2229,11 +2218,11 @@ export function BabyWeightTrackerModule() {
 
       {/* Config Customization Modal */}
       {showConfigModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto overflow-x-hidden animate-fade-in">
-          <div className="bg-card border border-border/90 w-full max-w-lg rounded-[2.5rem] shadow-2xl p-4 sm:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden min-w-0 max-w-full animate-fade-in text-xs">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-card border border-border/90 w-full max-w-lg rounded-[2.5rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in text-xs">
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-border/60 pb-3 shrink-0 min-w-0">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
                   <Sliders size={18} />
                 </div>
@@ -2826,11 +2815,11 @@ export function BabyWeightTrackerModule() {
 
       {/* WHO Percentiles Theoretical Standard Table & Chart Inspector Modal */}
       {showWHOModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto overflow-x-hidden animate-fade-in">
-          <div className="bg-card border border-border/90 w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-4 sm:p-6 flex flex-col my-auto max-h-[88dvh] sm:max-h-[92vh] overflow-hidden min-w-0 max-w-full animate-fade-in text-xs space-y-3.5">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
+          <div className="bg-card border border-border/90 w-full max-w-2xl rounded-[2.5rem] shadow-2xl p-5 md:p-6 flex flex-col my-auto max-h-[88dvh] sm:max-h-[92vh] overflow-hidden animate-fade-in text-xs space-y-3.5">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border/60 pb-3 shrink-0 min-w-0">
-              <div className="flex items-center gap-2.5 min-w-0">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 shrink-0">
+              <div className="flex items-center gap-2.5">
                 <div className="w-9 h-9 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
                   <Sparkles size={18} />
                 </div>
