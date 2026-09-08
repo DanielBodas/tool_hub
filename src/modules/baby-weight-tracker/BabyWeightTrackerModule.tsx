@@ -2016,8 +2016,8 @@ export function BabyWeightTrackerModule() {
 
       {/* Popover Form Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto overflow-x-hidden animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-4 sm:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-hidden min-w-0 max-w-full animate-fade-in">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 overflow-y-auto overflow-x-hidden animate-fade-in">
+          <div className="bg-card border border-border w-full max-w-lg rounded-3xl shadow-2xl p-4 sm:p-6 flex flex-col my-auto max-h-[90dvh] overflow-hidden min-w-0 max-w-full animate-fade-in">
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-border pb-3 shrink-0 min-w-0">
               <div className="flex items-center gap-2 min-w-0">
@@ -2033,42 +2033,43 @@ export function BabyWeightTrackerModule() {
                   setShowAddModal(false);
                   resetForm();
                 }}
-                className="p-1 hover:bg-muted rounded-xl transition cursor-pointer shrink-0"
+                className="p-1.5 hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl transition cursor-pointer shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 pr-1 scrollbar-thin min-w-0">
-              <form onSubmit={handleSave} className="space-y-3 text-xs w-full min-w-0">
-              <div className="grid grid-cols-2 gap-2 min-w-0">
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 px-0.5 scrollbar-thin min-w-0">
+              <form onSubmit={handleSave} className="space-y-3.5 text-xs w-full min-w-0">
+              {/* Date and Time Stacked on Mobile to prevent browser native input collisions */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 min-w-0">
                 {/* Date Input */}
                 <div className="space-y-1 min-w-0">
-                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Fecha</label>
+                  <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Fecha</label>
                   <div className="relative min-w-0">
-                    <Calendar size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 pointer-events-none" />
+                    <Calendar size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 pointer-events-none" />
                     <input
                       type="date"
                       required
                       value={date}
                       onChange={(e) => setDate(e.target.value)}
-                      className="block w-full pl-7 pr-1 py-2 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none min-w-0"
+                      className="block w-full pl-9 pr-3 py-2.5 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none min-w-0 box-border"
                     />
                   </div>
                 </div>
 
                 {/* Time Input */}
                 <div className="space-y-1 min-w-0">
-                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Hora</label>
+                  <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Hora</label>
                   <div className="relative min-w-0">
-                    <Clock size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 pointer-events-none" />
+                    <Clock size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground shrink-0 pointer-events-none" />
                     <input
                       type="time"
                       required
                       value={time}
                       onChange={(e) => setTime(e.target.value)}
-                      className="block w-full pl-7 pr-1 py-2 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none min-w-0"
+                      className="block w-full pl-9 pr-3 py-2.5 bg-muted/60 border border-border rounded-xl font-bold text-xs outline-none min-w-0 box-border"
                     />
                   </div>
                 </div>
@@ -2076,9 +2077,9 @@ export function BabyWeightTrackerModule() {
 
               {/* Weight Input */}
               <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between gap-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[10px] flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0">
                   <span className="truncate">Peso Bruto en Báscula (kg)</span>
-                  <span className="text-[9px] text-primary lowercase font-medium shrink-0">e.g. 2.570 = 2kg 570g</span>
+                  <span className="text-[10px] text-primary lowercase font-semibold shrink-0">e.g. 2.570 = 2kg 570g</span>
                 </label>
                 <input
                   type="number"
@@ -2087,23 +2088,23 @@ export function BabyWeightTrackerModule() {
                   placeholder="2.570"
                   value={weight}
                   onChange={(e) => setWeight(e.target.value)}
-                  className="block w-full px-3.5 py-2.5 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base min-w-0"
+                  className="block w-full px-3.5 py-2.5 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base min-w-0 box-border"
                 />
               </div>
 
               {/* Vestimenta Pre-selection */}
               <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Vestimenta</label>
+                <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Vestimenta</label>
                 <div className="grid grid-cols-2 gap-1.5 min-w-0">
                   {clothing.map((preset) => (
                     <button
                       type="button"
                       key={preset.name}
                       onClick={() => handleClothesChange(preset.name)}
-                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 ${
+                      className={`px-2 py-2 rounded-xl text-center font-bold text-[11px] border transition cursor-pointer min-w-0 leading-tight ${
                         clothes === preset.name
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-muted/40 border-border text-muted-foreground"
+                          ? "bg-primary/10 border-primary text-primary shadow-2xs"
+                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
                       }`}
                       title={`${preset.name} (-${(preset.margin * 1000).toFixed(0)}g)`}
                     >
@@ -2117,9 +2118,9 @@ export function BabyWeightTrackerModule() {
 
               {/* Margin Input */}
               <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between gap-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[10px] flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0">
                   <span className="truncate">Margen Ropa (kg)</span>
-                  <span className="font-mono text-primary text-[10px] shrink-0">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
+                  <span className="font-mono text-primary text-[10px] font-bold shrink-0">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
                 </label>
                 <input
                   type="number"
@@ -2127,13 +2128,13 @@ export function BabyWeightTrackerModule() {
                   required
                   value={margin}
                   onChange={(e) => handleMarginChange(e.target.value)}
-                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs min-w-0"
+                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs min-w-0 box-border"
                 />
               </div>
 
               {/* Blanket / Surface Objects Pre-selection */}
               <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block leading-tight">
+                <label className="font-bold text-muted-foreground uppercase text-[10px] block leading-tight">
                   Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)
                 </label>
                 <div className="grid grid-cols-2 gap-1.5 min-w-0">
@@ -2142,10 +2143,10 @@ export function BabyWeightTrackerModule() {
                       type="button"
                       key={preset.name}
                       onClick={() => handleBlanketChange(preset.name)}
-                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 ${
+                      className={`px-2 py-2 rounded-xl text-center font-bold text-[11px] border transition cursor-pointer min-w-0 leading-tight ${
                         blanket === preset.name
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-muted/40 border-border text-muted-foreground"
+                          ? "bg-primary/10 border-primary text-primary shadow-2xs"
+                          : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
                       }`}
                       title={`${preset.name} (-${(preset.margin * 1000).toFixed(0)}g)`}
                     >
@@ -2159,17 +2160,17 @@ export function BabyWeightTrackerModule() {
 
               {/* Scale selection */}
               <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Sitio de pesaje</label>
-                <div className="flex flex-wrap gap-1 mb-1 min-w-0">
+                <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Sitio de pesaje</label>
+                <div className="flex flex-wrap gap-1.5 mb-1 min-w-0">
                   {sites.map((siteName) => (
                     <button
                       type="button"
                       key={siteName}
                       onClick={() => setScale(siteName)}
-                      className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition cursor-pointer max-w-full min-w-0 ${
+                      className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition cursor-pointer max-w-full min-w-0 ${
                         scale === siteName
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted/60 border-border text-muted-foreground"
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                          : "bg-muted/60 border-border text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       <span className="truncate block max-w-[200px]">{siteName}</span>
@@ -2180,32 +2181,32 @@ export function BabyWeightTrackerModule() {
 
               {/* Notes */}
               <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Notas (Opcional)</label>
+                <label className="font-bold text-muted-foreground uppercase text-[10px] block truncate">Notas (Opcional)</label>
                 <textarea
                   placeholder="Notas adicionales..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="block w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none min-w-0 resize-none"
+                  className="block w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none min-w-0 resize-none box-border"
                 />
               </div>
 
                 {/* Action Buttons */}
-                <div className="flex gap-2 pt-2 border-t border-border min-w-0">
+                <div className="flex gap-2 pt-3 border-t border-border min-w-0 mt-1">
                   <button
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                    className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer min-w-0"
+                    className="flex-1 py-2.5 bg-muted hover:bg-muted/80 rounded-xl font-extrabold text-xs cursor-pointer min-w-0 transition active:scale-98"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5 min-w-0"
+                    className="flex-[2] py-2.5 bg-primary hover:bg-primary/90 text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5 min-w-0 transition active:scale-98"
                   >
                     {saving ? (
                       <>
