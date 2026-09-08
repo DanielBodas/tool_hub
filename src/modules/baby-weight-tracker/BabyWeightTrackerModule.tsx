@@ -2014,15 +2014,15 @@ export function BabyWeightTrackerModule() {
 
       {/* Popover Form Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-y-auto animate-fade-in">
-          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-4 sm:p-5 md:p-6 flex flex-col my-auto max-h-[85dvh] sm:max-h-[90vh] overflow-x-hidden overflow-y-auto animate-fade-in min-w-0">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-start sm:items-center justify-center z-50 p-2 sm:p-4 overflow-x-hidden overflow-y-auto animate-fade-in [touch-action:pan-y]">
+          <div className="bg-card border border-border w-full max-w-lg rounded-[2rem] shadow-2xl p-4 sm:p-5 md:p-6 flex flex-col my-auto max-h-[88dvh] sm:max-h-[90vh] overflow-hidden animate-fade-in min-w-0 max-w-full">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0">
-              <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-center justify-between border-b border-border pb-3 shrink-0 min-w-0 w-full">
+              <div className="flex items-center gap-2 min-w-0 max-w-[calc(100%-2rem)]">
                 <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
                   <Scale size={18} />
                 </div>
-                <h3 className="font-extrabold text-foreground text-sm tracking-tight truncate">
+                <h3 className="font-extrabold text-foreground text-sm tracking-tight truncate min-w-0">
                   {formId ? "Editar Pesaje" : "Nuevo Registro de Peso"}
                 </h3>
               </div>
@@ -2037,181 +2037,182 @@ export function BabyWeightTrackerModule() {
               </button>
             </div>
 
-            {/* Modal Form */}
-            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 pr-1 scrollbar-thin min-w-0">
-              <form onSubmit={handleSave} className="space-y-3 text-xs min-w-0 max-w-full">
-              <div className="grid grid-cols-2 gap-2 min-w-0">
-                {/* Date Input */}
-                <div className="space-y-1 min-w-0">
-                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Fecha</label>
-                  <div className="relative min-w-0">
-                    <Calendar size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="date"
-                      required
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="block w-full min-w-0 pl-7 pr-1.5 py-1.5 bg-muted/60 border border-border rounded-xl font-bold text-[11px] sm:text-xs outline-none"
-                    />
+            {/* Modal Form Container */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-3 pr-1 scrollbar-thin min-w-0 w-full max-w-full">
+              <form onSubmit={handleSave} className="space-y-3.5 text-xs min-w-0 w-full max-w-full">
+                {/* Date & Time Inputs: Side-by-side 2-column grid on mobile with tight padding and icon positioning */}
+                <div className="grid grid-cols-2 gap-2 min-w-0 w-full">
+                  {/* Date Input */}
+                  <div className="space-y-1 min-w-0 w-full">
+                    <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Fecha</label>
+                    <div className="relative min-w-0 w-full">
+                      <Calendar size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="date"
+                        required
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="block w-full min-w-0 max-w-full pl-6 pr-1 py-1.5 bg-muted/60 border border-border rounded-xl font-bold text-[11px] sm:text-xs outline-none appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Time Input */}
+                  <div className="space-y-1 min-w-0 w-full">
+                    <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Hora</label>
+                    <div className="relative min-w-0 w-full">
+                      <Clock size={12} className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="time"
+                        required
+                        value={time}
+                        onChange={(e) => setTime(e.target.value)}
+                        className="block w-full min-w-0 max-w-full pl-6 pr-1 py-1.5 bg-muted/60 border border-border rounded-xl font-bold text-[11px] sm:text-xs outline-none appearance-none"
+                      />
+                    </div>
                   </div>
                 </div>
 
-                {/* Time Input */}
-                <div className="space-y-1 min-w-0">
-                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Hora</label>
-                  <div className="relative min-w-0">
-                    <Clock size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="time"
-                      required
-                      value={time}
-                      onChange={(e) => setTime(e.target.value)}
-                      className="block w-full min-w-0 pl-7 pr-1.5 py-1.5 bg-muted/60 border border-border rounded-xl font-bold text-[11px] sm:text-xs outline-none"
-                    />
+                {/* Weight Input */}
+                <div className="space-y-1 min-w-0 w-full">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0 w-full">
+                    <span className="truncate">Peso Bruto en Báscula (kg)</span>
+                    <span className="text-[9px] text-primary lowercase font-medium shrink-0">ej. 2.570 = 2kg 570g</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    required
+                    placeholder="2.570"
+                    value={weight}
+                    onChange={(e) => setWeight(e.target.value)}
+                    className="block w-full min-w-0 max-w-full px-3.5 py-2 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base"
+                  />
+                </div>
+
+                {/* Vestimenta Pre-selection */}
+                <div className="space-y-1 min-w-0 w-full">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Vestimenta</label>
+                  <div className="grid grid-cols-2 gap-1.5 min-w-0 w-full">
+                    {clothing.map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.name}
+                        onClick={() => handleClothesChange(preset.name)}
+                        className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 max-w-full truncate block w-full ${
+                          clothes === preset.name
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-muted/40 border-border text-muted-foreground hover:bg-muted/70"
+                        }`}
+                      >
+                        <span className="truncate block max-w-full min-w-0">
+                          {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
+                        </span>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
 
-              {/* Weight Input */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between gap-1 min-w-0">
-                  <span className="truncate">Peso Bruto en Báscula (kg)</span>
-                  <span className="text-[9px] text-primary lowercase font-medium shrink-0">e.g. 2.570 = 2kg 570g</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.001"
-                  required
-                  placeholder="2.570"
-                  value={weight}
-                  onChange={(e) => setWeight(e.target.value)}
-                  className="block w-full min-w-0 px-3.5 py-2 bg-muted/60 border-2 border-border rounded-xl outline-none focus:ring-2 focus:ring-primary/40 font-black text-base"
-                />
-              </div>
-
-              {/* Vestimenta Pre-selection */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Vestimenta</label>
-                <div className="grid grid-cols-2 gap-1.5 min-w-0">
-                  {clothing.map((preset) => (
-                    <button
-                      type="button"
-                      key={preset.name}
-                      onClick={() => handleClothesChange(preset.name)}
-                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 truncate block w-full ${
-                        clothes === preset.name
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-muted/40 border-border text-muted-foreground"
-                      }`}
-                    >
-                      <span className="truncate block max-w-full">
-                        {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
-                      </span>
-                    </button>
-                  ))}
+                {/* Margin Input */}
+                <div className="space-y-1 min-w-0 w-full">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] flex flex-wrap items-center justify-between gap-x-2 gap-y-0.5 min-w-0 w-full">
+                    <span className="truncate">Margen Ropa (kg)</span>
+                    <span className="font-mono text-primary text-[10px] shrink-0">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.005"
+                    required
+                    value={margin}
+                    onChange={(e) => handleMarginChange(e.target.value)}
+                    className="block w-full min-w-0 max-w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs"
+                  />
                 </div>
-              </div>
 
-              {/* Margin Input */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] flex items-center justify-between gap-1 min-w-0">
-                  <span className="truncate">Margen Ropa (kg)</span>
-                  <span className="font-mono text-primary text-[10px] shrink-0">±{(parseFloat(margin || "0") * 1000).toFixed(0)}g</span>
-                </label>
-                <input
-                  type="number"
-                  step="0.005"
-                  required
-                  value={margin}
-                  onChange={(e) => handleMarginChange(e.target.value)}
-                  className="block w-full min-w-0 px-3 py-1.5 bg-muted/60 border border-border rounded-xl outline-none font-mono font-bold text-xs"
-                />
-              </div>
-
-              {/* Blanket / Surface Objects Pre-selection */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">
-                  Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 min-w-0">
-                  {blankets.map((preset) => (
-                    <button
-                      type="button"
-                      key={preset.name}
-                      onClick={() => handleBlanketChange(preset.name)}
-                      className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 truncate block w-full ${
-                        blanket === preset.name
-                          ? "bg-primary/10 border-primary text-primary"
-                          : "bg-muted/40 border-border text-muted-foreground"
-                      }`}
-                    >
-                      <span className="truncate block max-w-full">
-                        {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
-                      </span>
-                    </button>
-                  ))}
+                {/* Blanket / Surface Objects Pre-selection */}
+                <div className="space-y-1 min-w-0 w-full">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">
+                    Objetos sobre báscula (Mantas, Toallas, Juguetes, Bases)
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 min-w-0 w-full">
+                    {blankets.map((preset) => (
+                      <button
+                        type="button"
+                        key={preset.name}
+                        onClick={() => handleBlanketChange(preset.name)}
+                        className={`px-2 py-1.5 rounded-xl text-center font-bold text-[10px] border transition cursor-pointer min-w-0 max-w-full truncate block w-full ${
+                          blanket === preset.name
+                            ? "bg-primary/10 border-primary text-primary"
+                            : "bg-muted/40 border-border text-muted-foreground hover:bg-muted/70"
+                        }`}
+                      >
+                        <span className="truncate block max-w-full min-w-0">
+                          {preset.name} (-{(preset.margin * 1000).toFixed(0)}g)
+                        </span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Scale selection */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Sitio de pesaje</label>
-                <div className="flex flex-wrap gap-1 mb-1 max-w-full">
-                  {sites.map((siteName) => (
-                    <button
-                      type="button"
-                      key={siteName}
-                      onClick={() => setScale(siteName)}
-                      className={`px-2 py-1 rounded-lg text-[9px] font-bold border transition cursor-pointer truncate max-w-full ${
-                        scale === siteName
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-muted/60 border-border text-muted-foreground"
-                      }`}
-                    >
-                      {siteName}
-                    </button>
-                  ))}
+                {/* Scale selection */}
+                <div className="space-y-1 min-w-0 w-full">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Sitio de pesaje</label>
+                  <div className="flex flex-wrap gap-1.5 mb-1 w-full min-w-0 max-w-full">
+                    {sites.map((siteName) => (
+                      <button
+                        type="button"
+                        key={siteName}
+                        onClick={() => setScale(siteName)}
+                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition cursor-pointer shrink-0 max-w-full min-w-0 truncate ${
+                          scale === siteName
+                            ? "bg-primary text-primary-foreground border-primary shadow-xs"
+                            : "bg-muted/60 border-border text-muted-foreground hover:bg-muted"
+                        }`}
+                      >
+                        <span className="truncate block max-w-full">{siteName}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Notes */}
-              <div className="space-y-1 min-w-0">
-                <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Notas (Opcional)</label>
-                <textarea
-                  placeholder="Notas adicionales..."
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  rows={2}
-                  className="block w-full min-w-0 px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none"
-                />
-              </div>
+                {/* Notes */}
+                <div className="space-y-1 min-w-0 w-full">
+                  <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Notas (Opcional)</label>
+                  <textarea
+                    placeholder="Notas adicionales..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    className="block w-full min-w-0 max-w-full px-3 py-1.5 bg-muted/60 border border-border rounded-xl font-medium text-xs outline-none"
+                  />
+                </div>
 
                 {/* Action Buttons */}
-              <div className="flex gap-2 pt-2 border-t border-border min-w-0">
+                <div className="flex gap-2 pt-2 border-t border-border min-w-0 w-full">
                   <button
                     type="button"
                     onClick={() => {
                       setShowAddModal(false);
                       resetForm();
                     }}
-                  className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer truncate"
+                    className="flex-1 py-2.5 bg-muted rounded-xl font-extrabold text-xs cursor-pointer truncate min-w-0"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                  className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5 min-w-0 truncate"
+                    className="flex-[2] py-2.5 bg-primary text-primary-foreground disabled:opacity-50 rounded-xl font-extrabold text-xs shadow-md cursor-pointer flex items-center justify-center gap-1.5 min-w-0 max-w-full truncate"
                   >
                     {saving ? (
                       <>
-                      <RefreshCw className="animate-spin shrink-0" size={14} />
-                      <span className="truncate">Guardando...</span>
+                        <RefreshCw className="animate-spin shrink-0" size={14} />
+                        <span className="truncate min-w-0">Guardando...</span>
                       </>
                     ) : (
                       <>
-                      <PlusCircle className="shrink-0" size={14} />
-                      <span className="truncate">Guardar</span>
+                        <PlusCircle className="shrink-0" size={14} />
+                        <span className="truncate min-w-0">Guardar</span>
                       </>
                     )}
                   </button>
