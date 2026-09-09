@@ -2154,22 +2154,22 @@ export function BabyWeightTrackerModule() {
                   </div>
                 </div>
 
-                {/* Scale selection */}
+                {/* Scale selection (Horizontally scrollable row for scale buttons) */}
                 <div className="space-y-1 min-w-0 w-full">
                   <label className="font-bold text-muted-foreground uppercase text-[9px] block truncate">Sitio de pesaje</label>
-                  <div className="flex flex-wrap gap-1.5 mb-1 w-full min-w-0 max-w-full">
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none w-full min-w-0 max-w-full">
                     {sites.map((siteName) => (
                       <button
                         type="button"
                         key={siteName}
                         onClick={() => setScale(siteName)}
-                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition cursor-pointer shrink-0 max-w-full min-w-0 truncate ${
+                        className={`px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition cursor-pointer shrink-0 whitespace-nowrap ${
                           scale === siteName
                             ? "bg-primary text-primary-foreground border-primary shadow-xs"
                             : "bg-muted/60 border-border text-muted-foreground hover:bg-muted"
                         }`}
                       >
-                        <span className="truncate block max-w-full">{siteName}</span>
+                        {siteName}
                       </button>
                     ))}
                   </div>
