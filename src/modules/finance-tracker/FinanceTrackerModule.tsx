@@ -3,12 +3,10 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Wallet,
-  TrendingUp,
   Plane,
   PieChart,
-  Plus,
-  Trash2,
   Edit2,
+  Trash2,
   Lock,
   Unlock,
   ShieldAlert,
@@ -19,17 +17,35 @@ import {
   Settings as SettingsIcon,
   Calculator,
   ChevronRight,
-  Gift,
-  Building2,
   ArrowUpRight,
-  Sparkles,
+  Landmark,
   Info,
+  Calendar,
+  Plus,
+  TrendingUp,
+  ArrowLeft,
+  LayoutDashboard,
 } from "lucide-react";
 
 // --- TYPES ---
 export interface LiquidData {
   totalLiquidity: number;
   monthlyExpenses: number;
+  lastUpdated?: string;
+  notes?: string;
+}
+
+export interface LiquidRecord {
+  id: string;
+  date: string; // ISO Date YYYY-MM-DD
+  amount: number;
+  monthlyExpenses: number;
+  notes?: string;
+}
+
+export interface TradeRepublicData {
+  balance: number;
+  annualInterestRate: number; // e.g. 3.0
   lastUpdated?: string;
   notes?: string;
 }
@@ -49,32 +65,32 @@ export interface AirbusPackage {
   notes?: string;
 }
 
-export interface OtherInvestment {
-  id: string;
-  name: string;
-  category: "crypto" | "funds" | "stocks" | "real_estate" | "other";
-  initialValue: number;
-  currentValue: number;
-  notes?: string;
-}
-
 export interface Settings {
   targetInvestmentRatio: number; // e.g. 60% max
   taxRate: number; // e.g. 19%
 }
 
-const LOCAL_STORAGE_KEY = "finance_tracker_data_v2";
+const LOCAL_STORAGE_KEY = "finance_tracker_data_v3";
 
 export function FinanceTrackerModule() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "airbus" | "other">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "trade" | "airbus">("dashboard");
 
   // State
   const [liquidity, setLiquidity] = useState<LiquidData>({
     totalLiquidity: 20500,
     monthlyExpenses: 2000,
   });
+
+  const [liquidHistory, setLiquidHistory] = useState<LiquidRecord[]>([]);
+
+  const [tradeRepublic, setTradeRepublic] = useState<TradeRepublicData>({
+    balance: 5000,
+    annualInterestRate: 3.75,
+    lastUpdated: new Date().toISOString().slice(0, 10),
+    notes: "Cuenta remunerada Trade Republic",
+  });
+
   const [airbusPackages, setAirbusPackages] = useState<AirbusPackage[]>([]);
-  const [otherInvestments, setOtherInvestments] = useState<OtherInvestment[]>([]);
   const [settings, setSettings] = useState<Settings>({
     targetInvestmentRatio: 60,
     taxRate: 19,
@@ -82,9 +98,7 @@ export function FinanceTrackerModule() {
 
   const [loading, setLoading] = useState(true);
   const [, setSaving] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<
-    "synced" | "saving" | "error" | "offline"
-  >("synced");
+  const [syncStatus, setSyncStatus] = useState<"synced" | "saving" | "error" | "offline">("synced");
 
   // Simulation & Modal states
   const [airbusSimMode, setAirbusSimMode] = useState<"unlocked" | "all" | string>("unlocked");
@@ -92,9 +106,19 @@ export function FinanceTrackerModule() {
   const [expandedAirbusId, setExpandedAirbusId] = useState<string | null>(null);
 
   const [showLiquidityModal, setShowLiquidityModal] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [liquidityForm, setLiquidityForm] = useState({
     totalLiquidity: "20500",
     monthlyExpenses: "2000",
+    date: new Date().toISOString().slice(0, 10),
+    notes: "",
+  });
+
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [tradeForm, setTradeForm] = useState({
+    balance: "5000",
+    annualInterestRate: "3.75",
+    lastUpdated: new Date().toISOString().slice(0, 10),
     notes: "",
   });
 
@@ -115,21 +139,30 @@ export function FinanceTrackerModule() {
     notes: "",
   });
 
-  const [showOtherModal, setShowOtherModal] = useState(false);
-  const [editingOther, setEditingOther] = useState<OtherInvestment | null>(null);
-  const [otherForm, setOtherForm] = useState({
-    name: "",
-    category: "funds" as OtherInvestment["category"],
-    initialValue: "",
-    currentValue: "",
-    notes: "",
-  });
-
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     targetInvestmentRatio: "60",
     taxRate: "19",
   });
+
+  // Default historical liquidity generator
+  const defaultHistory = useMemo<LiquidRecord[]>(() => {
+    const today = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 15);
+      const dateStr = d.toISOString().slice(0, 10);
+      const amount = 16000 + (5 - i) * 900;
+      months.push({
+        id: `lh_${i}_${Date.now()}`,
+        date: dateStr,
+        amount: amount,
+        monthlyExpenses: 2000,
+        notes: i === 0 ? "Registro actual" : `Ahorro mes -${i}`,
+      });
+    }
+    return months;
+  }, []);
 
   // --- INITIAL LOAD & PERSISTENCE ---
   useEffect(() => {
@@ -144,12 +177,16 @@ export function FinanceTrackerModule() {
           if (data && !data.error) {
             if (data.liquidity) {
               setLiquidity(data.liquidity);
-            } else if (Array.isArray(data.liquidAccounts) && data.liquidAccounts.length > 0) {
-              const total = data.liquidAccounts.reduce((sum: number, a: any) => sum + (Number(a.balance) || 0), 0);
-              setLiquidity({ totalLiquidity: total, monthlyExpenses: 2000 });
+            }
+            if (Array.isArray(data.liquidHistory) && data.liquidHistory.length > 0) {
+              setLiquidHistory(data.liquidHistory);
+            } else {
+              setLiquidHistory(defaultHistory);
+            }
+            if (data.tradeRepublic) {
+              setTradeRepublic(data.tradeRepublic);
             }
             setAirbusPackages(data.airbusPackages || []);
-            setOtherInvestments(data.otherInvestments || []);
             if (data.settings) {
               setSettings({
                 targetInvestmentRatio: data.settings.targetInvestmentRatio ?? 60,
@@ -170,8 +207,13 @@ export function FinanceTrackerModule() {
           try {
             const parsed = JSON.parse(local);
             if (parsed.liquidity) setLiquidity(parsed.liquidity);
+            if (Array.isArray(parsed.liquidHistory) && parsed.liquidHistory.length > 0) {
+              setLiquidHistory(parsed.liquidHistory);
+            } else {
+              setLiquidHistory(defaultHistory);
+            }
+            if (parsed.tradeRepublic) setTradeRepublic(parsed.tradeRepublic);
             setAirbusPackages(parsed.airbusPackages || []);
-            setOtherInvestments(parsed.otherInvestments || []);
             if (parsed.settings) setSettings(parsed.settings);
           } catch (e) {
             console.error("Error parsing local storage:", e);
@@ -228,12 +270,8 @@ export function FinanceTrackerModule() {
               notes: "Plan ESOP 2024",
             },
           ];
-          const sampleOther: OtherInvestment[] = [
-            { id: "o1", name: "MSCI World ETF Indexado", category: "funds", initialValue: 15000, currentValue: 18400, notes: "Fondo global" },
-            { id: "o2", name: "Criptomonedas Diversificadas", category: "crypto", initialValue: 3000, currentValue: 4200, notes: "BTC & ETH" },
-          ];
           setAirbusPackages(sampleAirbus);
-          setOtherInvestments(sampleOther);
+          setLiquidHistory(defaultHistory);
         }
         setSyncStatus("offline");
       }
@@ -242,12 +280,13 @@ export function FinanceTrackerModule() {
     }
 
     loadData();
-  }, []);
+  }, [defaultHistory]);
 
   const saveData = async (
     newLiquidity: LiquidData,
+    newHistory: LiquidRecord[],
+    newTradeRepublic: TradeRepublicData,
     newAirbus: AirbusPackage[],
-    newOther: OtherInvestment[],
     newSettings: Settings
   ) => {
     setSaving(true);
@@ -255,8 +294,9 @@ export function FinanceTrackerModule() {
 
     const payload = {
       liquidity: newLiquidity,
+      liquidHistory: newHistory,
+      tradeRepublic: newTradeRepublic,
       airbusPackages: newAirbus,
-      otherInvestments: newOther,
       settings: newSettings,
     };
 
@@ -291,6 +331,10 @@ export function FinanceTrackerModule() {
     const monthlyExpenses = Number(liquidity.monthlyExpenses) || 1;
     const runwayMonths = monthlyExpenses > 0 ? totalLiquidity / monthlyExpenses : 0;
 
+    const sortedHistory = [...liquidHistory].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
     let totalAirbusShares = 0;
     let totalAirbusPurchasedShares = 0;
     let totalAirbusBonusShares = 0;
@@ -303,7 +347,6 @@ export function FinanceTrackerModule() {
     let totalAirbusLockedValue = 0;
     let totalAirbusBonusValue = 0;
 
-    // Realized (sold) accumulators
     let realizedGrossProceeds = 0;
     let realizedCostBasis = 0;
     let realizedTaxableMargin = 0;
@@ -357,18 +400,11 @@ export function FinanceTrackerModule() {
     const totalAirbusNetProfitIfSold =
       totalAirbusMarketValue - totalAirbusPaidOutOfPocket - totalAirbusEstimatedTax;
 
-    const totalOtherInvestmentsInitial = otherInvestments.reduce(
-      (sum, o) => sum + (Number(o.initialValue) || 0),
-      0
-    );
-    const totalOtherInvestmentsCurrent = otherInvestments.reduce(
-      (sum, o) => sum + (Number(o.currentValue) || 0),
-      0
-    );
-    const totalOtherInvestmentsGain =
-      totalOtherInvestmentsCurrent - totalOtherInvestmentsInitial;
+    const tradeBalance = Number(tradeRepublic.balance) || 0;
+    const tradeRate = Number(tradeRepublic.annualInterestRate) || 0;
+    const tradeMonthlyEst = (tradeBalance * (tradeRate / 100)) / 12;
 
-    const totalInvestments = totalAirbusMarketValue + totalOtherInvestmentsCurrent;
+    const totalInvestments = totalAirbusMarketValue + tradeBalance;
     const totalNetWorth = totalLiquidity + totalInvestments;
 
     const investmentRatio =
@@ -376,10 +412,10 @@ export function FinanceTrackerModule() {
     const liquidityRatio =
       totalNetWorth > 0 ? (totalLiquidity / totalNetWorth) * 100 : 0;
 
+    const tradeShareRatio =
+      totalNetWorth > 0 ? (tradeBalance / totalNetWorth) * 100 : 0;
     const airbusShareRatio =
       totalNetWorth > 0 ? (totalAirbusMarketValue / totalNetWorth) * 100 : 0;
-    const otherShareRatio =
-      totalNetWorth > 0 ? (totalOtherInvestmentsCurrent / totalNetWorth) * 100 : 0;
 
     let healthStatus: "safe" | "warning" | "caution" = "safe";
     if (investmentRatio > settings.targetInvestmentRatio + 10) {
@@ -392,6 +428,7 @@ export function FinanceTrackerModule() {
       totalLiquidity,
       monthlyExpenses,
       runwayMonths,
+      sortedHistory,
       totalAirbusShares,
       totalAirbusPurchasedShares,
       totalAirbusBonusShares,
@@ -410,18 +447,18 @@ export function FinanceTrackerModule() {
       realizedTax,
       realizedNetProfit,
       soldPackagesCount,
-      totalOtherInvestmentsInitial,
-      totalOtherInvestmentsCurrent,
-      totalOtherInvestmentsGain,
+      tradeBalance,
+      tradeRate,
+      tradeMonthlyEst,
       totalInvestments,
       totalNetWorth,
       investmentRatio,
       liquidityRatio,
+      tradeShareRatio,
       airbusShareRatio,
-      otherShareRatio,
       healthStatus,
     };
-  }, [liquidity, airbusPackages, otherInvestments, settings, currentYear]);
+  }, [liquidity, liquidHistory, tradeRepublic, airbusPackages, settings, currentYear]);
 
   // --- SIMULATION CALCULATIONS ---
   const simulation = useMemo(() => {
@@ -480,26 +517,118 @@ export function FinanceTrackerModule() {
   }, [airbusPackages, airbusSimMode, simMarketPriceOverride, settings, currentYear]);
 
   // --- HANDLERS ---
-  const handleOpenLiquidityModal = () => {
+  const handleOpenAddLiquidityModal = () => {
+    setEditingRecordId(null);
     setLiquidityForm({
       totalLiquidity: String(liquidity.totalLiquidity),
       monthlyExpenses: String(liquidity.monthlyExpenses),
-      notes: liquidity.notes || "",
+      date: new Date().toISOString().slice(0, 10),
+      notes: "",
+    });
+    setShowLiquidityModal(true);
+  };
+
+  const handleOpenEditRecordModal = (record: LiquidRecord) => {
+    setEditingRecordId(record.id);
+    setLiquidityForm({
+      totalLiquidity: String(record.amount),
+      monthlyExpenses: String(record.monthlyExpenses || liquidity.monthlyExpenses),
+      date: record.date.slice(0, 10),
+      notes: record.notes || "",
     });
     setShowLiquidityModal(true);
   };
 
   const handleSaveLiquidity = (e: React.FormEvent) => {
     e.preventDefault();
+    const amountVal = parseFloat(liquidityForm.totalLiquidity) || 0;
+    const expensesVal = parseFloat(liquidityForm.monthlyExpenses) || 0;
+    const dateVal = liquidityForm.date || new Date().toISOString().slice(0, 10);
+
+    let updatedHistory = [...liquidHistory];
+
+    if (editingRecordId) {
+      updatedHistory = updatedHistory.map((rec) =>
+        rec.id === editingRecordId
+          ? {
+              ...rec,
+              amount: amountVal,
+              monthlyExpenses: expensesVal,
+              date: dateVal,
+              notes: liquidityForm.notes,
+            }
+          : rec
+      );
+    } else {
+      const newRecord: LiquidRecord = {
+        id: "lh_" + Date.now(),
+        date: dateVal,
+        amount: amountVal,
+        monthlyExpenses: expensesVal,
+        notes: liquidityForm.notes,
+      };
+      updatedHistory.push(newRecord);
+    }
+
+    const sorted = [...updatedHistory].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const latestRecord = sorted[sorted.length - 1] || { amount: amountVal, monthlyExpenses: expensesVal };
+
     const newLiq: LiquidData = {
-      totalLiquidity: parseFloat(liquidityForm.totalLiquidity) || 0,
-      monthlyExpenses: parseFloat(liquidityForm.monthlyExpenses) || 0,
+      totalLiquidity: latestRecord.amount,
+      monthlyExpenses: latestRecord.monthlyExpenses,
       notes: liquidityForm.notes,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: dateVal,
     };
+
     setLiquidity(newLiq);
-    saveData(newLiq, airbusPackages, otherInvestments, settings);
+    setLiquidHistory(updatedHistory);
+    saveData(newLiq, updatedHistory, tradeRepublic, airbusPackages, settings);
     setShowLiquidityModal(false);
+  };
+
+  const handleDeleteLiquidRecord = (id: string) => {
+    if (confirm("¿Eliminar este registro de saldo histórico?")) {
+      const updatedHistory = liquidHistory.filter((rec) => rec.id !== id);
+      const sorted = [...updatedHistory].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      const latestRecord = sorted[sorted.length - 1] || { amount: 0, monthlyExpenses: liquidity.monthlyExpenses };
+
+      const newLiq: LiquidData = {
+        ...liquidity,
+        totalLiquidity: latestRecord.amount,
+        lastUpdated: latestRecord.date || new Date().toISOString(),
+      };
+
+      setLiquidity(newLiq);
+      setLiquidHistory(updatedHistory);
+      saveData(newLiq, updatedHistory, tradeRepublic, airbusPackages, settings);
+    }
+  };
+
+  const handleOpenTradeModal = () => {
+    setTradeForm({
+      balance: String(tradeRepublic.balance),
+      annualInterestRate: String(tradeRepublic.annualInterestRate),
+      lastUpdated: tradeRepublic.lastUpdated || new Date().toISOString().slice(0, 10),
+      notes: tradeRepublic.notes || "",
+    });
+    setShowTradeModal(true);
+  };
+
+  const handleSaveTrade = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newTrade: TradeRepublicData = {
+      balance: parseFloat(tradeForm.balance) || 0,
+      annualInterestRate: parseFloat(tradeForm.annualInterestRate) || 0,
+      lastUpdated: tradeForm.lastUpdated || new Date().toISOString().slice(0, 10),
+      notes: tradeForm.notes,
+    };
+    setTradeRepublic(newTrade);
+    saveData(liquidity, liquidHistory, newTrade, airbusPackages, settings);
+    setShowTradeModal(false);
   };
 
   const handleOpenAddAirbus = () => {
@@ -592,7 +721,7 @@ export function FinanceTrackerModule() {
     }
 
     setAirbusPackages(updated);
-    saveData(liquidity, updated, otherInvestments, settings);
+    saveData(liquidity, liquidHistory, tradeRepublic, updated, settings);
     setShowAirbusModal(false);
   };
 
@@ -600,78 +729,7 @@ export function FinanceTrackerModule() {
     if (confirm("¿Eliminar este paquete de acciones de Airbus?")) {
       const updated = airbusPackages.filter((p) => p.id !== id);
       setAirbusPackages(updated);
-      saveData(liquidity, updated, otherInvestments, settings);
-    }
-  };
-
-  const handleOpenAddOther = () => {
-    setEditingOther(null);
-    setOtherForm({
-      name: "",
-      category: "funds",
-      initialValue: "",
-      currentValue: "",
-      notes: "",
-    });
-    setShowOtherModal(true);
-  };
-
-  const handleOpenEditOther = (item: OtherInvestment) => {
-    setEditingOther(item);
-    setOtherForm({
-      name: item.name,
-      category: item.category,
-      initialValue: String(item.initialValue),
-      currentValue: String(item.currentValue),
-      notes: item.notes || "",
-    });
-    setShowOtherModal(true);
-  };
-
-  const handleSaveOther = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otherForm.name.trim()) return;
-
-    const initial = parseFloat(otherForm.initialValue) || 0;
-    const current = parseFloat(otherForm.currentValue) || 0;
-
-    let updated: OtherInvestment[];
-
-    if (editingOther) {
-      updated = otherInvestments.map((o) =>
-        o.id === editingOther.id
-          ? {
-              ...o,
-              name: otherForm.name,
-              category: otherForm.category,
-              initialValue: initial,
-              currentValue: current,
-              notes: otherForm.notes,
-            }
-          : o
-      );
-    } else {
-      const newOther: OtherInvestment = {
-        id: "other_" + Date.now(),
-        name: otherForm.name,
-        category: otherForm.category,
-        initialValue: initial,
-        currentValue: current,
-        notes: otherForm.notes,
-      };
-      updated = [...otherInvestments, newOther];
-    }
-
-    setOtherInvestments(updated);
-    saveData(liquidity, airbusPackages, updated, settings);
-    setShowOtherModal(false);
-  };
-
-  const handleDeleteOther = (id: string) => {
-    if (confirm("¿Eliminar esta inversión?")) {
-      const updated = otherInvestments.filter((o) => o.id !== id);
-      setOtherInvestments(updated);
-      saveData(liquidity, airbusPackages, updated, settings);
+      saveData(liquidity, liquidHistory, tradeRepublic, updated, settings);
     }
   };
 
@@ -690,7 +748,7 @@ export function FinanceTrackerModule() {
 
     const newSettings = { targetInvestmentRatio: targetRatio, taxRate: tax };
     setSettings(newSettings);
-    saveData(liquidity, airbusPackages, otherInvestments, newSettings);
+    saveData(liquidity, liquidHistory, tradeRepublic, airbusPackages, newSettings);
     setShowSettingsModal(false);
   };
 
@@ -735,6 +793,7 @@ export function FinanceTrackerModule() {
             </div>
           </div>
 
+          {/* SETTINGS BUTTON */}
           <button
             onClick={handleOpenSettings}
             data-testid="settings-btn"
@@ -746,63 +805,68 @@ export function FinanceTrackerModule() {
           </button>
         </div>
 
-        {/* TOP SEGMENTED TABS */}
-        <div className="grid grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
-          <button
-            onClick={() => setActiveTab("dashboard")}
-            data-testid="tab-dashboard"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "dashboard"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <PieChart size={14} className="shrink-0 text-blue-500" />
-            <span className="truncate">Resumen</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("liquidity")}
-            data-testid="tab-liquidity"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "liquidity"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Wallet size={14} className="shrink-0 text-emerald-500" />
-            <span className="truncate">Liquidez</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("airbus")}
-            data-testid="tab-airbus"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "airbus"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Plane size={14} className="shrink-0 text-indigo-500" />
-            <span className="truncate">Airbus ESOP</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("other")}
-            data-testid="tab-other"
-            className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "other"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <TrendingUp size={14} className="shrink-0 text-purple-500" />
-            <span className="truncate">Otras Invers.</span>
-          </button>
+        {/* INTEGRATED VIEW SWITCHER & NAVIGATION */}
+        <div className="pt-1">
+          <div className="bg-muted p-1 rounded-2xl flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              data-testid="nav-visio-general"
+              className={`flex-1 py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "dashboard"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <LayoutDashboard size={15} className="shrink-0 text-blue-500" />
+              <span>Visión General</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("liquidity")}
+              data-testid="nav-liquidity"
+              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "liquidity"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Wallet size={14} className="shrink-0 text-emerald-500" />
+              <span className="truncate">Liquidez</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("trade")}
+              data-testid="nav-trade"
+              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "trade"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Landmark size={14} className="shrink-0 text-amber-500" />
+              <span className="truncate">Trade Republic</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("airbus")}
+              data-testid="nav-airbus"
+              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "airbus"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Plane size={14} className="shrink-0 text-indigo-500" />
+              <span className="truncate">Airbus</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* TABS CONTENT */}
-      {/* TAB 1: EXECUTIVE DASHBOARD */}
+      {/* TABS / VIEWS CONTENT */}
+      {/* BASE HOME VIEW: VISIÓN GENERAL */}
       {activeTab === "dashboard" && (
-        <div className="space-y-3 animate-fade-in">
+        <div className="space-y-4 animate-fade-in" data-testid="resumen-dashboard">
           {/* NET WORTH HERO CARD */}
           <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-3">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
@@ -814,15 +878,122 @@ export function FinanceTrackerModule() {
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
               <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
-                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Liquidez Disponible</span>
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Liquidez Inmediata</span>
                 <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatEUR(calculations.totalLiquidity)}</p>
                 <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold">{calculations.liquidityRatio.toFixed(0)}% del patrimonio</p>
               </div>
 
-              <div className="bg-purple-500/10 p-3 rounded-2xl border border-purple-500/20">
-                <span className="text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase">Total Invertido</span>
-                <p className="text-lg font-black text-purple-600 dark:text-purple-400">{formatEUR(calculations.totalInvestments)}</p>
-                <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80 font-bold">{calculations.investmentRatio.toFixed(0)}% del patrimonio</p>
+              <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20">
+                <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase">Inversiones e Interés</span>
+                <p className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatEUR(calculations.totalInvestments)}</p>
+                <p className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-bold">{calculations.investmentRatio.toFixed(0)}% del patrimonio</p>
+              </div>
+            </div>
+          </div>
+
+          {/* THREE ACTIVE PILLARS SUMMARY GRID */}
+          <div className="space-y-2">
+            <span className="text-xs font-black text-foreground px-1 uppercase tracking-wider text-muted-foreground block">
+              Visión General de Cuentas y Salud Financiera
+            </span>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* PILLAR 1: LIQUIDEZ */}
+              <div className="bg-card p-4 rounded-3xl border border-emerald-500/30 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Wallet size={15} /> Liquidez
+                    </span>
+                    <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      {calculations.runwayMonths.toFixed(1)} meses
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.totalLiquidity)}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Gastos est.: <strong className="text-foreground">{formatEUR(calculations.monthlyExpenses)}/mes</strong>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex gap-2">
+                  <button
+                    onClick={handleOpenAddLiquidityModal}
+                    data-testid="resumen-edit-liquidity-btn"
+                    className="flex-1 py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Plus size={12} /> Registrar Saldo
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("liquidity")}
+                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer flex items-center gap-1 text-xs font-extrabold"
+                    title="Ver gráfica de evolución de liquidez"
+                  >
+                    <TrendingUp size={14} className="text-emerald-500" />
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* PILLAR 2: TRADE REPUBLIC */}
+              <div className="bg-card p-4 rounded-3xl border border-amber-500/30 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Landmark size={15} /> Trade Republic
+                    </span>
+                    <span className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      {calculations.tradeRate.toFixed(2)}% TIN/TAE
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.tradeBalance)}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Rendimiento est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.tradeMonthlyEst)}/mes</strong>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex gap-2">
+                  <button
+                    onClick={handleOpenTradeModal}
+                    data-testid="resumen-edit-trade-btn"
+                    className="flex-1 py-1.5 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Edit2 size={12} /> Corregir Saldo
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("trade")}
+                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
+                    title="Ver detalle Trade Republic"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* PILLAR 3: AIRBUS ESOP */}
+              <div className="bg-card p-4 rounded-3xl border border-indigo-500/30 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Plane size={15} /> Airbus ESOP
+                    </span>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                      {calculations.totalAirbusShares} uds
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.totalAirbusMarketValue)}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Beneficio neto est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.totalAirbusNetProfitIfSold)}</strong>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex gap-2">
+                  <button
+                    onClick={() => setActiveTab("airbus")}
+                    className="flex-1 py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    ✈️ Ver Añadas y Detalles
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -845,14 +1016,14 @@ export function FinanceTrackerModule() {
                 title={`Liquidez ${calculations.liquidityRatio.toFixed(0)}%`}
               />
               <div
-                className="bg-indigo-600 h-full transition-all duration-300"
-                style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
-                title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
+                className="bg-amber-500 h-full transition-all duration-300"
+                style={{ width: `${Math.max(2, calculations.tradeShareRatio)}%` }}
+                title={`Trade Republic ${calculations.tradeShareRatio.toFixed(0)}%`}
               />
               <div
-                className="bg-purple-600 h-full rounded-r-full transition-all duration-300"
-                style={{ width: `${Math.max(2, calculations.otherShareRatio)}%` }}
-                title={`Otras Inversiones ${calculations.otherShareRatio.toFixed(0)}%`}
+                className="bg-indigo-600 h-full rounded-r-full transition-all duration-300"
+                style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
+                title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
               />
               <div
                 className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10"
@@ -860,10 +1031,10 @@ export function FinanceTrackerModule() {
               />
             </div>
 
-            <div className="flex justify-between text-[10px] font-bold">
+            <div className="flex justify-between text-[10px] font-bold flex-wrap gap-1">
               <span className="text-emerald-600 dark:text-emerald-400">● Liquidez ({calculations.liquidityRatio.toFixed(0)}%)</span>
+              <span className="text-amber-600 dark:text-amber-400">● Trade ({calculations.tradeShareRatio.toFixed(0)}%)</span>
               <span className="text-indigo-600 dark:text-indigo-400">● Airbus ({calculations.airbusShareRatio.toFixed(0)}%)</span>
-              <span className="text-purple-600 dark:text-purple-400">● Otras ({calculations.otherShareRatio.toFixed(0)}%)</span>
             </div>
 
             {calculations.healthStatus === "warning" && (
@@ -875,72 +1046,328 @@ export function FinanceTrackerModule() {
             {calculations.healthStatus === "safe" && (
               <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-2">
                 <ShieldCheck size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses.</span>
+                <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses de gastos cubiertos.</span>
               </div>
             )}
           </div>
-
-          {/* QUICK LINKS */}
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => setActiveTab("liquidity")}
-              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5"><Wallet size={16} className="text-emerald-500" /> Ajustar Liquidez</span>
-              <ChevronRight size={14} className="text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => setActiveTab("airbus")}
-              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5"><Plane size={16} className="text-indigo-500" /> Ver Airbus ESOP</span>
-              <ChevronRight size={14} className="text-muted-foreground" />
-            </button>
-          </div>
         </div>
       )}
 
-      {/* TAB 2: EFFORTLESS LIQUIDITY */}
+      {/* DETAIL SECTION: LIQUIDEZ Y EVOLUCIÓN */}
       {activeTab === "liquidity" && (
-        <div className="space-y-3 animate-fade-in">
-          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
-            <div className="flex justify-between items-center border-b border-border/60 pb-3">
-              <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
-                <Wallet className="text-emerald-500" size={18} /> Liquidez y Fondo de Seguridad
-              </h2>
+        <div className="space-y-4 animate-fade-in" data-testid="liquidity-tab">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1 px-2.5 bg-card border border-border/80 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a Visión General</span>
+            </button>
+          </div>
+
+          <div className="bg-card p-4 md:p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Wallet className="text-emerald-500" size={20} />
+                <div>
+                  <h2 className="text-sm md:text-base font-extrabold text-foreground">
+                    Liquidez y Evolución Histórica
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Seguimiento de saldo con fechas para análisis de tendencia
+                  </p>
+                </div>
+              </div>
               <button
-                onClick={handleOpenLiquidityModal}
-                data-testid="edit-liquidity-btn"
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
+                onClick={handleOpenAddLiquidityModal}
+                data-testid="add-liquidity-entry-btn"
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95 flex items-center gap-1 shrink-0"
               >
-                <Edit2 size={13} className="inline mr-1" /> Editar Saldo
+                <Plus size={14} /> Registrar Saldo con Fecha
               </button>
             </div>
 
-            <div className="space-y-3">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
-                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Fondo Líquido Disponible</span>
-                <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatEUR(liquidity.totalLiquidity)}</p>
+            {/* KPI METRICS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl">
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                  Saldo Líquido Actual
+                </span>
+                <p className="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {formatEUR(calculations.totalLiquidity)}
+                </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-muted/40 p-3 rounded-2xl border border-border/60">
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase">Gastos Mensuales</span>
-                  <p className="font-extrabold text-foreground text-sm mt-0.5">{formatEUR(liquidity.monthlyExpenses)}</p>
+              <div className="bg-muted/40 p-3.5 rounded-2xl border border-border/60 flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                  Gastos Mensuales
+                </span>
+                <p className="text-xl font-extrabold text-foreground mt-0.5">
+                  {formatEUR(calculations.monthlyExpenses)}
+                </p>
+              </div>
+
+              <div className="bg-blue-500/10 p-3.5 rounded-2xl border border-blue-500/20 flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase block">
+                  Colchón Cubierto
+                </span>
+                <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                  {calculations.runwayMonths.toFixed(1)} meses
+                </p>
+              </div>
+            </div>
+
+            {/* HISTORICAL EVOLUTION SVG CHART */}
+            <div className="bg-muted/30 p-3 md:p-4 rounded-2xl border border-border/60 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-black uppercase text-foreground flex items-center gap-1.5">
+                  <TrendingUp size={15} className="text-emerald-500" /> Gráfica de Evolución de Saldo (€)
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  {calculations.sortedHistory.length} registros
+                </span>
+              </div>
+
+              {calculations.sortedHistory.length > 1 ? (
+                <div className="w-full h-48 md:h-56 relative pt-2">
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 500 160" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="liquidityGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {(() => {
+                      const list = calculations.sortedHistory;
+                      const amounts = list.map((r) => r.amount);
+                      const maxVal = Math.max(...amounts, 1);
+                      const minVal = Math.min(...amounts, 0) * 0.8;
+                      const range = Math.max(1, maxVal - minVal);
+
+                      const points = list.map((rec, idx) => {
+                        const x = (idx / Math.max(1, list.length - 1)) * 480 + 10;
+                        const y = 140 - ((rec.amount - minVal) / range) * 110;
+                        return { x, y, amount: rec.amount, date: rec.date };
+                      });
+
+                      const pathD = points.reduce(
+                        (acc, p, i) => (i === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`),
+                        ""
+                      );
+
+                      const areaD = `${pathD} L ${points[points.length - 1].x},145 L ${points[0].x},145 Z`;
+
+                      return (
+                        <g>
+                          <line x1="10" y1="30" x2="490" y2="30" stroke="currentColor" className="text-border" strokeDasharray="3 3" opacity="0.5" />
+                          <line x1="10" y1="85" x2="490" y2="85" stroke="currentColor" className="text-border" strokeDasharray="3 3" opacity="0.5" />
+                          <line x1="10" y1="140" x2="490" y2="140" stroke="currentColor" className="text-border" opacity="0.8" />
+
+                          <path d={areaD} fill="url(#liquidityGrad)" />
+                          <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+                          {points.map((p, idx) => (
+                            <g key={idx}>
+                              <circle cx={p.x} cy={p.y} r="5" fill="#10b981" stroke="var(--color-card, #ffffff)" strokeWidth="2" />
+                              <text
+                                x={p.x}
+                                y={p.y - 10}
+                                textAnchor="middle"
+                                fontSize="9"
+                                fontWeight="bold"
+                                fill="currentColor"
+                                className="text-foreground"
+                              >
+                                {Math.round(p.amount / 1000)}k€
+                              </text>
+                              <text
+                                x={p.x}
+                                y="155"
+                                textAnchor="middle"
+                                fontSize="8"
+                                fontWeight="bold"
+                                fill="currentColor"
+                                className="text-muted-foreground"
+                              >
+                                {new Date(p.date).toLocaleDateString("es-ES", { month: "short", day: "numeric" })}
+                              </text>
+                            </g>
+                          ))}
+                        </g>
+                      );
+                    })()}
+                  </svg>
                 </div>
-                <div className="bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">Colchón Cubierto</span>
-                  <p className="font-black text-blue-600 dark:text-blue-400 text-sm mt-0.5">{calculations.runwayMonths.toFixed(1)} meses</p>
-                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-8">
+                  Registra al menos 2 saldos con fecha para ver la gráfica de evolución temporal.
+                </p>
+              )}
+            </div>
+
+            {/* HISTORICAL LOG TABLE */}
+            <div className="space-y-2 pt-2">
+              <span className="text-xs font-black uppercase text-foreground block">
+                Historial de Registros de Liquidez
+              </span>
+
+              <div className="space-y-1.5">
+                {calculations.sortedHistory.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="p-3 bg-muted/20 border border-border/60 rounded-2xl flex justify-between items-center text-xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-foreground text-sm">
+                          {formatEUR(rec.amount)}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Calendar size={10} /> {new Date(rec.date).toLocaleDateString("es-ES")}
+                        </span>
+                      </div>
+                      {rec.notes && <p className="text-[10px] text-muted-foreground mt-0.5">{rec.notes}</p>}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditRecordModal(rec)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Editar registro"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLiquidRecord(rec.id)}
+                        className="p-1.5 text-muted-foreground hover:text-rose-600 cursor-pointer"
+                        title="Eliminar registro"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* TAB 3: AIRBUS ESOP WEALTH TERMINAL */}
+      {/* DETAIL SECTION: TRADE REPUBLIC */}
+      {activeTab === "trade" && (
+        <div className="space-y-4 animate-fade-in" data-testid="trade-republic-tab">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1 px-2.5 bg-card border border-border/80 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a Visión General</span>
+            </button>
+          </div>
+
+          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Landmark className="text-amber-500" size={20} />
+                <div>
+                  <h2 className="text-sm font-extrabold text-foreground">
+                    Trade Republic (Cuenta Remunerada)
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Ficha de control e información de cuenta
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleOpenTradeModal}
+                data-testid="edit-trade-btn"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95 flex items-center gap-1 shrink-0"
+              >
+                <Edit2 size={13} /> Corregir Saldo / Info
+              </button>
+            </div>
+
+            {/* NOTICE BANNER */}
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-800 dark:text-amber-300 text-xs font-semibold space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400">
+                <Info size={16} className="shrink-0" />
+                <span>Modo Informativo Directo</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Esta pantalla muestra el saldo y las características de tu cuenta en Trade Republic. No realiza recálculos ni simulaciones automáticas; la información se actualiza manualmente cuando introduces correcciones al recordar el saldo real.
+              </p>
+            </div>
+
+            {/* CHARACTERISTICS DISPLAY GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl space-y-1">
+                <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                  Saldo Actual en Cuenta
+                </span>
+                <p className="text-3xl font-black text-amber-600 dark:text-amber-400" data-testid="trade-balance-display">
+                  {formatEUR(calculations.tradeBalance)}
+                </p>
+                {tradeRepublic.lastUpdated && (
+                  <p className="text-[10px] text-muted-foreground font-semibold pt-1">
+                    Última actualización: {new Date(tradeRepublic.lastUpdated).toLocaleDateString("es-ES")}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-muted/40 p-3 rounded-2xl border border-border/60 flex flex-col justify-between">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                    Interés Anual (TIN/TAE)
+                  </span>
+                  <p className="text-xl font-extrabold text-foreground mt-1" data-testid="trade-rate-display">
+                    {calculations.tradeRate.toFixed(2)}%
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">Liquidación mensual</span>
+                </div>
+
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">
+                    Comisión / Rend. Est.
+                  </span>
+                  <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" data-testid="trade-monthly-est">
+                    +{formatEUR(calculations.tradeMonthlyEst)}
+                  </p>
+                  <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-semibold">Estimado / mes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* NOTES DISPLAY */}
+            {tradeRepublic.notes && (
+              <div className="bg-muted/30 p-3 rounded-2xl border border-border/50 text-xs text-muted-foreground space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground block">
+                  Notas y Observaciones
+                </span>
+                <p className="text-foreground/90 font-medium whitespace-pre-wrap">
+                  {tradeRepublic.notes}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* DETAIL SECTION: AIRBUS ESOP */}
       {activeTab === "airbus" && (
-        <div className="space-y-3 animate-fade-in">
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1 px-2.5 bg-card border border-border/80 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a Visión General</span>
+            </button>
+          </div>
+
           <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3">
             <div className="flex justify-between items-center border-b border-border/60 pb-2.5">
               <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
@@ -1078,7 +1505,6 @@ export function FinanceTrackerModule() {
                       </div>
                     </div>
 
-                    {/* DETAILED FISCAL BREAKDOWN */}
                     <button
                       onClick={() => setExpandedAirbusId(expandedAirbusId === pkg.id ? null : pkg.id)}
                       className="w-full flex items-center justify-between text-[10px] font-bold text-muted-foreground hover:text-foreground px-1 py-0.5 cursor-pointer"
@@ -1205,57 +1631,103 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* TAB 4: OTRAS INVERSIONES */}
-      {activeTab === "other" && (
-        <div className="space-y-3 animate-fade-in">
-          <div className="flex justify-between items-center bg-card p-4 rounded-3xl border border-border/80 shadow-xs">
-            <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
-              <TrendingUp className="text-purple-500" size={18} /> Otras Inversiones
-            </h2>
-            <button
-              onClick={handleOpenAddOther}
-              data-testid="add-other-btn"
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
-            >
-              + Añadir
-            </button>
-          </div>
+      {/* --- MODAL: TRADE REPUBLIC --- */}
+      {showTradeModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in" data-testid="trade-modal">
+          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
+              <h3 className="font-extrabold text-sm flex items-center gap-1.5">
+                <Landmark size={16} className="text-amber-500" /> Corregir Información Trade Republic
+              </h3>
+              <button onClick={() => setShowTradeModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {otherInvestments.map((item) => {
-              const gain = item.currentValue - item.initialValue;
+            <form onSubmit={handleSaveTrade} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Saldo Actual en Cuenta (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={tradeForm.balance}
+                  onChange={(e) => setTradeForm({ ...tradeForm, balance: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-sm font-bold outline-none"
+                  data-testid="trade-balance-input"
+                />
+              </div>
 
-              return (
-                <div key={item.id} className="bg-card p-3.5 rounded-2xl border border-border/70 shadow-xs flex justify-between items-center text-xs">
-                  <div>
-                    <span className="text-[9px] font-extrabold uppercase text-purple-600 dark:text-purple-400 tracking-wider block">{item.category}</span>
-                    <h3 className="font-black text-foreground text-sm mt-0.5">{item.name}</h3>
-                    <p className="text-base font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">{formatEUR(item.currentValue)}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${gain >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"}`}>
-                      {gain >= 0 ? "+" : ""}{formatEUR(gain)}
-                    </span>
-                    <button onClick={() => handleOpenEditOther(item)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer">
-                      <Edit2 size={13} />
-                    </button>
-                    <button onClick={() => handleDeleteOther(item.id)} className="p-1 text-muted-foreground hover:text-rose-600 cursor-pointer">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Interés Anual Nominal (% TAE)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={tradeForm.annualInterestRate}
+                  onChange={(e) => setTradeForm({ ...tradeForm, annualInterestRate: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
+                  data-testid="trade-rate-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Fecha de Actualización
+                </label>
+                <input
+                  type="date"
+                  value={tradeForm.lastUpdated}
+                  onChange={(e) => setTradeForm({ ...tradeForm, lastUpdated: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
+                  data-testid="trade-date-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Notas / Observaciones
+                </label>
+                <textarea
+                  rows={2}
+                  value={tradeForm.notes}
+                  onChange={(e) => setTradeForm({ ...tradeForm, notes: e.target.value })}
+                  placeholder="Ej: Cuenta remunerada mensual..."
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none resize-none"
+                  data-testid="trade-notes-input"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setShowTradeModal(false)}
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="px-4 py-1.5 bg-amber-600 text-white rounded-xl font-bold cursor-pointer" data-testid="trade-save-btn">
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
 
-      {/* --- MODAL: LIQUIDITY --- */}
+      {/* --- MODAL: LIQUIDITY WITH DATE SELECTION --- */}
       {showLiquidityModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in" data-testid="liquidity-modal">
           <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
             <div className="flex justify-between items-center border-b border-border/60 pb-2">
-              <h3 className="font-extrabold text-sm">Actualizar Liquidez y Gastos</h3>
+              <h3 className="font-extrabold text-sm flex items-center gap-1.5">
+                <Wallet size={16} className="text-emerald-500" />
+                {editingRecordId ? "Editar Registro de Liquidez" : "Registrar Saldo de Liquidez"}
+              </h3>
               <button onClick={() => setShowLiquidityModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
@@ -1264,15 +1736,30 @@ export function FinanceTrackerModule() {
             <form onSubmit={handleSaveLiquidity} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-muted-foreground mb-1">
-                  Saldo Global Disponible (€)
+                  Saldo Líquido Disponible (€)
                 </label>
                 <input
                   type="number"
-                  step="100"
+                  step="10"
                   required
                   value={liquidityForm.totalLiquidity}
                   onChange={(e) => setLiquidityForm({ ...liquidityForm, totalLiquidity: e.target.value })}
                   className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-sm font-bold outline-none"
+                  data-testid="liquidity-amount-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1 flex items-center gap-1">
+                  <Calendar size={13} className="text-emerald-500" /> Fecha del Registro
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={liquidityForm.date}
+                  onChange={(e) => setLiquidityForm({ ...liquidityForm, date: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-xs outline-none"
+                  data-testid="liquidity-date-input"
                 />
               </div>
 
@@ -1290,6 +1777,19 @@ export function FinanceTrackerModule() {
                 />
               </div>
 
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Notas / Observaciones
+                </label>
+                <input
+                  type="text"
+                  value={liquidityForm.notes}
+                  onChange={(e) => setLiquidityForm({ ...liquidityForm, notes: e.target.value })}
+                  placeholder="Ej: Cobro de nómina, revisión saldo..."
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
+                />
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
                   type="button"
@@ -1298,8 +1798,8 @@ export function FinanceTrackerModule() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer">
-                  Guardar
+                <button type="submit" className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer" data-testid="liquidity-save-btn">
+                  Guardar Registro
                 </button>
               </div>
             </form>
@@ -1458,86 +1958,6 @@ export function FinanceTrackerModule() {
                   Cancelar
                 </button>
                 <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer" data-testid="airbus-save-btn">
-                  Guardar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL: OTHER INVESTMENT --- */}
-      {showOtherModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
-            <div className="flex justify-between items-center border-b border-border/60 pb-2">
-              <h3 className="font-extrabold text-sm">{editingOther ? "Editar Inversión" : "Añadir Inversión"}</h3>
-              <button onClick={() => setShowOtherModal(false)} className="text-muted-foreground hover:text-foreground">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveOther} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Nombre</label>
-                <input
-                  type="text"
-                  required
-                  value={otherForm.name}
-                  onChange={(e) => setOtherForm({ ...otherForm, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Categoría</label>
-                <select
-                  value={otherForm.category}
-                  onChange={(e) => setOtherForm({ ...otherForm, category: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
-                >
-                  <option value="funds">Fondo Indexado / ETF</option>
-                  <option value="crypto">Criptomonedas</option>
-                  <option value="stocks">Otras Acciones</option>
-                  <option value="real_estate">Bienes Raíces</option>
-                  <option value="other">Otros Activos</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Inicial (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={otherForm.initialValue}
-                    onChange={(e) => setOtherForm({ ...otherForm, initialValue: e.target.value })}
-                    className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Actual (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={otherForm.currentValue}
-                    onChange={(e) => setOtherForm({ ...otherForm, currentValue: e.target.value })}
-                    className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={() => setShowOtherModal(false)}
-                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="px-4 py-1.5 bg-purple-600 text-white rounded-xl font-bold cursor-pointer">
                   Guardar
                 </button>
               </div>
