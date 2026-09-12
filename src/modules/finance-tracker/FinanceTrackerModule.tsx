@@ -6,9 +6,8 @@ import {
   TrendingUp,
   Plane,
   PieChart,
-  Plus,
-  Trash2,
   Edit2,
+  Trash2,
   Lock,
   Unlock,
   ShieldAlert,
@@ -19,13 +18,9 @@ import {
   Settings as SettingsIcon,
   Calculator,
   ChevronRight,
-  Gift,
-  Building2,
   ArrowUpRight,
-  Sparkles,
-  Info,
   Landmark,
-  Percent,
+  Info,
 } from "lucide-react";
 
 // --- TYPES ---
@@ -58,15 +53,6 @@ export interface AirbusPackage {
   notes?: string;
 }
 
-export interface OtherInvestment {
-  id: string;
-  name: string;
-  category: "crypto" | "funds" | "stocks" | "real_estate" | "other";
-  initialValue: number;
-  currentValue: number;
-  notes?: string;
-}
-
 export interface Settings {
   targetInvestmentRatio: number; // e.g. 60% max
   taxRate: number; // e.g. 19%
@@ -75,7 +61,7 @@ export interface Settings {
 const LOCAL_STORAGE_KEY = "finance_tracker_data_v2";
 
 export function FinanceTrackerModule() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "trade" | "airbus" | "other">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "trade" | "airbus">("dashboard");
 
   // State
   const [liquidity, setLiquidity] = useState<LiquidData>({
@@ -89,7 +75,6 @@ export function FinanceTrackerModule() {
     notes: "Cuenta remunerada Trade Republic",
   });
   const [airbusPackages, setAirbusPackages] = useState<AirbusPackage[]>([]);
-  const [otherInvestments, setOtherInvestments] = useState<OtherInvestment[]>([]);
   const [settings, setSettings] = useState<Settings>({
     targetInvestmentRatio: 60,
     taxRate: 19,
@@ -138,16 +123,6 @@ export function FinanceTrackerModule() {
     notes: "",
   });
 
-  const [showOtherModal, setShowOtherModal] = useState(false);
-  const [editingOther, setEditingOther] = useState<OtherInvestment | null>(null);
-  const [otherForm, setOtherForm] = useState({
-    name: "",
-    category: "funds" as OtherInvestment["category"],
-    initialValue: "",
-    currentValue: "",
-    notes: "",
-  });
-
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [settingsForm, setSettingsForm] = useState({
     targetInvestmentRatio: "60",
@@ -175,7 +150,6 @@ export function FinanceTrackerModule() {
               setTradeRepublic(data.tradeRepublic);
             }
             setAirbusPackages(data.airbusPackages || []);
-            setOtherInvestments(data.otherInvestments || []);
             if (data.settings) {
               setSettings({
                 targetInvestmentRatio: data.settings.targetInvestmentRatio ?? 60,
@@ -198,7 +172,6 @@ export function FinanceTrackerModule() {
             if (parsed.liquidity) setLiquidity(parsed.liquidity);
             if (parsed.tradeRepublic) setTradeRepublic(parsed.tradeRepublic);
             setAirbusPackages(parsed.airbusPackages || []);
-            setOtherInvestments(parsed.otherInvestments || []);
             if (parsed.settings) setSettings(parsed.settings);
           } catch (e) {
             console.error("Error parsing local storage:", e);
@@ -255,12 +228,7 @@ export function FinanceTrackerModule() {
               notes: "Plan ESOP 2024",
             },
           ];
-          const sampleOther: OtherInvestment[] = [
-            { id: "o1", name: "MSCI World ETF Indexado", category: "funds", initialValue: 15000, currentValue: 18400, notes: "Fondo global" },
-            { id: "o2", name: "Criptomonedas Diversificadas", category: "crypto", initialValue: 3000, currentValue: 4200, notes: "BTC & ETH" },
-          ];
           setAirbusPackages(sampleAirbus);
-          setOtherInvestments(sampleOther);
         }
         setSyncStatus("offline");
       }
@@ -275,7 +243,6 @@ export function FinanceTrackerModule() {
     newLiquidity: LiquidData,
     newTradeRepublic: TradeRepublicData,
     newAirbus: AirbusPackage[],
-    newOther: OtherInvestment[],
     newSettings: Settings
   ) => {
     setSaving(true);
@@ -285,7 +252,6 @@ export function FinanceTrackerModule() {
       liquidity: newLiquidity,
       tradeRepublic: newTradeRepublic,
       airbusPackages: newAirbus,
-      otherInvestments: newOther,
       settings: newSettings,
     };
 
@@ -386,23 +352,11 @@ export function FinanceTrackerModule() {
     const totalAirbusNetProfitIfSold =
       totalAirbusMarketValue - totalAirbusPaidOutOfPocket - totalAirbusEstimatedTax;
 
-    const totalOtherInvestmentsInitial = otherInvestments.reduce(
-      (sum, o) => sum + (Number(o.initialValue) || 0),
-      0
-    );
-    const totalOtherInvestmentsCurrent = otherInvestments.reduce(
-      (sum, o) => sum + (Number(o.currentValue) || 0),
-      0
-    );
-    const totalOtherInvestmentsGain =
-      totalOtherInvestmentsCurrent - totalOtherInvestmentsInitial;
-
     const tradeBalance = Number(tradeRepublic.balance) || 0;
     const tradeRate = Number(tradeRepublic.annualInterestRate) || 0;
     const tradeMonthlyEst = (tradeBalance * (tradeRate / 100)) / 12;
 
-    const totalInvestments =
-      totalAirbusMarketValue + totalOtherInvestmentsCurrent + tradeBalance;
+    const totalInvestments = totalAirbusMarketValue + tradeBalance;
     const totalNetWorth = totalLiquidity + totalInvestments;
 
     const investmentRatio =
@@ -414,8 +368,6 @@ export function FinanceTrackerModule() {
       totalNetWorth > 0 ? (tradeBalance / totalNetWorth) * 100 : 0;
     const airbusShareRatio =
       totalNetWorth > 0 ? (totalAirbusMarketValue / totalNetWorth) * 100 : 0;
-    const otherShareRatio =
-      totalNetWorth > 0 ? (totalOtherInvestmentsCurrent / totalNetWorth) * 100 : 0;
 
     let healthStatus: "safe" | "warning" | "caution" = "safe";
     if (investmentRatio > settings.targetInvestmentRatio + 10) {
@@ -446,9 +398,6 @@ export function FinanceTrackerModule() {
       realizedTax,
       realizedNetProfit,
       soldPackagesCount,
-      totalOtherInvestmentsInitial,
-      totalOtherInvestmentsCurrent,
-      totalOtherInvestmentsGain,
       tradeBalance,
       tradeRate,
       tradeMonthlyEst,
@@ -458,10 +407,9 @@ export function FinanceTrackerModule() {
       liquidityRatio,
       tradeShareRatio,
       airbusShareRatio,
-      otherShareRatio,
       healthStatus,
     };
-  }, [liquidity, tradeRepublic, airbusPackages, otherInvestments, settings, currentYear]);
+  }, [liquidity, tradeRepublic, airbusPackages, settings, currentYear]);
 
   // --- SIMULATION CALCULATIONS ---
   const simulation = useMemo(() => {
@@ -538,7 +486,7 @@ export function FinanceTrackerModule() {
       lastUpdated: new Date().toISOString(),
     };
     setLiquidity(newLiq);
-    saveData(newLiq, tradeRepublic, airbusPackages, otherInvestments, settings);
+    saveData(newLiq, tradeRepublic, airbusPackages, settings);
     setShowLiquidityModal(false);
   };
 
@@ -561,7 +509,7 @@ export function FinanceTrackerModule() {
       notes: tradeForm.notes,
     };
     setTradeRepublic(newTrade);
-    saveData(liquidity, newTrade, airbusPackages, otherInvestments, settings);
+    saveData(liquidity, newTrade, airbusPackages, settings);
     setShowTradeModal(false);
   };
 
@@ -655,7 +603,7 @@ export function FinanceTrackerModule() {
     }
 
     setAirbusPackages(updated);
-    saveData(liquidity, tradeRepublic, updated, otherInvestments, settings);
+    saveData(liquidity, tradeRepublic, updated, settings);
     setShowAirbusModal(false);
   };
 
@@ -663,78 +611,7 @@ export function FinanceTrackerModule() {
     if (confirm("¿Eliminar este paquete de acciones de Airbus?")) {
       const updated = airbusPackages.filter((p) => p.id !== id);
       setAirbusPackages(updated);
-      saveData(liquidity, tradeRepublic, updated, otherInvestments, settings);
-    }
-  };
-
-  const handleOpenAddOther = () => {
-    setEditingOther(null);
-    setOtherForm({
-      name: "",
-      category: "funds",
-      initialValue: "",
-      currentValue: "",
-      notes: "",
-    });
-    setShowOtherModal(true);
-  };
-
-  const handleOpenEditOther = (item: OtherInvestment) => {
-    setEditingOther(item);
-    setOtherForm({
-      name: item.name,
-      category: item.category,
-      initialValue: String(item.initialValue),
-      currentValue: String(item.currentValue),
-      notes: item.notes || "",
-    });
-    setShowOtherModal(true);
-  };
-
-  const handleSaveOther = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otherForm.name.trim()) return;
-
-    const initial = parseFloat(otherForm.initialValue) || 0;
-    const current = parseFloat(otherForm.currentValue) || 0;
-
-    let updated: OtherInvestment[];
-
-    if (editingOther) {
-      updated = otherInvestments.map((o) =>
-        o.id === editingOther.id
-          ? {
-              ...o,
-              name: otherForm.name,
-              category: otherForm.category,
-              initialValue: initial,
-              currentValue: current,
-              notes: otherForm.notes,
-            }
-          : o
-      );
-    } else {
-      const newOther: OtherInvestment = {
-        id: "other_" + Date.now(),
-        name: otherForm.name,
-        category: otherForm.category,
-        initialValue: initial,
-        currentValue: current,
-        notes: otherForm.notes,
-      };
-      updated = [...otherInvestments, newOther];
-    }
-
-    setOtherInvestments(updated);
-    saveData(liquidity, tradeRepublic, airbusPackages, updated, settings);
-    setShowOtherModal(false);
-  };
-
-  const handleDeleteOther = (id: string) => {
-    if (confirm("¿Eliminar esta inversión?")) {
-      const updated = otherInvestments.filter((o) => o.id !== id);
-      setOtherInvestments(updated);
-      saveData(liquidity, tradeRepublic, airbusPackages, updated, settings);
+      saveData(liquidity, tradeRepublic, updated, settings);
     }
   };
 
@@ -753,7 +630,7 @@ export function FinanceTrackerModule() {
 
     const newSettings = { targetInvestmentRatio: targetRatio, taxRate: tax };
     setSettings(newSettings);
-    saveData(liquidity, tradeRepublic, airbusPackages, otherInvestments, newSettings);
+    saveData(liquidity, tradeRepublic, airbusPackages, newSettings);
     setShowSettingsModal(false);
   };
 
@@ -810,7 +687,7 @@ export function FinanceTrackerModule() {
         </div>
 
         {/* TOP SEGMENTED TABS */}
-        <div className="grid grid-cols-2 sm:grid-cols-5 bg-muted p-1 rounded-2xl gap-1 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
           <button
             onClick={() => setActiveTab("dashboard")}
             data-testid="tab-dashboard"
@@ -821,7 +698,7 @@ export function FinanceTrackerModule() {
             }`}
           >
             <PieChart size={14} className="shrink-0 text-blue-500" />
-            <span className="truncate">Resumen</span>
+            <span className="truncate">Resumen General</span>
           </button>
           <button
             onClick={() => setActiveTab("liquidity")}
@@ -859,25 +736,13 @@ export function FinanceTrackerModule() {
             <Plane size={14} className="shrink-0 text-indigo-500" />
             <span className="truncate">Airbus ESOP</span>
           </button>
-          <button
-            onClick={() => setActiveTab("other")}
-            data-testid="tab-other"
-            className={`py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "other"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <TrendingUp size={14} className="shrink-0 text-purple-500" />
-            <span className="truncate">Otras Invers.</span>
-          </button>
         </div>
       </div>
 
       {/* TABS CONTENT */}
-      {/* TAB 1: EXECUTIVE DASHBOARD */}
+      {/* MAIN SCREEN: EXECUTIVE DASHBOARD (RESUMEN GENERAL) */}
       {activeTab === "dashboard" && (
-        <div className="space-y-3 animate-fade-in">
+        <div className="space-y-4 animate-fade-in" data-testid="resumen-dashboard">
           {/* NET WORTH HERO CARD */}
           <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-3">
             <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
@@ -889,15 +754,121 @@ export function FinanceTrackerModule() {
 
             <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
               <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
-                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Liquidez Disponible</span>
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Liquidez Inmediata</span>
                 <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatEUR(calculations.totalLiquidity)}</p>
                 <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold">{calculations.liquidityRatio.toFixed(0)}% del patrimonio</p>
               </div>
 
-              <div className="bg-purple-500/10 p-3 rounded-2xl border border-purple-500/20">
-                <span className="text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase">Total Invertido</span>
-                <p className="text-lg font-black text-purple-600 dark:text-purple-400">{formatEUR(calculations.totalInvestments)}</p>
-                <p className="text-[10px] text-purple-600/80 dark:text-purple-400/80 font-bold">{calculations.investmentRatio.toFixed(0)}% del patrimonio</p>
+              <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20">
+                <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase">Inversiones e Interés</span>
+                <p className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatEUR(calculations.totalInvestments)}</p>
+                <p className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-bold">{calculations.investmentRatio.toFixed(0)}% del patrimonio</p>
+              </div>
+            </div>
+          </div>
+
+          {/* THREE ACTIVE PILLARS SUMMARY GRID */}
+          <div className="space-y-2">
+            <span className="text-xs font-black text-foreground px-1 uppercase tracking-wider text-muted-foreground block">
+              Visión General de Cuentas y Salud Financiera
+            </span>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* PILLAR 1: LIQUIDEZ */}
+              <div className="bg-card p-4 rounded-3xl border border-emerald-500/30 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Wallet size={15} /> Liquidez
+                    </span>
+                    <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      {calculations.runwayMonths.toFixed(1)} meses
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.totalLiquidity)}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Gastos est.: <strong className="text-foreground">{formatEUR(calculations.monthlyExpenses)}/mes</strong>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex gap-2">
+                  <button
+                    onClick={handleOpenLiquidityModal}
+                    data-testid="resumen-edit-liquidity-btn"
+                    className="flex-1 py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Edit2 size={12} /> Actualizar Saldo
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("liquidity")}
+                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
+                    title="Ver detalle de liquidez"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* PILLAR 2: TRADE REPUBLIC */}
+              <div className="bg-card p-4 rounded-3xl border border-amber-500/30 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Landmark size={15} /> Trade Republic
+                    </span>
+                    <span className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
+                      {calculations.tradeRate.toFixed(2)}% TIN/TAE
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.tradeBalance)}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Rendimiento est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.tradeMonthlyEst)}/mes</strong>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex gap-2">
+                  <button
+                    onClick={handleOpenTradeModal}
+                    data-testid="resumen-edit-trade-btn"
+                    className="flex-1 py-1.5 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    <Edit2 size={12} /> Corregir Saldo
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("trade")}
+                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
+                    title="Ver detalle Trade Republic"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+
+              {/* PILLAR 3: AIRBUS ESOP */}
+              <div className="bg-card p-4 rounded-3xl border border-indigo-500/30 shadow-xs flex flex-col justify-between space-y-3">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <Plane size={15} /> Airbus ESOP
+                    </span>
+                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                      {calculations.totalAirbusShares} uds
+                    </span>
+                  </div>
+                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.totalAirbusMarketValue)}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Beneficio neto est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.totalAirbusNetProfitIfSold)}</strong>
+                  </p>
+                </div>
+
+                <div className="pt-2 border-t border-border/50 flex gap-2">
+                  <button
+                    onClick={() => setActiveTab("airbus")}
+                    className="flex-1 py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
+                  >
+                    ✈️ Ver Añadas y Detalles
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -925,14 +896,9 @@ export function FinanceTrackerModule() {
                 title={`Trade Republic ${calculations.tradeShareRatio.toFixed(0)}%`}
               />
               <div
-                className="bg-indigo-600 h-full transition-all duration-300"
+                className="bg-indigo-600 h-full rounded-r-full transition-all duration-300"
                 style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
                 title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
-              />
-              <div
-                className="bg-purple-600 h-full rounded-r-full transition-all duration-300"
-                style={{ width: `${Math.max(2, calculations.otherShareRatio)}%` }}
-                title={`Otras Inversiones ${calculations.otherShareRatio.toFixed(0)}%`}
               />
               <div
                 className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10"
@@ -944,7 +910,6 @@ export function FinanceTrackerModule() {
               <span className="text-emerald-600 dark:text-emerald-400">● Liquidez ({calculations.liquidityRatio.toFixed(0)}%)</span>
               <span className="text-amber-600 dark:text-amber-400">● Trade ({calculations.tradeShareRatio.toFixed(0)}%)</span>
               <span className="text-indigo-600 dark:text-indigo-400">● Airbus ({calculations.airbusShareRatio.toFixed(0)}%)</span>
-              <span className="text-purple-600 dark:text-purple-400">● Otras ({calculations.otherShareRatio.toFixed(0)}%)</span>
             </div>
 
             {calculations.healthStatus === "warning" && (
@@ -956,34 +921,9 @@ export function FinanceTrackerModule() {
             {calculations.healthStatus === "safe" && (
               <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-2">
                 <ShieldCheck size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses.</span>
+                <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses de gastos cubiertos.</span>
               </div>
             )}
-          </div>
-
-          {/* QUICK LINKS */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button
-              onClick={() => setActiveTab("liquidity")}
-              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5"><Wallet size={16} className="text-emerald-500" /> Ajustar Liquidez</span>
-              <ChevronRight size={14} className="text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => setActiveTab("trade")}
-              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5"><Landmark size={16} className="text-amber-500" /> Trade Republic</span>
-              <ChevronRight size={14} className="text-muted-foreground" />
-            </button>
-            <button
-              onClick={() => setActiveTab("airbus")}
-              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
-            >
-              <span className="flex items-center gap-1.5"><Plane size={16} className="text-indigo-500" /> Airbus ESOP</span>
-              <ChevronRight size={14} className="text-muted-foreground" />
-            </button>
           </div>
         </div>
       )}
@@ -1078,7 +1018,7 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* TAB 2: EFFORTLESS LIQUIDITY */}
+      {/* TAB: EFFORTLESS LIQUIDITY */}
       {activeTab === "liquidity" && (
         <div className="space-y-3 animate-fade-in">
           <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
@@ -1116,7 +1056,7 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* TAB 3: AIRBUS ESOP WEALTH TERMINAL */}
+      {/* TAB: AIRBUS ESOP WEALTH TERMINAL */}
       {activeTab === "airbus" && (
         <div className="space-y-3 animate-fade-in">
           <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3">
@@ -1379,51 +1319,6 @@ export function FinanceTrackerModule() {
                 <p className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{formatEUR(simulation.simRealNetProfit)}</p>
               </div>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: OTRAS INVERSIONES */}
-      {activeTab === "other" && (
-        <div className="space-y-3 animate-fade-in">
-          <div className="flex justify-between items-center bg-card p-4 rounded-3xl border border-border/80 shadow-xs">
-            <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
-              <TrendingUp className="text-purple-500" size={18} /> Otras Inversiones
-            </h2>
-            <button
-              onClick={handleOpenAddOther}
-              data-testid="add-other-btn"
-              className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
-            >
-              + Añadir
-            </button>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            {otherInvestments.map((item) => {
-              const gain = item.currentValue - item.initialValue;
-
-              return (
-                <div key={item.id} className="bg-card p-3.5 rounded-2xl border border-border/70 shadow-xs flex justify-between items-center text-xs">
-                  <div>
-                    <span className="text-[9px] font-extrabold uppercase text-purple-600 dark:text-purple-400 tracking-wider block">{item.category}</span>
-                    <h3 className="font-black text-foreground text-sm mt-0.5">{item.name}</h3>
-                    <p className="text-base font-extrabold text-purple-600 dark:text-purple-400 mt-0.5">{formatEUR(item.currentValue)}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold ${gain >= 0 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20"}`}>
-                      {gain >= 0 ? "+" : ""}{formatEUR(gain)}
-                    </span>
-                    <button onClick={() => handleOpenEditOther(item)} className="p-1 text-muted-foreground hover:text-foreground cursor-pointer">
-                      <Edit2 size={13} />
-                    </button>
-                    <button onClick={() => handleDeleteOther(item.id)} className="p-1 text-muted-foreground hover:text-rose-600 cursor-pointer">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
           </div>
         </div>
       )}
@@ -1724,86 +1619,6 @@ export function FinanceTrackerModule() {
                   Cancelar
                 </button>
                 <button type="submit" className="px-4 py-1.5 bg-indigo-600 text-white rounded-xl font-bold cursor-pointer" data-testid="airbus-save-btn">
-                  Guardar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* --- MODAL: OTHER INVESTMENT --- */}
-      {showOtherModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
-          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
-            <div className="flex justify-between items-center border-b border-border/60 pb-2">
-              <h3 className="font-extrabold text-sm">{editingOther ? "Editar Inversión" : "Añadir Inversión"}</h3>
-              <button onClick={() => setShowOtherModal(false)} className="text-muted-foreground hover:text-foreground">
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveOther} className="space-y-3 text-xs">
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Nombre</label>
-                <input
-                  type="text"
-                  required
-                  value={otherForm.name}
-                  onChange={(e) => setOtherForm({ ...otherForm, name: e.target.value })}
-                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-bold text-muted-foreground mb-1">Categoría</label>
-                <select
-                  value={otherForm.category}
-                  onChange={(e) => setOtherForm({ ...otherForm, category: e.target.value as any })}
-                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
-                >
-                  <option value="funds">Fondo Indexado / ETF</option>
-                  <option value="crypto">Criptomonedas</option>
-                  <option value="stocks">Otras Acciones</option>
-                  <option value="real_estate">Bienes Raíces</option>
-                  <option value="other">Otros Activos</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Inicial (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={otherForm.initialValue}
-                    onChange={(e) => setOtherForm({ ...otherForm, initialValue: e.target.value })}
-                    className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-bold text-muted-foreground mb-1">Actual (€)</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    required
-                    value={otherForm.currentValue}
-                    onChange={(e) => setOtherForm({ ...otherForm, currentValue: e.target.value })}
-                    className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
-                <button
-                  type="button"
-                  onClick={() => setShowOtherModal(false)}
-                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button type="submit" className="px-4 py-1.5 bg-purple-600 text-white rounded-xl font-bold cursor-pointer">
                   Guardar
                 </button>
               </div>
