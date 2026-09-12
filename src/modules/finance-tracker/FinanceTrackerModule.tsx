@@ -24,12 +24,21 @@ import {
   ArrowUpRight,
   Sparkles,
   Info,
+  Landmark,
+  Percent,
 } from "lucide-react";
 
 // --- TYPES ---
 export interface LiquidData {
   totalLiquidity: number;
   monthlyExpenses: number;
+  lastUpdated?: string;
+  notes?: string;
+}
+
+export interface TradeRepublicData {
+  balance: number;
+  annualInterestRate: number; // e.g. 3.0
   lastUpdated?: string;
   notes?: string;
 }
@@ -66,12 +75,18 @@ export interface Settings {
 const LOCAL_STORAGE_KEY = "finance_tracker_data_v2";
 
 export function FinanceTrackerModule() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "airbus" | "other">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "trade" | "airbus" | "other">("dashboard");
 
   // State
   const [liquidity, setLiquidity] = useState<LiquidData>({
     totalLiquidity: 20500,
     monthlyExpenses: 2000,
+  });
+  const [tradeRepublic, setTradeRepublic] = useState<TradeRepublicData>({
+    balance: 5000,
+    annualInterestRate: 3.0,
+    lastUpdated: new Date().toISOString().slice(0, 10),
+    notes: "Cuenta remunerada Trade Republic",
   });
   const [airbusPackages, setAirbusPackages] = useState<AirbusPackage[]>([]);
   const [otherInvestments, setOtherInvestments] = useState<OtherInvestment[]>([]);
@@ -95,6 +110,14 @@ export function FinanceTrackerModule() {
   const [liquidityForm, setLiquidityForm] = useState({
     totalLiquidity: "20500",
     monthlyExpenses: "2000",
+    notes: "",
+  });
+
+  const [showTradeModal, setShowTradeModal] = useState(false);
+  const [tradeForm, setTradeForm] = useState({
+    balance: "5000",
+    annualInterestRate: "3.0",
+    lastUpdated: new Date().toISOString().slice(0, 10),
     notes: "",
   });
 
@@ -148,6 +171,9 @@ export function FinanceTrackerModule() {
               const total = data.liquidAccounts.reduce((sum: number, a: any) => sum + (Number(a.balance) || 0), 0);
               setLiquidity({ totalLiquidity: total, monthlyExpenses: 2000 });
             }
+            if (data.tradeRepublic) {
+              setTradeRepublic(data.tradeRepublic);
+            }
             setAirbusPackages(data.airbusPackages || []);
             setOtherInvestments(data.otherInvestments || []);
             if (data.settings) {
@@ -170,6 +196,7 @@ export function FinanceTrackerModule() {
           try {
             const parsed = JSON.parse(local);
             if (parsed.liquidity) setLiquidity(parsed.liquidity);
+            if (parsed.tradeRepublic) setTradeRepublic(parsed.tradeRepublic);
             setAirbusPackages(parsed.airbusPackages || []);
             setOtherInvestments(parsed.otherInvestments || []);
             if (parsed.settings) setSettings(parsed.settings);
@@ -246,6 +273,7 @@ export function FinanceTrackerModule() {
 
   const saveData = async (
     newLiquidity: LiquidData,
+    newTradeRepublic: TradeRepublicData,
     newAirbus: AirbusPackage[],
     newOther: OtherInvestment[],
     newSettings: Settings
@@ -255,6 +283,7 @@ export function FinanceTrackerModule() {
 
     const payload = {
       liquidity: newLiquidity,
+      tradeRepublic: newTradeRepublic,
       airbusPackages: newAirbus,
       otherInvestments: newOther,
       settings: newSettings,
@@ -368,7 +397,12 @@ export function FinanceTrackerModule() {
     const totalOtherInvestmentsGain =
       totalOtherInvestmentsCurrent - totalOtherInvestmentsInitial;
 
-    const totalInvestments = totalAirbusMarketValue + totalOtherInvestmentsCurrent;
+    const tradeBalance = Number(tradeRepublic.balance) || 0;
+    const tradeRate = Number(tradeRepublic.annualInterestRate) || 0;
+    const tradeMonthlyEst = (tradeBalance * (tradeRate / 100)) / 12;
+
+    const totalInvestments =
+      totalAirbusMarketValue + totalOtherInvestmentsCurrent + tradeBalance;
     const totalNetWorth = totalLiquidity + totalInvestments;
 
     const investmentRatio =
@@ -376,6 +410,8 @@ export function FinanceTrackerModule() {
     const liquidityRatio =
       totalNetWorth > 0 ? (totalLiquidity / totalNetWorth) * 100 : 0;
 
+    const tradeShareRatio =
+      totalNetWorth > 0 ? (tradeBalance / totalNetWorth) * 100 : 0;
     const airbusShareRatio =
       totalNetWorth > 0 ? (totalAirbusMarketValue / totalNetWorth) * 100 : 0;
     const otherShareRatio =
@@ -413,15 +449,19 @@ export function FinanceTrackerModule() {
       totalOtherInvestmentsInitial,
       totalOtherInvestmentsCurrent,
       totalOtherInvestmentsGain,
+      tradeBalance,
+      tradeRate,
+      tradeMonthlyEst,
       totalInvestments,
       totalNetWorth,
       investmentRatio,
       liquidityRatio,
+      tradeShareRatio,
       airbusShareRatio,
       otherShareRatio,
       healthStatus,
     };
-  }, [liquidity, airbusPackages, otherInvestments, settings, currentYear]);
+  }, [liquidity, tradeRepublic, airbusPackages, otherInvestments, settings, currentYear]);
 
   // --- SIMULATION CALCULATIONS ---
   const simulation = useMemo(() => {
@@ -498,8 +538,31 @@ export function FinanceTrackerModule() {
       lastUpdated: new Date().toISOString(),
     };
     setLiquidity(newLiq);
-    saveData(newLiq, airbusPackages, otherInvestments, settings);
+    saveData(newLiq, tradeRepublic, airbusPackages, otherInvestments, settings);
     setShowLiquidityModal(false);
+  };
+
+  const handleOpenTradeModal = () => {
+    setTradeForm({
+      balance: String(tradeRepublic.balance),
+      annualInterestRate: String(tradeRepublic.annualInterestRate),
+      lastUpdated: tradeRepublic.lastUpdated || new Date().toISOString().slice(0, 10),
+      notes: tradeRepublic.notes || "",
+    });
+    setShowTradeModal(true);
+  };
+
+  const handleSaveTrade = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newTrade: TradeRepublicData = {
+      balance: parseFloat(tradeForm.balance) || 0,
+      annualInterestRate: parseFloat(tradeForm.annualInterestRate) || 0,
+      lastUpdated: tradeForm.lastUpdated || new Date().toISOString().slice(0, 10),
+      notes: tradeForm.notes,
+    };
+    setTradeRepublic(newTrade);
+    saveData(liquidity, newTrade, airbusPackages, otherInvestments, settings);
+    setShowTradeModal(false);
   };
 
   const handleOpenAddAirbus = () => {
@@ -592,7 +655,7 @@ export function FinanceTrackerModule() {
     }
 
     setAirbusPackages(updated);
-    saveData(liquidity, updated, otherInvestments, settings);
+    saveData(liquidity, tradeRepublic, updated, otherInvestments, settings);
     setShowAirbusModal(false);
   };
 
@@ -600,7 +663,7 @@ export function FinanceTrackerModule() {
     if (confirm("¿Eliminar este paquete de acciones de Airbus?")) {
       const updated = airbusPackages.filter((p) => p.id !== id);
       setAirbusPackages(updated);
-      saveData(liquidity, updated, otherInvestments, settings);
+      saveData(liquidity, tradeRepublic, updated, otherInvestments, settings);
     }
   };
 
@@ -663,7 +726,7 @@ export function FinanceTrackerModule() {
     }
 
     setOtherInvestments(updated);
-    saveData(liquidity, airbusPackages, updated, settings);
+    saveData(liquidity, tradeRepublic, airbusPackages, updated, settings);
     setShowOtherModal(false);
   };
 
@@ -671,7 +734,7 @@ export function FinanceTrackerModule() {
     if (confirm("¿Eliminar esta inversión?")) {
       const updated = otherInvestments.filter((o) => o.id !== id);
       setOtherInvestments(updated);
-      saveData(liquidity, airbusPackages, updated, settings);
+      saveData(liquidity, tradeRepublic, airbusPackages, updated, settings);
     }
   };
 
@@ -690,7 +753,7 @@ export function FinanceTrackerModule() {
 
     const newSettings = { targetInvestmentRatio: targetRatio, taxRate: tax };
     setSettings(newSettings);
-    saveData(liquidity, airbusPackages, otherInvestments, newSettings);
+    saveData(liquidity, tradeRepublic, airbusPackages, otherInvestments, newSettings);
     setShowSettingsModal(false);
   };
 
@@ -747,7 +810,7 @@ export function FinanceTrackerModule() {
         </div>
 
         {/* TOP SEGMENTED TABS */}
-        <div className="grid grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
+        <div className="grid grid-cols-2 sm:grid-cols-5 bg-muted p-1 rounded-2xl gap-1 text-center">
           <button
             onClick={() => setActiveTab("dashboard")}
             data-testid="tab-dashboard"
@@ -771,6 +834,18 @@ export function FinanceTrackerModule() {
           >
             <Wallet size={14} className="shrink-0 text-emerald-500" />
             <span className="truncate">Liquidez</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("trade")}
+            data-testid="tab-trade"
+            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "trade"
+                ? "bg-card text-foreground shadow-xs border border-border/40"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Landmark size={14} className="shrink-0 text-amber-500" />
+            <span className="truncate">Trade Republic</span>
           </button>
           <button
             onClick={() => setActiveTab("airbus")}
@@ -845,6 +920,11 @@ export function FinanceTrackerModule() {
                 title={`Liquidez ${calculations.liquidityRatio.toFixed(0)}%`}
               />
               <div
+                className="bg-amber-500 h-full transition-all duration-300"
+                style={{ width: `${Math.max(2, calculations.tradeShareRatio)}%` }}
+                title={`Trade Republic ${calculations.tradeShareRatio.toFixed(0)}%`}
+              />
+              <div
                 className="bg-indigo-600 h-full transition-all duration-300"
                 style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
                 title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
@@ -860,8 +940,9 @@ export function FinanceTrackerModule() {
               />
             </div>
 
-            <div className="flex justify-between text-[10px] font-bold">
+            <div className="flex justify-between text-[10px] font-bold flex-wrap gap-1">
               <span className="text-emerald-600 dark:text-emerald-400">● Liquidez ({calculations.liquidityRatio.toFixed(0)}%)</span>
+              <span className="text-amber-600 dark:text-amber-400">● Trade ({calculations.tradeShareRatio.toFixed(0)}%)</span>
               <span className="text-indigo-600 dark:text-indigo-400">● Airbus ({calculations.airbusShareRatio.toFixed(0)}%)</span>
               <span className="text-purple-600 dark:text-purple-400">● Otras ({calculations.otherShareRatio.toFixed(0)}%)</span>
             </div>
@@ -881,7 +962,7 @@ export function FinanceTrackerModule() {
           </div>
 
           {/* QUICK LINKS */}
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button
               onClick={() => setActiveTab("liquidity")}
               className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
@@ -890,12 +971,109 @@ export function FinanceTrackerModule() {
               <ChevronRight size={14} className="text-muted-foreground" />
             </button>
             <button
+              onClick={() => setActiveTab("trade")}
+              className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5"><Landmark size={16} className="text-amber-500" /> Trade Republic</span>
+              <ChevronRight size={14} className="text-muted-foreground" />
+            </button>
+            <button
               onClick={() => setActiveTab("airbus")}
               className="p-3.5 bg-card hover:bg-muted/50 rounded-2xl border border-border/80 flex items-center justify-between text-xs font-extrabold transition cursor-pointer"
             >
-              <span className="flex items-center gap-1.5"><Plane size={16} className="text-indigo-500" /> Ver Airbus ESOP</span>
+              <span className="flex items-center gap-1.5"><Plane size={16} className="text-indigo-500" /> Airbus ESOP</span>
               <ChevronRight size={14} className="text-muted-foreground" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: TRADE REPUBLIC */}
+      {activeTab === "trade" && (
+        <div className="space-y-3 animate-fade-in" data-testid="trade-republic-tab">
+          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <Landmark className="text-amber-500" size={20} />
+                <div>
+                  <h2 className="text-sm font-extrabold text-foreground">
+                    Trade Republic (Cuenta Remunerada)
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Ficha de control e información de cuenta
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleOpenTradeModal}
+                data-testid="edit-trade-btn"
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95 flex items-center gap-1 shrink-0"
+              >
+                <Edit2 size={13} /> Corregir Saldo / Info
+              </button>
+            </div>
+
+            {/* NOTICE BANNER: Manual mode without auto-recalculations */}
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-800 dark:text-amber-300 text-xs font-semibold space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400">
+                <Info size={16} className="shrink-0" />
+                <span>Modo Informativo Directo</span>
+              </div>
+              <p className="text-[11px] leading-relaxed">
+                Esta pantalla muestra el saldo y las características de tu cuenta en Trade Republic. No realiza recálculos ni simulaciones automáticas; la información se actualiza manualmente cuando introduces correcciones al recordar el saldo real.
+              </p>
+            </div>
+
+            {/* CHARACTERISTICS DISPLAY GRID */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl space-y-1">
+                <span className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                  Saldo Actual en Cuenta
+                </span>
+                <p className="text-3xl font-black text-amber-600 dark:text-amber-400" data-testid="trade-balance-display">
+                  {formatEUR(calculations.tradeBalance)}
+                </p>
+                {tradeRepublic.lastUpdated && (
+                  <p className="text-[10px] text-muted-foreground font-semibold pt-1">
+                    Última actualización: {new Date(tradeRepublic.lastUpdated).toLocaleDateString("es-ES")}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="bg-muted/40 p-3 rounded-2xl border border-border/60 flex flex-col justify-between">
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                    Interés Anual (TIN/TAE)
+                  </span>
+                  <p className="text-xl font-extrabold text-foreground mt-1" data-testid="trade-rate-display">
+                    {calculations.tradeRate.toFixed(2)}%
+                  </p>
+                  <span className="text-[10px] text-muted-foreground">Liquidación mensual</span>
+                </div>
+
+                <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20 flex flex-col justify-between">
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase block">
+                    Comisión / Rend. Est.
+                  </span>
+                  <p className="text-xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-1" data-testid="trade-monthly-est">
+                    +{formatEUR(calculations.tradeMonthlyEst)}
+                  </p>
+                  <span className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-semibold">Estimado / mes</span>
+                </div>
+              </div>
+            </div>
+
+            {/* NOTES DISPLAY */}
+            {tradeRepublic.notes && (
+              <div className="bg-muted/30 p-3 rounded-2xl border border-border/50 text-xs text-muted-foreground space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-foreground block">
+                  Notas y Observaciones
+                </span>
+                <p className="text-foreground/90 font-medium whitespace-pre-wrap">
+                  {tradeRepublic.notes}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -1246,6 +1424,94 @@ export function FinanceTrackerModule() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* --- MODAL: TRADE REPUBLIC --- */}
+      {showTradeModal && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in" data-testid="trade-modal">
+          <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-2">
+              <h3 className="font-extrabold text-sm flex items-center gap-1.5">
+                <Landmark size={16} className="text-amber-500" /> Corregir Información Trade Republic
+              </h3>
+              <button onClick={() => setShowTradeModal(false)} className="text-muted-foreground hover:text-foreground">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveTrade} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Saldo Actual en Cuenta (€)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={tradeForm.balance}
+                  onChange={(e) => setTradeForm({ ...tradeForm, balance: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-sm font-bold outline-none"
+                  data-testid="trade-balance-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Interés Anual Nominal (% TAE)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  required
+                  value={tradeForm.annualInterestRate}
+                  onChange={(e) => setTradeForm({ ...tradeForm, annualInterestRate: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
+                  data-testid="trade-rate-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Fecha de Actualización
+                </label>
+                <input
+                  type="date"
+                  value={tradeForm.lastUpdated}
+                  onChange={(e) => setTradeForm({ ...tradeForm, lastUpdated: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono outline-none"
+                  data-testid="trade-date-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Notas / Observaciones
+                </label>
+                <textarea
+                  rows={2}
+                  value={tradeForm.notes}
+                  onChange={(e) => setTradeForm({ ...tradeForm, notes: e.target.value })}
+                  placeholder="Ej: Cuenta remunerada mensual..."
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none resize-none"
+                  data-testid="trade-notes-input"
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setShowTradeModal(false)}
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 rounded-xl font-bold cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button type="submit" className="px-4 py-1.5 bg-amber-600 text-white rounded-xl font-bold cursor-pointer" data-testid="trade-save-btn">
+                  Guardar
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
