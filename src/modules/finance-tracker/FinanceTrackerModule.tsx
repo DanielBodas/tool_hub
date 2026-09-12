@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   Wallet,
-  TrendingUp,
   Plane,
   PieChart,
   Edit2,
@@ -21,6 +20,10 @@ import {
   ArrowUpRight,
   Landmark,
   Info,
+  Calendar,
+  Home,
+  Plus,
+  TrendingUp,
 } from "lucide-react";
 
 // --- TYPES ---
@@ -28,6 +31,14 @@ export interface LiquidData {
   totalLiquidity: number;
   monthlyExpenses: number;
   lastUpdated?: string;
+  notes?: string;
+}
+
+export interface LiquidRecord {
+  id: string;
+  date: string; // ISO Date YYYY-MM-DD
+  amount: number;
+  monthlyExpenses: number;
   notes?: string;
 }
 
@@ -58,7 +69,7 @@ export interface Settings {
   taxRate: number; // e.g. 19%
 }
 
-const LOCAL_STORAGE_KEY = "finance_tracker_data_v2";
+const LOCAL_STORAGE_KEY = "finance_tracker_data_v3";
 
 export function FinanceTrackerModule() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "liquidity" | "trade" | "airbus">("dashboard");
@@ -68,12 +79,16 @@ export function FinanceTrackerModule() {
     totalLiquidity: 20500,
     monthlyExpenses: 2000,
   });
+
+  const [liquidHistory, setLiquidHistory] = useState<LiquidRecord[]>([]);
+
   const [tradeRepublic, setTradeRepublic] = useState<TradeRepublicData>({
     balance: 5000,
-    annualInterestRate: 3.0,
+    annualInterestRate: 3.75,
     lastUpdated: new Date().toISOString().slice(0, 10),
     notes: "Cuenta remunerada Trade Republic",
   });
+
   const [airbusPackages, setAirbusPackages] = useState<AirbusPackage[]>([]);
   const [settings, setSettings] = useState<Settings>({
     targetInvestmentRatio: 60,
@@ -82,9 +97,7 @@ export function FinanceTrackerModule() {
 
   const [loading, setLoading] = useState(true);
   const [, setSaving] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<
-    "synced" | "saving" | "error" | "offline"
-  >("synced");
+  const [syncStatus, setSyncStatus] = useState<"synced" | "saving" | "error" | "offline">("synced");
 
   // Simulation & Modal states
   const [airbusSimMode, setAirbusSimMode] = useState<"unlocked" | "all" | string>("unlocked");
@@ -92,16 +105,18 @@ export function FinanceTrackerModule() {
   const [expandedAirbusId, setExpandedAirbusId] = useState<string | null>(null);
 
   const [showLiquidityModal, setShowLiquidityModal] = useState(false);
+  const [editingRecordId, setEditingRecordId] = useState<string | null>(null);
   const [liquidityForm, setLiquidityForm] = useState({
     totalLiquidity: "20500",
     monthlyExpenses: "2000",
+    date: new Date().toISOString().slice(0, 10),
     notes: "",
   });
 
   const [showTradeModal, setShowTradeModal] = useState(false);
   const [tradeForm, setTradeForm] = useState({
     balance: "5000",
-    annualInterestRate: "3.0",
+    annualInterestRate: "3.75",
     lastUpdated: new Date().toISOString().slice(0, 10),
     notes: "",
   });
@@ -129,6 +144,25 @@ export function FinanceTrackerModule() {
     taxRate: "19",
   });
 
+  // Default historical liquidity generator if none exists
+  const defaultHistory = useMemo<LiquidRecord[]>(() => {
+    const today = new Date();
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(today.getFullYear(), today.getMonth() - i, 15);
+      const dateStr = d.toISOString().slice(0, 10);
+      const amount = 16000 + (5 - i) * 900;
+      months.push({
+        id: `lh_${i}_${Date.now()}`,
+        date: dateStr,
+        amount: amount,
+        monthlyExpenses: 2000,
+        notes: i === 0 ? "Registro actual" : `Ahorro mes -${i}`,
+      });
+    }
+    return months;
+  }, []);
+
   // --- INITIAL LOAD & PERSISTENCE ---
   useEffect(() => {
     async function loadData() {
@@ -142,9 +176,11 @@ export function FinanceTrackerModule() {
           if (data && !data.error) {
             if (data.liquidity) {
               setLiquidity(data.liquidity);
-            } else if (Array.isArray(data.liquidAccounts) && data.liquidAccounts.length > 0) {
-              const total = data.liquidAccounts.reduce((sum: number, a: any) => sum + (Number(a.balance) || 0), 0);
-              setLiquidity({ totalLiquidity: total, monthlyExpenses: 2000 });
+            }
+            if (Array.isArray(data.liquidHistory) && data.liquidHistory.length > 0) {
+              setLiquidHistory(data.liquidHistory);
+            } else {
+              setLiquidHistory(defaultHistory);
             }
             if (data.tradeRepublic) {
               setTradeRepublic(data.tradeRepublic);
@@ -170,6 +206,11 @@ export function FinanceTrackerModule() {
           try {
             const parsed = JSON.parse(local);
             if (parsed.liquidity) setLiquidity(parsed.liquidity);
+            if (Array.isArray(parsed.liquidHistory) && parsed.liquidHistory.length > 0) {
+              setLiquidHistory(parsed.liquidHistory);
+            } else {
+              setLiquidHistory(defaultHistory);
+            }
             if (parsed.tradeRepublic) setTradeRepublic(parsed.tradeRepublic);
             setAirbusPackages(parsed.airbusPackages || []);
             if (parsed.settings) setSettings(parsed.settings);
@@ -229,6 +270,7 @@ export function FinanceTrackerModule() {
             },
           ];
           setAirbusPackages(sampleAirbus);
+          setLiquidHistory(defaultHistory);
         }
         setSyncStatus("offline");
       }
@@ -237,10 +279,11 @@ export function FinanceTrackerModule() {
     }
 
     loadData();
-  }, []);
+  }, [defaultHistory]);
 
   const saveData = async (
     newLiquidity: LiquidData,
+    newHistory: LiquidRecord[],
     newTradeRepublic: TradeRepublicData,
     newAirbus: AirbusPackage[],
     newSettings: Settings
@@ -250,6 +293,7 @@ export function FinanceTrackerModule() {
 
     const payload = {
       liquidity: newLiquidity,
+      liquidHistory: newHistory,
       tradeRepublic: newTradeRepublic,
       airbusPackages: newAirbus,
       settings: newSettings,
@@ -286,6 +330,11 @@ export function FinanceTrackerModule() {
     const monthlyExpenses = Number(liquidity.monthlyExpenses) || 1;
     const runwayMonths = monthlyExpenses > 0 ? totalLiquidity / monthlyExpenses : 0;
 
+    // Sorted liquidity history chronologically
+    const sortedHistory = [...liquidHistory].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+
     let totalAirbusShares = 0;
     let totalAirbusPurchasedShares = 0;
     let totalAirbusBonusShares = 0;
@@ -298,7 +347,6 @@ export function FinanceTrackerModule() {
     let totalAirbusLockedValue = 0;
     let totalAirbusBonusValue = 0;
 
-    // Realized (sold) accumulators
     let realizedGrossProceeds = 0;
     let realizedCostBasis = 0;
     let realizedTaxableMargin = 0;
@@ -380,6 +428,7 @@ export function FinanceTrackerModule() {
       totalLiquidity,
       monthlyExpenses,
       runwayMonths,
+      sortedHistory,
       totalAirbusShares,
       totalAirbusPurchasedShares,
       totalAirbusBonusShares,
@@ -409,7 +458,7 @@ export function FinanceTrackerModule() {
       airbusShareRatio,
       healthStatus,
     };
-  }, [liquidity, tradeRepublic, airbusPackages, settings, currentYear]);
+  }, [liquidity, liquidHistory, tradeRepublic, airbusPackages, settings, currentYear]);
 
   // --- SIMULATION CALCULATIONS ---
   const simulation = useMemo(() => {
@@ -468,26 +517,96 @@ export function FinanceTrackerModule() {
   }, [airbusPackages, airbusSimMode, simMarketPriceOverride, settings, currentYear]);
 
   // --- HANDLERS ---
-  const handleOpenLiquidityModal = () => {
+  const handleOpenAddLiquidityModal = () => {
+    setEditingRecordId(null);
     setLiquidityForm({
       totalLiquidity: String(liquidity.totalLiquidity),
       monthlyExpenses: String(liquidity.monthlyExpenses),
-      notes: liquidity.notes || "",
+      date: new Date().toISOString().slice(0, 10),
+      notes: "",
+    });
+    setShowLiquidityModal(true);
+  };
+
+  const handleOpenEditRecordModal = (record: LiquidRecord) => {
+    setEditingRecordId(record.id);
+    setLiquidityForm({
+      totalLiquidity: String(record.amount),
+      monthlyExpenses: String(record.monthlyExpenses || liquidity.monthlyExpenses),
+      date: record.date.slice(0, 10),
+      notes: record.notes || "",
     });
     setShowLiquidityModal(true);
   };
 
   const handleSaveLiquidity = (e: React.FormEvent) => {
     e.preventDefault();
+    const amountVal = parseFloat(liquidityForm.totalLiquidity) || 0;
+    const expensesVal = parseFloat(liquidityForm.monthlyExpenses) || 0;
+    const dateVal = liquidityForm.date || new Date().toISOString().slice(0, 10);
+
+    let updatedHistory = [...liquidHistory];
+
+    if (editingRecordId) {
+      updatedHistory = updatedHistory.map((rec) =>
+        rec.id === editingRecordId
+          ? {
+              ...rec,
+              amount: amountVal,
+              monthlyExpenses: expensesVal,
+              date: dateVal,
+              notes: liquidityForm.notes,
+            }
+          : rec
+      );
+    } else {
+      const newRecord: LiquidRecord = {
+        id: "lh_" + Date.now(),
+        date: dateVal,
+        amount: amountVal,
+        monthlyExpenses: expensesVal,
+        notes: liquidityForm.notes,
+      };
+      updatedHistory.push(newRecord);
+    }
+
+    // Sort to find latest
+    const sorted = [...updatedHistory].sort(
+      (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    );
+    const latestRecord = sorted[sorted.length - 1] || { amount: amountVal, monthlyExpenses: expensesVal };
+
     const newLiq: LiquidData = {
-      totalLiquidity: parseFloat(liquidityForm.totalLiquidity) || 0,
-      monthlyExpenses: parseFloat(liquidityForm.monthlyExpenses) || 0,
+      totalLiquidity: latestRecord.amount,
+      monthlyExpenses: latestRecord.monthlyExpenses,
       notes: liquidityForm.notes,
-      lastUpdated: new Date().toISOString(),
+      lastUpdated: dateVal,
     };
+
     setLiquidity(newLiq);
-    saveData(newLiq, tradeRepublic, airbusPackages, settings);
+    setLiquidHistory(updatedHistory);
+    saveData(newLiq, updatedHistory, tradeRepublic, airbusPackages, settings);
     setShowLiquidityModal(false);
+  };
+
+  const handleDeleteLiquidRecord = (id: string) => {
+    if (confirm("¿Eliminar este registro de saldo histórico?")) {
+      const updatedHistory = liquidHistory.filter((rec) => rec.id !== id);
+      const sorted = [...updatedHistory].sort(
+        (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+      const latestRecord = sorted[sorted.length - 1] || { amount: 0, monthlyExpenses: liquidity.monthlyExpenses };
+
+      const newLiq: LiquidData = {
+        ...liquidity,
+        totalLiquidity: latestRecord.amount,
+        lastUpdated: latestRecord.date || new Date().toISOString(),
+      };
+
+      setLiquidity(newLiq);
+      setLiquidHistory(updatedHistory);
+      saveData(newLiq, updatedHistory, tradeRepublic, airbusPackages, settings);
+    }
   };
 
   const handleOpenTradeModal = () => {
@@ -509,7 +628,7 @@ export function FinanceTrackerModule() {
       notes: tradeForm.notes,
     };
     setTradeRepublic(newTrade);
-    saveData(liquidity, newTrade, airbusPackages, settings);
+    saveData(liquidity, liquidHistory, newTrade, airbusPackages, settings);
     setShowTradeModal(false);
   };
 
@@ -603,7 +722,7 @@ export function FinanceTrackerModule() {
     }
 
     setAirbusPackages(updated);
-    saveData(liquidity, tradeRepublic, updated, settings);
+    saveData(liquidity, liquidHistory, tradeRepublic, updated, settings);
     setShowAirbusModal(false);
   };
 
@@ -611,7 +730,7 @@ export function FinanceTrackerModule() {
     if (confirm("¿Eliminar este paquete de acciones de Airbus?")) {
       const updated = airbusPackages.filter((p) => p.id !== id);
       setAirbusPackages(updated);
-      saveData(liquidity, tradeRepublic, updated, settings);
+      saveData(liquidity, liquidHistory, tradeRepublic, updated, settings);
     }
   };
 
@@ -630,7 +749,7 @@ export function FinanceTrackerModule() {
 
     const newSettings = { targetInvestmentRatio: targetRatio, taxRate: tax };
     setSettings(newSettings);
-    saveData(liquidity, tradeRepublic, airbusPackages, newSettings);
+    saveData(liquidity, liquidHistory, tradeRepublic, airbusPackages, newSettings);
     setShowSettingsModal(false);
   };
 
@@ -653,9 +772,9 @@ export function FinanceTrackerModule() {
 
   return (
     <div className="space-y-3 md:space-y-4 pb-12">
-      {/* HEADER BAR */}
+      {/* HEADER BAR WITH DASHBOARD HUB RETURN BUTTON */}
       <div className="bg-card border border-border/80 p-3 md:p-4 rounded-3xl shadow-xs space-y-3">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
               <Coins size={20} />
@@ -675,18 +794,31 @@ export function FinanceTrackerModule() {
             </div>
           </div>
 
-          <button
-            onClick={handleOpenSettings}
-            data-testid="settings-btn"
-            className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold shrink-0"
-            title="Ajustes de Prudencia e IRPF"
-          >
-            <SettingsIcon size={16} />
-            <span className="hidden sm:inline">Ajustes</span>
-          </button>
+          {/* TOP ACTIONS: DASHBOARD RETURN + SETTINGS */}
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+            <a
+              href="/dashboard"
+              data-testid="return-dashboard-btn"
+              className="px-3 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl transition active:scale-95 flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer"
+              title="Volver al panel Hub principal de aplicaciones"
+            >
+              <Home size={15} />
+              <span className="inline">🏠 Panel Hub</span>
+            </a>
+
+            <button
+              onClick={handleOpenSettings}
+              data-testid="settings-btn"
+              className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold"
+              title="Ajustes de Prudencia e IRPF"
+            >
+              <SettingsIcon size={16} />
+              <span className="hidden sm:inline">Ajustes</span>
+            </button>
+          </div>
         </div>
 
-        {/* TOP SEGMENTED TABS */}
+        {/* TOP SEGMENTED NAVIGATION TABS */}
         <div className="grid grid-cols-2 sm:grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
           <button
             onClick={() => setActiveTab("dashboard")}
@@ -710,7 +842,7 @@ export function FinanceTrackerModule() {
             }`}
           >
             <Wallet size={14} className="shrink-0 text-emerald-500" />
-            <span className="truncate">Liquidez</span>
+            <span className="truncate">Liquidez y Gráfica</span>
           </button>
           <button
             onClick={() => setActiveTab("trade")}
@@ -740,7 +872,7 @@ export function FinanceTrackerModule() {
       </div>
 
       {/* TABS CONTENT */}
-      {/* MAIN SCREEN: EXECUTIVE DASHBOARD (RESUMEN GENERAL) */}
+      {/* MAIN EXECUTIVE DASHBOARD (RESUMEN GENERAL) */}
       {activeTab === "dashboard" && (
         <div className="space-y-4 animate-fade-in" data-testid="resumen-dashboard">
           {/* NET WORTH HERO CARD */}
@@ -773,7 +905,7 @@ export function FinanceTrackerModule() {
               Visión General de Cuentas y Salud Financiera
             </span>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* PILLAR 1: LIQUIDEZ */}
               <div className="bg-card p-4 rounded-3xl border border-emerald-500/30 shadow-xs flex flex-col justify-between space-y-3">
                 <div className="space-y-1">
@@ -793,18 +925,19 @@ export function FinanceTrackerModule() {
 
                 <div className="pt-2 border-t border-border/50 flex gap-2">
                   <button
-                    onClick={handleOpenLiquidityModal}
+                    onClick={handleOpenAddLiquidityModal}
                     data-testid="resumen-edit-liquidity-btn"
                     className="flex-1 py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
                   >
-                    <Edit2 size={12} /> Actualizar Saldo
+                    <Plus size={12} /> Registrar Saldo
                   </button>
                   <button
                     onClick={() => setActiveTab("liquidity")}
-                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
-                    title="Ver detalle de liquidez"
+                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer flex items-center gap-1 text-xs font-extrabold"
+                    title="Ver gráfica de evolución de liquidez"
                   >
-                    <ChevronRight size={16} />
+                    <TrendingUp size={14} className="text-emerald-500" />
+                    <ChevronRight size={14} />
                   </button>
                 </div>
               </div>
@@ -928,6 +1061,204 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
+      {/* TAB: LIQUIDEZ Y EVOLUCIÓN CON GRÁFICA */}
+      {activeTab === "liquidity" && (
+        <div className="space-y-4 animate-fade-in" data-testid="liquidity-tab">
+          <div className="bg-card p-4 md:p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
+            <div className="flex justify-between items-center border-b border-border/60 pb-3 flex-wrap gap-2">
+              <div className="flex items-center gap-2">
+                <Wallet className="text-emerald-500" size={20} />
+                <div>
+                  <h2 className="text-sm md:text-base font-extrabold text-foreground">
+                    Liquidez y Evolución Histórica
+                  </h2>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Seguimiento de saldo con fechas para análisis de tendencia
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleOpenAddLiquidityModal}
+                data-testid="add-liquidity-entry-btn"
+                className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95 flex items-center gap-1 shrink-0"
+              >
+                <Plus size={14} /> Registrar Saldo con Fecha
+              </button>
+            </div>
+
+            {/* KPI METRICS */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl">
+                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">
+                  Saldo Líquido Actual
+                </span>
+                <p className="text-2xl md:text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  {formatEUR(calculations.totalLiquidity)}
+                </p>
+              </div>
+
+              <div className="bg-muted/40 p-3.5 rounded-2xl border border-border/60 flex flex-col justify-between">
+                <span className="text-[10px] text-muted-foreground font-bold uppercase block">
+                  Gastos Mensuales
+                </span>
+                <p className="text-xl font-extrabold text-foreground mt-0.5">
+                  {formatEUR(calculations.monthlyExpenses)}
+                </p>
+              </div>
+
+              <div className="bg-blue-500/10 p-3.5 rounded-2xl border border-blue-500/20 flex flex-col justify-between">
+                <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase block">
+                  Colchón Cubierto
+                </span>
+                <p className="text-xl font-black text-blue-600 dark:text-blue-400 mt-0.5">
+                  {calculations.runwayMonths.toFixed(1)} meses
+                </p>
+              </div>
+            </div>
+
+            {/* HISTORICAL EVOLUTION SVG CHART */}
+            <div className="bg-muted/30 p-3 md:p-4 rounded-2xl border border-border/60 space-y-2">
+              <div className="flex justify-between items-center">
+                <span className="text-xs font-black uppercase text-foreground flex items-center gap-1.5">
+                  <TrendingUp size={15} className="text-emerald-500" /> Gráfica de Evolución de Saldo (€)
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  {calculations.sortedHistory.length} registros
+                </span>
+              </div>
+
+              {calculations.sortedHistory.length > 1 ? (
+                <div className="w-full h-48 md:h-56 relative pt-2">
+                  <svg className="w-full h-full overflow-visible" viewBox="0 0 500 160" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="liquidityGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                      </linearGradient>
+                    </defs>
+
+                    {/* CHART DATA PATH GENERATION */}
+                    {(() => {
+                      const list = calculations.sortedHistory;
+                      const amounts = list.map((r) => r.amount);
+                      const maxVal = Math.max(...amounts, 1);
+                      const minVal = Math.min(...amounts, 0) * 0.8;
+                      const range = Math.max(1, maxVal - minVal);
+
+                      const points = list.map((rec, idx) => {
+                        const x = (idx / Math.max(1, list.length - 1)) * 480 + 10;
+                        const y = 140 - ((rec.amount - minVal) / range) * 110;
+                        return { x, y, amount: rec.amount, date: rec.date };
+                      });
+
+                      const pathD = points.reduce(
+                        (acc, p, i) => (i === 0 ? `M ${p.x},${p.y}` : `${acc} L ${p.x},${p.y}`),
+                        ""
+                      );
+
+                      const areaD = `${pathD} L ${points[points.length - 1].x},145 L ${points[0].x},145 Z`;
+
+                      return (
+                        <g>
+                          {/* Grid Lines */}
+                          <line x1="10" y1="30" x2="490" y2="30" stroke="currentColor" className="text-border" strokeDasharray="3 3" opacity="0.5" />
+                          <line x1="10" y1="85" x2="490" y2="85" stroke="currentColor" className="text-border" strokeDasharray="3 3" opacity="0.5" />
+                          <line x1="10" y1="140" x2="490" y2="140" stroke="currentColor" className="text-border" opacity="0.8" />
+
+                          {/* Shaded Area */}
+                          <path d={areaD} fill="url(#liquidityGrad)" />
+
+                          {/* Main Line */}
+                          <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+
+                          {/* Interactive Points */}
+                          {points.map((p, idx) => (
+                            <g key={idx}>
+                              <circle cx={p.x} cy={p.y} r="5" fill="#10b981" stroke="var(--color-card, #ffffff)" strokeWidth="2" />
+                              <text
+                                x={p.x}
+                                y={p.y - 10}
+                                textAnchor="middle"
+                                fontSize="9"
+                                fontWeight="bold"
+                                fill="currentColor"
+                                className="text-foreground"
+                              >
+                                {Math.round(p.amount / 1000)}k€
+                              </text>
+                              <text
+                                x={p.x}
+                                y="155"
+                                textAnchor="middle"
+                                fontSize="8"
+                                fontWeight="bold"
+                                fill="currentColor"
+                                className="text-muted-foreground"
+                              >
+                                {new Date(p.date).toLocaleDateString("es-ES", { month: "short", day: "numeric" })}
+                              </text>
+                            </g>
+                          ))}
+                        </g>
+                      );
+                    })()}
+                  </svg>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-8">
+                  Registra al menos 2 saldos con fecha para ver la gráfica de evolución temporal.
+                </p>
+              )}
+            </div>
+
+            {/* HISTORICAL LOG TABLE */}
+            <div className="space-y-2 pt-2">
+              <span className="text-xs font-black uppercase text-foreground block">
+                Historial de Registros de Liquidez
+              </span>
+
+              <div className="space-y-1.5">
+                {calculations.sortedHistory.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="p-3 bg-muted/20 border border-border/60 rounded-2xl flex justify-between items-center text-xs"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-extrabold text-foreground text-sm">
+                          {formatEUR(rec.amount)}
+                        </span>
+                        <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Calendar size={10} /> {new Date(rec.date).toLocaleDateString("es-ES")}
+                        </span>
+                      </div>
+                      {rec.notes && <p className="text-[10px] text-muted-foreground mt-0.5">{rec.notes}</p>}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleOpenEditRecordModal(rec)}
+                        className="p-1.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Editar registro"
+                      >
+                        <Edit2 size={13} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteLiquidRecord(rec.id)}
+                        className="p-1.5 text-muted-foreground hover:text-rose-600 cursor-pointer"
+                        title="Eliminar registro"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB: TRADE REPUBLIC */}
       {activeTab === "trade" && (
         <div className="space-y-3 animate-fade-in" data-testid="trade-republic-tab">
@@ -1014,44 +1345,6 @@ export function FinanceTrackerModule() {
                 </p>
               </div>
             )}
-          </div>
-        </div>
-      )}
-
-      {/* TAB: EFFORTLESS LIQUIDITY */}
-      {activeTab === "liquidity" && (
-        <div className="space-y-3 animate-fade-in">
-          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
-            <div className="flex justify-between items-center border-b border-border/60 pb-3">
-              <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
-                <Wallet className="text-emerald-500" size={18} /> Liquidez y Fondo de Seguridad
-              </h2>
-              <button
-                onClick={handleOpenLiquidityModal}
-                data-testid="edit-liquidity-btn"
-                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs cursor-pointer transition active:scale-95"
-              >
-                <Edit2 size={13} className="inline mr-1" /> Editar Saldo
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 p-4 rounded-2xl">
-                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Fondo Líquido Disponible</span>
-                <p className="text-3xl font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{formatEUR(liquidity.totalLiquidity)}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <div className="bg-muted/40 p-3 rounded-2xl border border-border/60">
-                  <span className="text-[10px] text-muted-foreground font-bold uppercase">Gastos Mensuales</span>
-                  <p className="font-extrabold text-foreground text-sm mt-0.5">{formatEUR(liquidity.monthlyExpenses)}</p>
-                </div>
-                <div className="bg-blue-500/10 p-3 rounded-2xl border border-blue-500/20">
-                  <span className="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase">Colchón Cubierto</span>
-                  <p className="font-black text-blue-600 dark:text-blue-400 text-sm mt-0.5">{calculations.runwayMonths.toFixed(1)} meses</p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       )}
@@ -1411,12 +1704,15 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* --- MODAL: LIQUIDITY --- */}
+      {/* --- MODAL: LIQUIDITY WITH DATE SELECTION --- */}
       {showLiquidityModal && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in">
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md flex items-center justify-center p-4 z-50 animate-fade-in" data-testid="liquidity-modal">
           <div className="bg-card text-card-foreground p-5 rounded-3xl border border-border shadow-2xl max-w-sm w-full space-y-4">
             <div className="flex justify-between items-center border-b border-border/60 pb-2">
-              <h3 className="font-extrabold text-sm">Actualizar Liquidez y Gastos</h3>
+              <h3 className="font-extrabold text-sm flex items-center gap-1.5">
+                <Wallet size={16} className="text-emerald-500" />
+                {editingRecordId ? "Editar Registro de Liquidez" : "Registrar Saldo de Liquidez"}
+              </h3>
               <button onClick={() => setShowLiquidityModal(false)} className="text-muted-foreground hover:text-foreground">
                 <X size={18} />
               </button>
@@ -1425,15 +1721,30 @@ export function FinanceTrackerModule() {
             <form onSubmit={handleSaveLiquidity} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-muted-foreground mb-1">
-                  Saldo Global Disponible (€)
+                  Saldo Líquido Disponible (€)
                 </label>
                 <input
                   type="number"
-                  step="100"
+                  step="10"
                   required
                   value={liquidityForm.totalLiquidity}
                   onChange={(e) => setLiquidityForm({ ...liquidityForm, totalLiquidity: e.target.value })}
                   className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-sm font-bold outline-none"
+                  data-testid="liquidity-amount-input"
+                />
+              </div>
+
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1 flex items-center gap-1">
+                  <Calendar size={13} className="text-emerald-500" /> Fecha del Registro
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={liquidityForm.date}
+                  onChange={(e) => setLiquidityForm({ ...liquidityForm, date: e.target.value })}
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl font-mono text-xs outline-none"
+                  data-testid="liquidity-date-input"
                 />
               </div>
 
@@ -1451,6 +1762,19 @@ export function FinanceTrackerModule() {
                 />
               </div>
 
+              <div>
+                <label className="block font-bold text-muted-foreground mb-1">
+                  Notas / Observaciones
+                </label>
+                <input
+                  type="text"
+                  value={liquidityForm.notes}
+                  onChange={(e) => setLiquidityForm({ ...liquidityForm, notes: e.target.value })}
+                  placeholder="Ej: Cobro de nómina, revisión saldo..."
+                  className="w-full px-3 py-2 bg-muted/60 border border-border rounded-xl outline-none"
+                />
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <button
                   type="button"
@@ -1459,8 +1783,8 @@ export function FinanceTrackerModule() {
                 >
                   Cancelar
                 </button>
-                <button type="submit" className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer">
-                  Guardar
+                <button type="submit" className="px-4 py-1.5 bg-emerald-600 text-white rounded-xl font-bold cursor-pointer" data-testid="liquidity-save-btn">
+                  Guardar Registro
                 </button>
               </div>
             </form>
