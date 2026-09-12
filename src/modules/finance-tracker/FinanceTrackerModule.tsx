@@ -21,9 +21,10 @@ import {
   Landmark,
   Info,
   Calendar,
-  Home,
   Plus,
   TrendingUp,
+  ArrowLeft,
+  LayoutDashboard,
 } from "lucide-react";
 
 // --- TYPES ---
@@ -144,7 +145,7 @@ export function FinanceTrackerModule() {
     taxRate: "19",
   });
 
-  // Default historical liquidity generator if none exists
+  // Default historical liquidity generator
   const defaultHistory = useMemo<LiquidRecord[]>(() => {
     const today = new Date();
     const months = [];
@@ -330,7 +331,6 @@ export function FinanceTrackerModule() {
     const monthlyExpenses = Number(liquidity.monthlyExpenses) || 1;
     const runwayMonths = monthlyExpenses > 0 ? totalLiquidity / monthlyExpenses : 0;
 
-    // Sorted liquidity history chronologically
     const sortedHistory = [...liquidHistory].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -570,7 +570,6 @@ export function FinanceTrackerModule() {
       updatedHistory.push(newRecord);
     }
 
-    // Sort to find latest
     const sorted = [...updatedHistory].sort(
       (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
     );
@@ -772,9 +771,9 @@ export function FinanceTrackerModule() {
 
   return (
     <div className="space-y-3 md:space-y-4 pb-12">
-      {/* HEADER BAR WITH DASHBOARD HUB RETURN BUTTON */}
+      {/* HEADER BAR */}
       <div className="bg-card border border-border/80 p-3 md:p-4 rounded-3xl shadow-xs space-y-3">
-        <div className="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-10 h-10 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
               <Coins size={20} />
@@ -794,85 +793,78 @@ export function FinanceTrackerModule() {
             </div>
           </div>
 
-          {/* TOP ACTIONS: DASHBOARD RETURN + SETTINGS */}
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-            <a
-              href="/dashboard"
-              data-testid="return-dashboard-btn"
-              className="px-3 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-2xl transition active:scale-95 flex items-center gap-1.5 text-xs font-bold shadow-xs cursor-pointer"
-              title="Volver al panel Hub principal de aplicaciones"
+          {/* SETTINGS BUTTON */}
+          <button
+            onClick={handleOpenSettings}
+            data-testid="settings-btn"
+            className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold shrink-0"
+            title="Ajustes de Prudencia e IRPF"
+          >
+            <SettingsIcon size={16} />
+            <span className="hidden sm:inline">Ajustes</span>
+          </button>
+        </div>
+
+        {/* INTEGRATED VIEW SWITCHER & NAVIGATION */}
+        <div className="pt-1">
+          <div className="bg-muted p-1 rounded-2xl flex items-center gap-1">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              data-testid="nav-visio-general"
+              className={`flex-1 py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeTab === "dashboard"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <Home size={15} />
-              <span className="inline">🏠 Panel Hub</span>
-            </a>
+              <LayoutDashboard size={15} className="shrink-0 text-blue-500" />
+              <span>Visión General</span>
+            </button>
 
             <button
-              onClick={handleOpenSettings}
-              data-testid="settings-btn"
-              className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold"
-              title="Ajustes de Prudencia e IRPF"
+              onClick={() => setActiveTab("liquidity")}
+              data-testid="nav-liquidity"
+              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "liquidity"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
             >
-              <SettingsIcon size={16} />
-              <span className="hidden sm:inline">Ajustes</span>
+              <Wallet size={14} className="shrink-0 text-emerald-500" />
+              <span className="truncate">Liquidez</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("trade")}
+              data-testid="nav-trade"
+              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "trade"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Landmark size={14} className="shrink-0 text-amber-500" />
+              <span className="truncate">Trade Republic</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("airbus")}
+              data-testid="nav-airbus"
+              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                activeTab === "airbus"
+                  ? "bg-card text-foreground shadow-xs border border-border/50"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Plane size={14} className="shrink-0 text-indigo-500" />
+              <span className="truncate">Airbus</span>
             </button>
           </div>
         </div>
-
-        {/* TOP SEGMENTED NAVIGATION TABS */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 bg-muted p-1 rounded-2xl gap-1 text-center">
-          <button
-            onClick={() => setActiveTab("dashboard")}
-            data-testid="tab-dashboard"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "dashboard"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <PieChart size={14} className="shrink-0 text-blue-500" />
-            <span className="truncate">Resumen General</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("liquidity")}
-            data-testid="tab-liquidity"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "liquidity"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Wallet size={14} className="shrink-0 text-emerald-500" />
-            <span className="truncate">Liquidez y Gráfica</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("trade")}
-            data-testid="tab-trade"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "trade"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Landmark size={14} className="shrink-0 text-amber-500" />
-            <span className="truncate">Trade Republic</span>
-          </button>
-          <button
-            onClick={() => setActiveTab("airbus")}
-            data-testid="tab-airbus"
-            className={`py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-              activeTab === "airbus"
-                ? "bg-card text-foreground shadow-xs border border-border/40"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Plane size={14} className="shrink-0 text-indigo-500" />
-            <span className="truncate">Airbus ESOP</span>
-          </button>
-        </div>
       </div>
 
-      {/* TABS CONTENT */}
-      {/* MAIN EXECUTIVE DASHBOARD (RESUMEN GENERAL) */}
+      {/* TABS / VIEWS CONTENT */}
+      {/* BASE HOME VIEW: VISIÓN GENERAL */}
       {activeTab === "dashboard" && (
         <div className="space-y-4 animate-fade-in" data-testid="resumen-dashboard">
           {/* NET WORTH HERO CARD */}
@@ -1061,9 +1053,19 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* TAB: LIQUIDEZ Y EVOLUCIÓN CON GRÁFICA */}
+      {/* DETAIL SECTION: LIQUIDEZ Y EVOLUCIÓN */}
       {activeTab === "liquidity" && (
         <div className="space-y-4 animate-fade-in" data-testid="liquidity-tab">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1 px-2.5 bg-card border border-border/80 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a Visión General</span>
+            </button>
+          </div>
+
           <div className="bg-card p-4 md:p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
             <div className="flex justify-between items-center border-b border-border/60 pb-3 flex-wrap gap-2">
               <div className="flex items-center gap-2">
@@ -1137,7 +1139,6 @@ export function FinanceTrackerModule() {
                       </linearGradient>
                     </defs>
 
-                    {/* CHART DATA PATH GENERATION */}
                     {(() => {
                       const list = calculations.sortedHistory;
                       const amounts = list.map((r) => r.amount);
@@ -1160,18 +1161,13 @@ export function FinanceTrackerModule() {
 
                       return (
                         <g>
-                          {/* Grid Lines */}
                           <line x1="10" y1="30" x2="490" y2="30" stroke="currentColor" className="text-border" strokeDasharray="3 3" opacity="0.5" />
                           <line x1="10" y1="85" x2="490" y2="85" stroke="currentColor" className="text-border" strokeDasharray="3 3" opacity="0.5" />
                           <line x1="10" y1="140" x2="490" y2="140" stroke="currentColor" className="text-border" opacity="0.8" />
 
-                          {/* Shaded Area */}
                           <path d={areaD} fill="url(#liquidityGrad)" />
-
-                          {/* Main Line */}
                           <path d={pathD} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
 
-                          {/* Interactive Points */}
                           {points.map((p, idx) => (
                             <g key={idx}>
                               <circle cx={p.x} cy={p.y} r="5" fill="#10b981" stroke="var(--color-card, #ffffff)" strokeWidth="2" />
@@ -1259,9 +1255,19 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* TAB: TRADE REPUBLIC */}
+      {/* DETAIL SECTION: TRADE REPUBLIC */}
       {activeTab === "trade" && (
-        <div className="space-y-3 animate-fade-in" data-testid="trade-republic-tab">
+        <div className="space-y-4 animate-fade-in" data-testid="trade-republic-tab">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1 px-2.5 bg-card border border-border/80 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a Visión General</span>
+            </button>
+          </div>
+
           <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-4">
             <div className="flex justify-between items-center border-b border-border/60 pb-3">
               <div className="flex items-center gap-2">
@@ -1284,7 +1290,7 @@ export function FinanceTrackerModule() {
               </button>
             </div>
 
-            {/* NOTICE BANNER: Manual mode without auto-recalculations */}
+            {/* NOTICE BANNER */}
             <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-800 dark:text-amber-300 text-xs font-semibold space-y-1">
               <div className="flex items-center gap-1.5 font-bold text-amber-700 dark:text-amber-400">
                 <Info size={16} className="shrink-0" />
@@ -1349,9 +1355,19 @@ export function FinanceTrackerModule() {
         </div>
       )}
 
-      {/* TAB: AIRBUS ESOP WEALTH TERMINAL */}
+      {/* DETAIL SECTION: AIRBUS ESOP */}
       {activeTab === "airbus" && (
-        <div className="space-y-3 animate-fade-in">
+        <div className="space-y-4 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <button
+              onClick={() => setActiveTab("dashboard")}
+              className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1.5 py-1 px-2.5 bg-card border border-border/80 rounded-xl shadow-xs transition cursor-pointer"
+            >
+              <ArrowLeft size={14} />
+              <span>Volver a Visión General</span>
+            </button>
+          </div>
+
           <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3">
             <div className="flex justify-between items-center border-b border-border/60 pb-2.5">
               <h2 className="text-sm font-extrabold flex items-center gap-2 text-foreground">
@@ -1489,7 +1505,6 @@ export function FinanceTrackerModule() {
                       </div>
                     </div>
 
-                    {/* DETAILED FISCAL BREAKDOWN */}
                     <button
                       onClick={() => setExpandedAirbusId(expandedAirbusId === pkg.id ? null : pkg.id)}
                       className="w-full flex items-center justify-between text-[10px] font-bold text-muted-foreground hover:text-foreground px-1 py-0.5 cursor-pointer"
