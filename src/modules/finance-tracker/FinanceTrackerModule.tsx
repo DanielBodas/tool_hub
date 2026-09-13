@@ -770,285 +770,252 @@ export function FinanceTrackerModule() {
   }
 
   return (
-    <div className="space-y-3 md:space-y-4 pb-12">
-      {/* HEADER BAR */}
-      <div className="bg-card border border-border/80 p-3 md:p-4 rounded-3xl shadow-xs space-y-3">
+    <div className="space-y-2.5 max-w-2xl mx-auto pb-8">
+      {/* ULTRA-COMPACT HEADER & TAB BAR */}
+      <div className="bg-card border border-border/80 p-2.5 rounded-2xl shadow-xs space-y-2">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-10 h-10 bg-primary/10 text-primary rounded-2xl flex items-center justify-center shrink-0">
-              <Coins size={20} />
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 bg-primary/10 text-primary rounded-xl flex items-center justify-center shrink-0">
+              <Coins size={16} />
             </div>
             <div className="min-w-0">
-              <h1 className="text-sm sm:text-base md:text-lg font-black text-foreground tracking-tight leading-none">
-                Gestor Financiero
-              </h1>
-              <div className="flex items-center gap-2 text-[11px] text-muted-foreground font-semibold mt-1">
-                <span className="inline-flex items-center gap-1 font-bold">
-                  <span className={`w-2 h-2 rounded-full ${syncStatus === "synced" ? "bg-emerald-500" : "bg-amber-500"}`} />
-                  {syncStatus === "synced" ? "BD Conectada" : "Modo Local"}
+              <div className="flex items-center gap-2">
+                <h1 className="text-xs sm:text-sm font-black text-foreground tracking-tight leading-none">
+                  Gestor Financiero
+                </h1>
+                <span className="text-[10px] font-bold bg-muted text-muted-foreground px-1.5 py-0.5 rounded-md">
+                  {formatEUR(calculations.totalNetWorth)}
                 </span>
-                <span>•</span>
-                <span>Patrimonio: <strong className="text-foreground">{formatEUR(calculations.totalNetWorth)}</strong></span>
               </div>
             </div>
           </div>
 
-          {/* SETTINGS BUTTON */}
           <button
             onClick={handleOpenSettings}
             data-testid="settings-btn"
-            className="p-2.5 bg-muted hover:bg-muted/80 text-foreground rounded-2xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1.5 text-xs font-bold shrink-0"
-            title="Ajustes de Prudencia e IRPF"
+            className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl border border-border transition active:scale-95 cursor-pointer flex items-center gap-1 text-[11px] font-bold shrink-0"
+            title="Ajustes"
           >
-            <SettingsIcon size={16} />
+            <SettingsIcon size={14} />
             <span className="hidden sm:inline">Ajustes</span>
           </button>
         </div>
 
-        {/* INTEGRATED VIEW SWITCHER & NAVIGATION */}
-        <div className="pt-1">
-          <div className="bg-muted p-1 rounded-2xl flex items-center gap-1">
-            <button
-              onClick={() => setActiveTab("dashboard")}
-              data-testid="nav-visio-general"
-              className={`flex-1 py-2 px-2 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                activeTab === "dashboard"
-                  ? "bg-card text-foreground shadow-xs border border-border/50"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <LayoutDashboard size={15} className="shrink-0 text-blue-500" />
-              <span>Visión General</span>
-            </button>
+        {/* COMPACT VIEW SWITCHER */}
+        <div className="bg-muted p-1 rounded-xl flex items-center gap-1 text-[11px] font-extrabold">
+          <button
+            onClick={() => setActiveTab("dashboard")}
+            data-testid="nav-visio-general"
+            className={`flex-1 py-1.5 px-1.5 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "dashboard"
+                ? "bg-card text-foreground shadow-xs border border-border/50 font-black"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <LayoutDashboard size={13} className="shrink-0 text-blue-500" />
+            <span>General</span>
+          </button>
 
-            <button
-              onClick={() => setActiveTab("liquidity")}
-              data-testid="nav-liquidity"
-              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                activeTab === "liquidity"
-                  ? "bg-card text-foreground shadow-xs border border-border/50"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Wallet size={14} className="shrink-0 text-emerald-500" />
-              <span className="truncate">Liquidez</span>
-            </button>
+          <button
+            onClick={() => setActiveTab("liquidity")}
+            data-testid="nav-liquidity"
+            className={`flex-1 py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "liquidity"
+                ? "bg-card text-foreground shadow-xs border border-border/50 font-black"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Wallet size={13} className="shrink-0 text-emerald-500" />
+            <span className="truncate">Liquidez</span>
+          </button>
 
-            <button
-              onClick={() => setActiveTab("trade")}
-              data-testid="nav-trade"
-              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                activeTab === "trade"
-                  ? "bg-card text-foreground shadow-xs border border-border/50"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Landmark size={14} className="shrink-0 text-amber-500" />
-              <span className="truncate">Trade Republic</span>
-            </button>
+          <button
+            onClick={() => setActiveTab("trade")}
+            data-testid="nav-trade"
+            className={`flex-1 py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "trade"
+                ? "bg-card text-foreground shadow-xs border border-border/50 font-black"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Landmark size={13} className="shrink-0 text-amber-500" />
+            <span className="truncate">Trade</span>
+          </button>
 
-            <button
-              onClick={() => setActiveTab("airbus")}
-              data-testid="nav-airbus"
-              className={`flex-1 py-2 px-1 text-xs font-extrabold rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer ${
-                activeTab === "airbus"
-                  ? "bg-card text-foreground shadow-xs border border-border/50"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Plane size={14} className="shrink-0 text-indigo-500" />
-              <span className="truncate">Airbus</span>
-            </button>
-          </div>
+          <button
+            onClick={() => setActiveTab("airbus")}
+            data-testid="nav-airbus"
+            className={`flex-1 py-1.5 px-1 rounded-lg transition-all flex items-center justify-center gap-1 cursor-pointer ${
+              activeTab === "airbus"
+                ? "bg-card text-foreground shadow-xs border border-border/50 font-black"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <Plane size={13} className="shrink-0 text-indigo-500" />
+            <span className="truncate">Airbus</span>
+          </button>
         </div>
       </div>
 
       {/* TABS / VIEWS CONTENT */}
-      {/* BASE HOME VIEW: VISIÓN GENERAL */}
+      {/* BASE HOME VIEW: VISIÓN GENERAL SIMPLE (LOW-SCROLL MOBILE DESIGN) */}
       {activeTab === "dashboard" && (
-        <div className="space-y-4 animate-fade-in" data-testid="resumen-dashboard">
-          {/* NET WORTH HERO CARD */}
-          <div className="bg-card p-5 rounded-3xl border border-border/80 shadow-xs space-y-3">
-            <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
-              Patrimonio Neto Total
-            </span>
-            <p className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
-              {formatEUR(calculations.totalNetWorth)}
-            </p>
+        <div className="space-y-2.5 animate-fade-in" data-testid="resumen-dashboard">
+          {/* NET WORTH MINI HERO BANNER */}
+          <div className="bg-card p-3 rounded-2xl border border-border/80 shadow-xs flex items-center justify-between gap-2">
+            <div>
+              <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground block">
+                Patrimonio Total
+              </span>
+              <p className="text-2xl sm:text-3xl font-black tracking-tight text-foreground leading-tight">
+                {formatEUR(calculations.totalNetWorth)}
+              </p>
+            </div>
 
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
-              <div className="bg-emerald-500/10 p-3 rounded-2xl border border-emerald-500/20">
-                <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 uppercase">Liquidez Inmediata</span>
-                <p className="text-lg font-black text-emerald-600 dark:text-emerald-400">{formatEUR(calculations.totalLiquidity)}</p>
-                <p className="text-[10px] text-emerald-600/80 dark:text-emerald-400/80 font-bold">{calculations.liquidityRatio.toFixed(0)}% del patrimonio</p>
+            <div className="flex gap-1.5 text-right text-[10px]">
+              <div className="bg-emerald-500/10 px-2 py-1 rounded-xl border border-emerald-500/20">
+                <span className="text-emerald-600 dark:text-emerald-400 font-bold block">Liquidez</span>
+                <strong className="text-emerald-700 dark:text-emerald-300 font-extrabold">{formatEUR(calculations.totalLiquidity)}</strong>
               </div>
-
-              <div className="bg-indigo-500/10 p-3 rounded-2xl border border-indigo-500/20">
-                <span className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 uppercase">Inversiones e Interés</span>
-                <p className="text-lg font-black text-indigo-600 dark:text-indigo-400">{formatEUR(calculations.totalInvestments)}</p>
-                <p className="text-[10px] text-indigo-600/80 dark:text-indigo-400/80 font-bold">{calculations.investmentRatio.toFixed(0)}% del patrimonio</p>
+              <div className="bg-indigo-500/10 px-2 py-1 rounded-xl border border-indigo-500/20">
+                <span className="text-indigo-600 dark:text-indigo-400 font-bold block">Invertido</span>
+                <strong className="text-indigo-700 dark:text-indigo-300 font-extrabold">{formatEUR(calculations.totalInvestments)}</strong>
               </div>
             </div>
           </div>
 
-          {/* THREE ACTIVE PILLARS SUMMARY GRID */}
+          {/* STREAMLINED 3-ROW CARDS (ULTRA COMPACT FOR MOBILE NO-SCROLL) */}
           <div className="space-y-2">
-            <span className="text-xs font-black text-foreground px-1 uppercase tracking-wider text-muted-foreground block">
-              Visión General de Cuentas y Salud Financiera
-            </span>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* PILLAR 1: LIQUIDEZ */}
-              <div className="bg-card p-4 rounded-3xl border border-emerald-500/30 shadow-xs flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Wallet size={15} /> Liquidez
-                    </span>
-                    <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/20">
-                      {calculations.runwayMonths.toFixed(1)} meses
-                    </span>
-                  </div>
-                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.totalLiquidity)}</p>
-                  <p className="text-[11px] text-muted-foreground font-medium">
-                    Gastos est.: <strong className="text-foreground">{formatEUR(calculations.monthlyExpenses)}/mes</strong>
-                  </p>
+            {/* ROW 1: LIQUIDEZ */}
+            <div className="bg-card p-3 rounded-2xl border border-emerald-500/30 shadow-xs flex items-center justify-between gap-2">
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">
+                    <Wallet size={13} /> Liquidez
+                  </span>
+                  <span className="text-[9px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.2 rounded-full border border-emerald-500/20">
+                    {calculations.runwayMonths.toFixed(1)} meses
+                  </span>
                 </div>
-
-                <div className="pt-2 border-t border-border/50 flex gap-2">
-                  <button
-                    onClick={handleOpenAddLiquidityModal}
-                    data-testid="resumen-edit-liquidity-btn"
-                    className="flex-1 py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Plus size={12} /> Registrar Saldo
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("liquidity")}
-                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer flex items-center gap-1 text-xs font-extrabold"
-                    title="Ver gráfica de evolución de liquidez"
-                  >
-                    <TrendingUp size={14} className="text-emerald-500" />
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
+                <p className="text-lg font-black text-foreground leading-tight">{formatEUR(calculations.totalLiquidity)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Gastos: <strong className="text-foreground">{formatEUR(calculations.monthlyExpenses)}/mes</strong>
+                </p>
               </div>
 
-              {/* PILLAR 2: TRADE REPUBLIC */}
-              <div className="bg-card p-4 rounded-3xl border border-amber-500/30 shadow-xs flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Landmark size={15} /> Trade Republic
-                    </span>
-                    <span className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/20">
-                      {calculations.tradeRate.toFixed(2)}% TIN/TAE
-                    </span>
-                  </div>
-                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.tradeBalance)}</p>
-                  <p className="text-[11px] text-muted-foreground font-medium">
-                    Rendimiento est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.tradeMonthlyEst)}/mes</strong>
-                  </p>
-                </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={handleOpenAddLiquidityModal}
+                  data-testid="resumen-edit-liquidity-btn"
+                  className="py-1.5 px-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-xl font-bold text-[11px] transition cursor-pointer flex items-center gap-1"
+                >
+                  <Plus size={12} /> <span className="hidden sm:inline">Registrar</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("liquidity")}
+                  className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
+                  title="Ver tendencia"
+                >
+                  <TrendingUp size={14} className="text-emerald-500" />
+                </button>
+              </div>
+            </div>
 
-                <div className="pt-2 border-t border-border/50 flex gap-2">
-                  <button
-                    onClick={handleOpenTradeModal}
-                    data-testid="resumen-edit-trade-btn"
-                    className="flex-1 py-1.5 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    <Edit2 size={12} /> Corregir Saldo
-                  </button>
-                  <button
-                    onClick={() => setActiveTab("trade")}
-                    className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
-                    title="Ver detalle Trade Republic"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
+            {/* ROW 2: TRADE REPUBLIC */}
+            <div className="bg-card p-3 rounded-2xl border border-amber-500/30 shadow-xs flex items-center justify-between gap-2">
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-amber-600 dark:text-amber-400 uppercase flex items-center gap-1">
+                    <Landmark size={13} /> Trade Republic
+                  </span>
+                  <span className="text-[9px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded-full border border-amber-500/20">
+                    {calculations.tradeRate.toFixed(2)}% TIN
+                  </span>
                 </div>
+                <p className="text-lg font-black text-foreground leading-tight">{formatEUR(calculations.tradeBalance)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Comisión est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.tradeMonthlyEst)}/mes</strong>
+                </p>
               </div>
 
-              {/* PILLAR 3: AIRBUS ESOP */}
-              <div className="bg-card p-4 rounded-3xl border border-indigo-500/30 shadow-xs flex flex-col justify-between space-y-3">
-                <div className="space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                      <Plane size={15} /> Airbus ESOP
-                    </span>
-                    <span className="text-[10px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-500/20">
-                      {calculations.totalAirbusShares} uds
-                    </span>
-                  </div>
-                  <p className="text-2xl font-black text-foreground">{formatEUR(calculations.totalAirbusMarketValue)}</p>
-                  <p className="text-[11px] text-muted-foreground font-medium">
-                    Beneficio neto est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.totalAirbusNetProfitIfSold)}</strong>
-                  </p>
-                </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={handleOpenTradeModal}
+                  data-testid="resumen-edit-trade-btn"
+                  className="py-1.5 px-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-xl font-bold text-[11px] transition cursor-pointer flex items-center gap-1"
+                >
+                  <Edit2 size={11} /> <span className="hidden sm:inline">Corregir</span>
+                </button>
+                <button
+                  onClick={() => setActiveTab("trade")}
+                  className="p-1.5 bg-muted hover:bg-muted/80 text-foreground rounded-xl transition cursor-pointer"
+                  title="Detalle Trade"
+                >
+                  <ChevronRight size={15} />
+                </button>
+              </div>
+            </div>
 
-                <div className="pt-2 border-t border-border/50 flex gap-2">
-                  <button
-                    onClick={() => setActiveTab("airbus")}
-                    className="flex-1 py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-xs transition cursor-pointer flex items-center justify-center gap-1"
-                  >
-                    ✈️ Ver Añadas y Detalles
-                  </button>
+            {/* ROW 3: AIRBUS ESOP */}
+            <div className="bg-card p-3 rounded-2xl border border-indigo-500/30 shadow-xs flex items-center justify-between gap-2">
+              <div className="min-w-0 space-y-0.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-black text-indigo-600 dark:text-indigo-400 uppercase flex items-center gap-1">
+                    <Plane size={13} /> Airbus ESOP
+                  </span>
+                  <span className="text-[9px] font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-1.5 py-0.2 rounded-full border border-indigo-500/20">
+                    {calculations.totalAirbusShares} uds
+                  </span>
                 </div>
+                <p className="text-lg font-black text-foreground leading-tight">{formatEUR(calculations.totalAirbusMarketValue)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">
+                  Beneficio neto est.: <strong className="text-emerald-600 dark:text-emerald-400">+{formatEUR(calculations.totalAirbusNetProfitIfSold)}</strong>
+                </p>
+              </div>
+
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => setActiveTab("airbus")}
+                  className="py-1.5 px-2 bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold text-[11px] transition cursor-pointer flex items-center gap-1"
+                >
+                  ✈️ <span className="hidden sm:inline">Añadas</span>
+                  <ChevronRight size={13} />
+                </button>
               </div>
             </div>
           </div>
 
-          {/* ASSET ALLOCATION BAR & PRUDENCE GAUGE */}
-          <div className="bg-card p-4 rounded-3xl border border-border/80 shadow-xs space-y-3">
-            <div className="flex justify-between items-center text-xs font-extrabold">
-              <span className="flex items-center gap-1.5 text-foreground">
-                <PieChart size={15} className="text-blue-500" /> Distribución y Control de Riesgo
+          {/* ULTRA-COMPACT ALLOCATION BAR & HEALTH WARNING */}
+          <div className="bg-card p-2.5 rounded-2xl border border-border/80 shadow-xs space-y-1.5 text-[10px]">
+            <div className="flex justify-between items-center font-bold">
+              <span className="flex items-center gap-1 text-foreground">
+                <PieChart size={13} className="text-blue-500" /> Distribución Activos
               </span>
-              <span className="text-blue-600 dark:text-blue-400 bg-blue-500/10 px-2.5 py-0.5 rounded-full text-[10px] font-black">
-                Máx Inversión: {settings.targetInvestmentRatio}%
+              <span className="text-muted-foreground font-semibold">
+                Límite Inversión: {settings.targetInvestmentRatio}%
               </span>
             </div>
 
-            <div className="relative w-full h-5 bg-muted rounded-full overflow-hidden flex p-0.5 border border-border">
+            <div className="relative w-full h-3 bg-muted rounded-full overflow-hidden flex p-0.5 border border-border/60">
               <div
                 className="bg-emerald-500 h-full rounded-l-full transition-all duration-300"
                 style={{ width: `${Math.max(2, calculations.liquidityRatio)}%` }}
-                title={`Liquidez ${calculations.liquidityRatio.toFixed(0)}%`}
               />
               <div
                 className="bg-amber-500 h-full transition-all duration-300"
                 style={{ width: `${Math.max(2, calculations.tradeShareRatio)}%` }}
-                title={`Trade Republic ${calculations.tradeShareRatio.toFixed(0)}%`}
               />
               <div
                 className="bg-indigo-600 h-full rounded-r-full transition-all duration-300"
                 style={{ width: `${Math.max(2, calculations.airbusShareRatio)}%` }}
-                title={`Airbus ESOP ${calculations.airbusShareRatio.toFixed(0)}%`}
-              />
-              <div
-                className="absolute top-0 bottom-0 w-0.5 bg-foreground z-10"
-                style={{ left: `${settings.targetInvestmentRatio}%` }}
               />
             </div>
 
-            <div className="flex justify-between text-[10px] font-bold flex-wrap gap-1">
-              <span className="text-emerald-600 dark:text-emerald-400">● Liquidez ({calculations.liquidityRatio.toFixed(0)}%)</span>
-              <span className="text-amber-600 dark:text-amber-400">● Trade ({calculations.tradeShareRatio.toFixed(0)}%)</span>
-              <span className="text-indigo-600 dark:text-indigo-400">● Airbus ({calculations.airbusShareRatio.toFixed(0)}%)</span>
+            <div className="flex justify-between font-bold text-[9px] text-muted-foreground">
+              <span className="text-emerald-600 dark:text-emerald-400">Liq. {calculations.liquidityRatio.toFixed(0)}%</span>
+              <span className="text-amber-600 dark:text-amber-400">Trade {calculations.tradeShareRatio.toFixed(0)}%</span>
+              <span className="text-indigo-600 dark:text-indigo-400">Airbus {calculations.airbusShareRatio.toFixed(0)}%</span>
             </div>
-
-            {calculations.healthStatus === "warning" && (
-              <div className="p-2.5 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-rose-700 dark:text-rose-300 text-[11px] font-bold flex items-center gap-2">
-                <ShieldAlert size={16} className="shrink-0 text-rose-600 dark:text-rose-400" />
-                <span>Atención: Has superado el límite de prudencia fijado ({settings.targetInvestmentRatio}%).</span>
-              </div>
-            )}
-            {calculations.healthStatus === "safe" && (
-              <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-700 dark:text-emerald-300 text-[11px] font-bold flex items-center gap-2">
-                <ShieldCheck size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>Distribución equilibrada y colchón de {calculations.runwayMonths.toFixed(1)} meses de gastos cubiertos.</span>
-              </div>
-            )}
           </div>
         </div>
       )}
