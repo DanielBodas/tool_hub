@@ -189,6 +189,15 @@ export function BabyLeavePlannerModule() {
   const [currentFilter, setCurrentFilter] = useState<"all" | "Madre" | "Padre">("all");
   const [openSidebar, setOpenSidebar] = useState<"mom" | "dad" | null>(null);
 
+  // Long-press Popover State
+  const [longPressPopover, setLongPressPopover] = useState<{
+    dateStr: string;
+    x: number;
+    y: number;
+  } | null>(null);
+  const longPressTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const isLongPressTriggeredRef = React.useRef<boolean>(false);
+
   // Day Management Preferences
   const [skipNonWorkDays, setSkipNonWorkDays] = useState(true);
 
@@ -388,8 +397,46 @@ export function BabyLeavePlannerModule() {
     return `Nacido el ${birth.toLocaleDateString("es-ES", options)}`;
   }, [globalData.birthDate]);
 
+  // Long press handlers for mobile & desktop hover/hold
+  const startLongPress = (dateStr: string, clientX: number, clientY: number) => {
+    isLongPressTriggeredRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    longPressTimerRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        try {
+          navigator.vibrate(30);
+        } catch {}
+      }
+      setLongPressPopover({
+        dateStr,
+        x: clientX,
+        y: clientY,
+      });
+    }, 450); // 450ms long press threshold
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
   // Double Click / Selection handlers
   const handleDateClick = (e: React.MouseEvent, dateStr: string) => {
+    // If click was caused by releasing a long press, ignore click selection
+    if (isLongPressTriggeredRef.current) {
+      isLongPressTriggeredRef.current = false;
+      return;
+    }
+
+    // If popover is open, close it on single tap
+    if (longPressPopover) {
+      setLongPressPopover(null);
+      return;
+    }
+
     // If Holiday mode is active, clicking immediately toggles the holiday on that date
     if (holidayMode) {
       toggleHolidayDirectly(dateStr);
@@ -2283,6 +2330,15 @@ export function BabyLeavePlannerModule() {
                       id={`cell-${dateStr}`}
                       className={`day-cell-fixed ${cssClass} ${isSelected ? "selected" : ""}`}
                       title={hoverInfo}
+                      onTouchStart={(e) => {
+                        const touch = e.touches[0];
+                        if (touch) startLongPress(dateStr, touch.clientX, touch.clientY);
+                      }}
+                      onTouchEnd={cancelLongPress}
+                      onTouchMove={cancelLongPress}
+                      onMouseDown={(e) => startLongPress(dateStr, e.clientX, e.clientY)}
+                      onMouseUp={cancelLongPress}
+                      onMouseLeave={cancelLongPress}
                       onClick={(e) => handleDateClick(e, dateStr)}
                       onDoubleClick={() => handleDateDoubleClick(dateStr)}
                     >
@@ -2333,7 +2389,129 @@ export function BabyLeavePlannerModule() {
         )}
       </div>
 
-      {/* Floating Range Selection Bar - Lightweight Non-Intrusive Banner */}
+      {/* Cool Long-Press Floating Glassmorphic Popover Card */}
+      {longPressPopover && (
+        <div
+          className="fixed inset-0 z-[3500] pointer-events-auto"
+          onClick={() => setLongPressPopover(null)}
+        >
+          <div
+            className="absolute bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-slate-200/90 dark:border-slate-700/90 shadow-2xl rounded-2xl p-3.5 max-w-xs w-72 animate-in zoom-in-95 duration-150 space-y-2 pointer-events-auto"
+            style={{
+              left: `${Math.min(Math.max(16, longPressPopover.x - 140), typeof window !== "undefined" ? window.innerWidth - 300 : 200)}px`,
+              top: `${Math.min(Math.max(16, longPressPopover.y - 120), typeof window !== "undefined" ? window.innerHeight - 220 : 200)}px`,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const [y, m, d] = longPressPopover.dateStr.split("-").map(Number);
+              const dateObj = new Date(y, m - 1, d);
+              const formattedDate = dateObj.toLocaleDateString("es-ES", {
+                weekday: "long",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              });
+
+              const momEvt = globalData.events.find((e) => e.date === longPressPopover.dateStr && e.person === "Madre");
+              const dadEvt = globalData.events.find((e) => e.date === longPressPopover.dateStr && e.person === "Padre");
+              const festivo = globalData.festivos.find((f) => f.date === longPressPopover.dateStr);
+
+              let isMandatory = false;
+              if (globalData.birthDate && mandatoryEndStr) {
+                const checkTime = dateObj.getTime();
+                const [by, bm, bd] = globalData.birthDate.split("-").map(Number);
+                const birthTime = new Date(by, bm - 1, bd).getTime();
+                const [mey, mem, med] = mandatoryEndStr.split("-").map(Number);
+                const mandEndTime = new Date(mey, mem - 1, med).getTime();
+                isMandatory = checkTime >= birthTime && checkTime <= mandEndTime;
+              }
+
+              return (
+                <>
+                  <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 capitalize">
+                      📅 {formattedDate}
+                    </span>
+                    <button
+                      onClick={() => setLongPressPopover(null)}
+                      className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded-lg"
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+
+                  <div className="space-y-1.5 text-xs pt-0.5">
+                    {momEvt && (
+                      <div className="p-2 bg-pink-50 dark:bg-pink-950/40 rounded-xl border border-pink-100 dark:border-pink-900/60 flex items-center gap-2">
+                        <span className="text-sm">👩</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[9px] font-black text-pink-600 dark:text-pink-400 uppercase">
+                            Madre
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                            {momEvt.type}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {dadEvt && (
+                      <div className="p-2 bg-sky-50 dark:bg-sky-950/40 rounded-xl border border-sky-100 dark:border-sky-900/60 flex items-center gap-2">
+                        <span className="text-sm">👨</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[9px] font-black text-sky-600 dark:text-sky-400 uppercase">
+                            Padre
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                            {dadEvt.type}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {festivo && (
+                      <div className="p-2 bg-amber-50 dark:bg-amber-950/40 rounded-xl border border-amber-100 dark:border-amber-900/60 flex items-center gap-2">
+                        <span className="text-sm">🚩</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[9px] font-black text-amber-600 dark:text-amber-400 uppercase">
+                            Festivo
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                            {festivo.nombre}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {isMandatory && (
+                      <div className="p-2 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-100 dark:border-purple-900/60 flex items-center gap-2">
+                        <span className="text-sm">👶</span>
+                        <div className="min-w-0 flex-1">
+                          <span className="block text-[9px] font-black text-purple-600 dark:text-purple-400 uppercase">
+                            Periodo Obligatorio
+                          </span>
+                          <span className="font-bold text-slate-800 dark:text-slate-100 text-xs">
+                            Primeras 6 semanas obligatorias
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {!momEvt && !dadEvt && !festivo && !isMandatory && (
+                      <div className="p-2 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl text-slate-500 dark:text-slate-400 text-xs italic text-center">
+                        Sin permisos ni festivos asignados
+                      </div>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
+      {/* Floating Range Selection Bar - Clean Capsule */}
       <div id="floating-wrapper" className={selectedDates.length > 0 ? "visible" : ""}>
         <button
           className="btn-float-close"
@@ -2343,56 +2521,6 @@ export function BabyLeavePlannerModule() {
           <X size={13} />
         </button>
         <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
-
-        {/* Lightweight Inline Detail Text Banner */}
-        <div className="flex items-center gap-1.5 px-1 max-w-[62vw] sm:max-w-md overflow-x-auto whitespace-nowrap scrollbar-none text-[11px] font-extrabold text-slate-800 dark:text-slate-200">
-          {selectedDates.length === 1 && getSelectedDatesDetails[0] ? (
-            (() => {
-              const item = getSelectedDatesDetails[0];
-              const hasAssignments = item.momEvt || item.dadEvt || item.festivo || item.isMandatory;
-              return (
-                <div className="flex items-center gap-1.5">
-                  <span className="text-slate-900 dark:text-slate-100 capitalize font-black">
-                    📅 {item.formattedDate}
-                  </span>
-                  {hasAssignments ? (
-                    <div className="flex items-center gap-1">
-                      {item.momEvt && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-pink-100 dark:bg-pink-950/80 text-pink-700 dark:text-pink-300 border border-pink-200/80 dark:border-pink-800/80 text-[10px] font-bold">
-                          👩 {item.momEvt.type}
-                        </span>
-                      )}
-                      {item.dadEvt && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/80 text-[10px] font-bold">
-                          👨 {item.dadEvt.type}
-                        </span>
-                      )}
-                      {item.festivo && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 text-[10px] font-bold">
-                          🚩 {item.festivo.nombre}
-                        </span>
-                      )}
-                      {item.isMandatory && (
-                        <span className="px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/80 text-[10px] font-bold">
-                          👶 Obligatorio
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-slate-400 font-normal italic">
-                      Sin asignar
-                    </span>
-                  )}
-                </div>
-              );
-            })()
-          ) : (
-            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
-              📅 {selectedDates.length} días seleccionados
-            </span>
-          )}
-        </div>
-
         <button
           className="btn-float-action shrink-0"
           onClick={() => openModalForSelection()}
@@ -2400,7 +2528,7 @@ export function BabyLeavePlannerModule() {
           <span className="bg-white text-indigo-700 dark:bg-slate-950 dark:text-indigo-300 px-1.5 py-0.5 rounded-md text-[10px] font-black leading-none flex items-center justify-center min-w-[16px] shadow-xs">
             {selectedDates.length}
           </span>
-          <span className="text-[11px] font-black tracking-tight">Configurar</span>
+          <span className="text-[11px] font-black tracking-tight">Configurar Días</span>
         </button>
       </div>
 
