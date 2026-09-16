@@ -10,6 +10,8 @@ import {
   Plus,
   ArrowUp,
   ArrowDown,
+  Eye,
+  Info,
 } from "lucide-react";
 
 // Define TypeScript interfaces for our data structure
@@ -236,6 +238,7 @@ export function BabyLeavePlannerModule() {
 
   // Modal States
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<string>("Madre"); // "Madre" | "Padre" | "Festivo"
   const [selectedType, setSelectedType] = useState<string>("");
   const [holidayNameVal, setHolidayNameVal] = useState("Festivo");
@@ -312,6 +315,47 @@ export function BabyLeavePlannerModule() {
     mEnd.setDate(bDate.getDate() + 41);
     return formatDateStr(mEnd);
   }, [globalData.birthDate]);
+
+  // Selected Dates Details Inspector helper
+  const getSelectedDatesDetails = useMemo(() => {
+    if (selectedDates.length === 0) return [];
+
+    const sortedDates = [...selectedDates].sort();
+
+    return sortedDates.map((dateStr) => {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const dateObj = new Date(y, m - 1, d);
+      const formattedDate = dateObj.toLocaleDateString("es-ES", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
+      const momEvt = globalData.events.find((e) => e.date === dateStr && e.person === "Madre");
+      const dadEvt = globalData.events.find((e) => e.date === dateStr && e.person === "Padre");
+      const festivo = globalData.festivos.find((f) => f.date === dateStr);
+
+      let isMandatory = false;
+      if (globalData.birthDate && mandatoryEndStr) {
+        const checkTime = dateObj.getTime();
+        const [by, bm, bd] = globalData.birthDate.split("-").map(Number);
+        const birthTime = new Date(by, bm - 1, bd).getTime();
+        const [mey, mem, med] = mandatoryEndStr.split("-").map(Number);
+        const mandEndTime = new Date(mey, mem - 1, med).getTime();
+        isMandatory = checkTime >= birthTime && checkTime <= mandEndTime;
+      }
+
+      return {
+        dateStr,
+        formattedDate,
+        momEvt,
+        dadEvt,
+        festivo,
+        isMandatory,
+      };
+    });
+  }, [selectedDates, globalData.events, globalData.festivos, globalData.birthDate, mandatoryEndStr]);
 
   // Sidebar controls
   const toggleSidebar = (side: "mom" | "dad") => {
@@ -2302,6 +2346,13 @@ export function BabyLeavePlannerModule() {
         </button>
         <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
         <button
+          className="btn-float-action bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-none border border-slate-200 dark:border-slate-700"
+          onClick={() => setShowDetailModal(true)}
+        >
+          <Eye size={13} className="text-indigo-600 dark:text-indigo-400" />
+          <span className="text-[11px] font-black tracking-tight">Ver Detalle</span>
+        </button>
+        <button
           className="btn-float-action"
           onClick={() => openModalForSelection()}
         >
@@ -2311,6 +2362,128 @@ export function BabyLeavePlannerModule() {
           <span className="text-[11px] font-black tracking-tight">Configurar Días</span>
         </button>
       </div>
+
+      {/* --- DAY DETAILS INSPECTOR MODAL --- */}
+      {showDetailModal && (
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
+          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3 shrink-0">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight flex items-center gap-2">
+                  <Eye size={20} className="text-indigo-600 dark:text-indigo-400" />
+                  Detalle de Días Seleccionados
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Información completa de {selectedDates.length} día(s)
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
+              {getSelectedDatesDetails.map((item) => (
+                <div key={item.dateStr} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-1.5">
+                    <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 capitalize">
+                      📅 {item.formattedDate}
+                    </span>
+                    <span className="text-[10px] font-mono text-slate-400">
+                      {item.dateStr}
+                    </span>
+                  </div>
+
+                  <div className="space-y-2 text-xs">
+                    {item.momEvt && (
+                      <div className="p-2.5 bg-pink-50 dark:bg-pink-950/30 rounded-xl border border-pink-100 dark:border-pink-900/50 flex items-start gap-2">
+                        <span className="text-base">👩</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-extrabold text-pink-600 dark:text-pink-400 uppercase tracking-wider">
+                            Madre
+                          </div>
+                          <div className="font-black text-slate-800 dark:text-slate-100 break-words">
+                            {item.momEvt.type}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.dadEvt && (
+                      <div className="p-2.5 bg-sky-50 dark:bg-sky-950/30 rounded-xl border border-sky-100 dark:border-sky-900/50 flex items-start gap-2">
+                        <span className="text-base">👨</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-extrabold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
+                            Padre
+                          </div>
+                          <div className="font-black text-slate-800 dark:text-slate-100 break-words">
+                            {item.dadEvt.type}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.festivo && (
+                      <div className="p-2.5 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-100 dark:border-amber-900/50 flex items-start gap-2">
+                        <span className="text-base">🚩</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+                            Día Festivo
+                          </div>
+                          <div className="font-black text-slate-800 dark:text-slate-100 break-words">
+                            {item.festivo.nombre}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {item.isMandatory && (
+                      <div className="p-2.5 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-100 dark:border-purple-900/50 flex items-start gap-2">
+                        <span className="text-base">👶</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
+                            Periodo Obligatorio
+                          </div>
+                          <div className="font-black text-slate-800 dark:text-slate-100">
+                            Primeras 6 semanas obligatorias
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!item.momEvt && !item.dadEvt && !item.festivo && !item.isMandatory && (
+                      <div className="p-2.5 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl text-slate-500 dark:text-slate-400 text-xs italic text-center">
+                        Sin permisos ni festivos asignados
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
+              <button
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
+                onClick={() => {
+                  setShowDetailModal(false);
+                  openModalForSelection();
+                }}
+              >
+                Configurar Días
+              </button>
+              <button
+                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
+                onClick={() => setShowDetailModal(false)}
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* --- ASSIGN PERMIT MODAL (Tailwind Glassmorphic Overhaul) --- */}
       {showAssignModal && (
@@ -2352,6 +2525,56 @@ export function BabyLeavePlannerModule() {
                 })}
               </div>
             </div>
+
+            {/* Current Details Full Text Summary Card inside Assign Modal */}
+            {getSelectedDatesDetails.length > 0 && (
+              <div className="p-3 bg-slate-50 dark:bg-slate-900/90 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <Info size={12} className="text-indigo-500" /> Permisos Asignados Actualmente
+                  </span>
+                </div>
+                <div className="space-y-1.5 max-h-28 overflow-y-auto text-xs pr-1">
+                  {getSelectedDatesDetails.map((item) => (
+                    <div key={item.dateStr} className="p-1.5 bg-white dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700/60 space-y-0.5">
+                      <div className="font-bold text-[10px] text-slate-600 dark:text-slate-400 capitalize">
+                        📅 {item.formattedDate}
+                      </div>
+                      <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 space-y-0.5">
+                        {item.momEvt && (
+                          <div className="text-pink-600 dark:text-pink-400 flex items-center gap-1">
+                            <span>👩 Madre:</span>
+                            <span className="font-extrabold">{item.momEvt.type}</span>
+                          </div>
+                        )}
+                        {item.dadEvt && (
+                          <div className="text-sky-600 dark:text-sky-400 flex items-center gap-1">
+                            <span>👨 Padre:</span>
+                            <span className="font-extrabold">{item.dadEvt.type}</span>
+                          </div>
+                        )}
+                        {item.festivo && (
+                          <div className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                            <span>🚩 Festivo:</span>
+                            <span className="font-extrabold">{item.festivo.nombre}</span>
+                          </div>
+                        )}
+                        {item.isMandatory && (
+                          <div className="text-purple-600 dark:text-purple-400 flex items-center gap-1">
+                            <span>👶 Permiso Obligatorio</span>
+                          </div>
+                        )}
+                        {!item.momEvt && !item.dadEvt && !item.festivo && (
+                          <div className="text-slate-400 dark:text-slate-500 font-normal italic">
+                            Sin permiso ni festivo asignado
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
