@@ -10,7 +10,6 @@ import {
   Plus,
   ArrowUp,
   ArrowDown,
-  Eye,
   Info,
 } from "lucide-react";
 
@@ -238,7 +237,6 @@ export function BabyLeavePlannerModule() {
 
   // Modal States
   const [showAssignModal, setShowAssignModal] = useState(false);
-  const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedPerson, setSelectedPerson] = useState<string>("Madre"); // "Madre" | "Padre" | "Festivo"
   const [selectedType, setSelectedType] = useState<string>("");
   const [holidayNameVal, setHolidayNameVal] = useState("Festivo");
@@ -2335,7 +2333,7 @@ export function BabyLeavePlannerModule() {
         )}
       </div>
 
-      {/* Floating Range Selection Bar - Compact & Modern Pill */}
+      {/* Floating Range Selection Bar - Lightweight Non-Intrusive Banner */}
       <div id="floating-wrapper" className={selectedDates.length > 0 ? "visible" : ""}>
         <button
           className="btn-float-close"
@@ -2345,145 +2343,66 @@ export function BabyLeavePlannerModule() {
           <X size={13} />
         </button>
         <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-700 mx-0.5" />
+
+        {/* Lightweight Inline Detail Text Banner */}
+        <div className="flex items-center gap-1.5 px-1 max-w-[62vw] sm:max-w-md overflow-x-auto whitespace-nowrap scrollbar-none text-[11px] font-extrabold text-slate-800 dark:text-slate-200">
+          {selectedDates.length === 1 && getSelectedDatesDetails[0] ? (
+            (() => {
+              const item = getSelectedDatesDetails[0];
+              const hasAssignments = item.momEvt || item.dadEvt || item.festivo || item.isMandatory;
+              return (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-900 dark:text-slate-100 capitalize font-black">
+                    📅 {item.formattedDate}
+                  </span>
+                  {hasAssignments ? (
+                    <div className="flex items-center gap-1">
+                      {item.momEvt && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-pink-100 dark:bg-pink-950/80 text-pink-700 dark:text-pink-300 border border-pink-200/80 dark:border-pink-800/80 text-[10px] font-bold">
+                          👩 {item.momEvt.type}
+                        </span>
+                      )}
+                      {item.dadEvt && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-sky-100 dark:bg-sky-950/80 text-sky-700 dark:text-sky-300 border border-sky-200/80 dark:border-sky-800/80 text-[10px] font-bold">
+                          👨 {item.dadEvt.type}
+                        </span>
+                      )}
+                      {item.festivo && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-amber-100 dark:bg-amber-950/80 text-amber-800 dark:text-amber-300 border border-amber-200/80 dark:border-amber-800/80 text-[10px] font-bold">
+                          🚩 {item.festivo.nombre}
+                        </span>
+                      )}
+                      {item.isMandatory && (
+                        <span className="px-1.5 py-0.5 rounded-md bg-purple-100 dark:bg-purple-950/80 text-purple-700 dark:text-purple-300 border border-purple-200/80 dark:border-purple-800/80 text-[10px] font-bold">
+                          👶 Obligatorio
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-[10px] text-slate-400 font-normal italic">
+                      Sin asignar
+                    </span>
+                  )}
+                </div>
+              );
+            })()
+          ) : (
+            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-300">
+              📅 {selectedDates.length} días seleccionados
+            </span>
+          )}
+        </div>
+
         <button
-          className="btn-float-action bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 shadow-none border border-slate-200 dark:border-slate-700"
-          onClick={() => setShowDetailModal(true)}
-        >
-          <Eye size={13} className="text-indigo-600 dark:text-indigo-400" />
-          <span className="text-[11px] font-black tracking-tight">Ver Detalle</span>
-        </button>
-        <button
-          className="btn-float-action"
+          className="btn-float-action shrink-0"
           onClick={() => openModalForSelection()}
         >
           <span className="bg-white text-indigo-700 dark:bg-slate-950 dark:text-indigo-300 px-1.5 py-0.5 rounded-md text-[10px] font-black leading-none flex items-center justify-center min-w-[16px] shadow-xs">
             {selectedDates.length}
           </span>
-          <span className="text-[11px] font-black tracking-tight">Configurar Días</span>
+          <span className="text-[11px] font-black tracking-tight">Configurar</span>
         </button>
       </div>
-
-      {/* --- DAY DETAILS INSPECTOR MODAL --- */}
-      {showDetailModal && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-slate-950/60 backdrop-blur-xs flex items-center justify-center z-[3000] p-4">
-          <div className="bg-white dark:bg-slate-800 p-6 rounded-3xl w-full max-w-md mx-auto shadow-2xl border border-slate-100 dark:border-slate-700 animate-in zoom-in-95 duration-200 space-y-4 max-h-[85vh] flex flex-col">
-            <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-700 pb-3 shrink-0">
-              <div>
-                <h3 className="text-lg font-black text-slate-800 dark:text-slate-100 leading-tight flex items-center gap-2">
-                  <Eye size={20} className="text-indigo-600 dark:text-indigo-400" />
-                  Detalle de Días Seleccionados
-                </h3>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Información completa de {selectedDates.length} día(s)
-                </p>
-              </div>
-              <button
-                onClick={() => setShowDetailModal(false)}
-                className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg text-slate-400 transition cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="space-y-3 overflow-y-auto flex-1 pr-1">
-              {getSelectedDatesDetails.map((item) => (
-                <div key={item.dateStr} className="p-3 bg-slate-50 dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 space-y-2">
-                  <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-800 pb-1.5">
-                    <span className="font-extrabold text-xs text-slate-900 dark:text-slate-100 capitalize">
-                      📅 {item.formattedDate}
-                    </span>
-                    <span className="text-[10px] font-mono text-slate-400">
-                      {item.dateStr}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2 text-xs">
-                    {item.momEvt && (
-                      <div className="p-2.5 bg-pink-50 dark:bg-pink-950/30 rounded-xl border border-pink-100 dark:border-pink-900/50 flex items-start gap-2">
-                        <span className="text-base">👩</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-extrabold text-pink-600 dark:text-pink-400 uppercase tracking-wider">
-                            Madre
-                          </div>
-                          <div className="font-black text-slate-800 dark:text-slate-100 break-words">
-                            {item.momEvt.type}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {item.dadEvt && (
-                      <div className="p-2.5 bg-sky-50 dark:bg-sky-950/30 rounded-xl border border-sky-100 dark:border-sky-900/50 flex items-start gap-2">
-                        <span className="text-base">👨</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-extrabold text-sky-600 dark:text-sky-400 uppercase tracking-wider">
-                            Padre
-                          </div>
-                          <div className="font-black text-slate-800 dark:text-slate-100 break-words">
-                            {item.dadEvt.type}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {item.festivo && (
-                      <div className="p-2.5 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-100 dark:border-amber-900/50 flex items-start gap-2">
-                        <span className="text-base">🚩</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-extrabold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
-                            Día Festivo
-                          </div>
-                          <div className="font-black text-slate-800 dark:text-slate-100 break-words">
-                            {item.festivo.nombre}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {item.isMandatory && (
-                      <div className="p-2.5 bg-purple-50 dark:bg-purple-950/30 rounded-xl border border-purple-100 dark:border-purple-900/50 flex items-start gap-2">
-                        <span className="text-base">👶</span>
-                        <div className="flex-1 min-w-0">
-                          <div className="text-[10px] font-extrabold text-purple-600 dark:text-purple-400 uppercase tracking-wider">
-                            Periodo Obligatorio
-                          </div>
-                          <div className="font-black text-slate-800 dark:text-slate-100">
-                            Primeras 6 semanas obligatorias
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!item.momEvt && !item.dadEvt && !item.festivo && !item.isMandatory && (
-                      <div className="p-2.5 bg-slate-100/70 dark:bg-slate-800/70 rounded-xl text-slate-500 dark:text-slate-400 text-xs italic text-center">
-                        Sin permisos ni festivos asignados
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center gap-2 pt-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
-              <button
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition text-sm shadow-xs cursor-pointer"
-                onClick={() => {
-                  setShowDetailModal(false);
-                  openModalForSelection();
-                }}
-              >
-                Configurar Días
-              </button>
-              <button
-                className="px-4 py-2 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl text-slate-600 dark:text-slate-300 font-bold transition text-sm cursor-pointer"
-                onClick={() => setShowDetailModal(false)}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* --- ASSIGN PERMIT MODAL (Tailwind Glassmorphic Overhaul) --- */}
       {showAssignModal && (
