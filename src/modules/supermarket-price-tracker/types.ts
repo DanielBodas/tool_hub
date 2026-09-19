@@ -16,17 +16,26 @@ export interface Brand {
   notes?: string;
 }
 
+export interface ProductVariant {
+  id: string;
+  name: string;     // e.g. "Brik 1L", "Pack 6x1L", "Garrafa 3L", "Garrafa 5L", "Bandeja 500g"
+  quantity: number; // e.g. 1, 6, 3, 5, 500
+  unit: UnitType;   // "L", "kg", "g", "ml", "ud"
+}
+
 export interface Product {
   id: string;
   name: string;
   category: string;
   defaultUnit: UnitType;
+  variants?: ProductVariant[];
   notes?: string;
 }
 
 export interface PriceRecord {
   id: string;
   productId: string;
+  variantId?: string;
   brandId: string;
   supermarketId: string;
   date: string; // YYYY-MM-DD

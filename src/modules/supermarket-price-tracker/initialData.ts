@@ -63,9 +63,13 @@ export const INITIAL_BRANDS: Brand[] = [
 export const INITIAL_PRODUCTS: Product[] = [
   {
     id: "prod-leche",
-    name: "Leche Entera (1L)",
+    name: "Leche Entera",
     category: "Lácteos",
     defaultUnit: "L",
+    variants: [
+      { id: "v-leche-1l", name: "Brik 1L", quantity: 1, unit: "L" },
+      { id: "v-leche-6pack", name: "Pack 6x1L", quantity: 6, unit: "L" },
+    ],
     notes: "Cartón o pack de brik de leche entera",
   },
   {
@@ -73,13 +77,22 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: "Aceite de Oliva Virgen Extra",
     category: "Aceites y Condimentos",
     defaultUnit: "L",
+    variants: [
+      { id: "v-aceite-1l", name: "Botella 1L", quantity: 1, unit: "L" },
+      { id: "v-aceite-3l", name: "Garrafa 3L", quantity: 3, unit: "L" },
+      { id: "v-aceite-5l", name: "Garrafa 5L", quantity: 5, unit: "L" },
+    ],
     notes: "Garrafa de 3L/5L o botella de 1L",
   },
   {
     id: "prod-arroz",
-    name: "Arroz Redondo (1kg)",
+    name: "Arroz Redondo",
     category: "Cereales y Legumbres",
     defaultUnit: "kg",
+    variants: [
+      { id: "v-arroz-1kg", name: "Paquete 1kg", quantity: 1, unit: "kg" },
+      { id: "v-arroz-2kg", name: "Saco 2kg", quantity: 2, unit: "kg" },
+    ],
     notes: "Paquete estándar de arroz para paellas/guisos",
   },
   {
@@ -87,6 +100,11 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: "Pechuga de Pollo Fileteada",
     category: "Frescos y Carnes",
     defaultUnit: "kg",
+    variants: [
+      { id: "v-pollo-500g", name: "Bandeja 500g", quantity: 500, unit: "g" },
+      { id: "v-pollo-650g", name: "Bandeja 650g", quantity: 650, unit: "g" },
+      { id: "v-pollo-1kg", name: "Ahorro 1kg", quantity: 1, unit: "kg" },
+    ],
     notes: "Bandeja de pechuga deshuesada y fileteada",
   },
   {
@@ -94,6 +112,10 @@ export const INITIAL_PRODUCTS: Product[] = [
     name: "Detergente Líquido Lavadora",
     category: "Limpieza del Hogar",
     defaultUnit: "L",
+    variants: [
+      { id: "v-det-3l", name: "Botella 3L (50 lavados)", quantity: 3, unit: "L" },
+      { id: "v-det-5l", name: "Garrafa 5L (80 lavados)", quantity: 5, unit: "L" },
+    ],
     notes: "Detergente concentrado en formato botella",
   },
 ];
@@ -103,6 +125,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-1",
     productId: "prod-leche",
+    variantId: "v-leche-1l",
     brandId: "brand-hacendado",
     supermarketId: "sm-mercadona",
     date: "2024-11-10",
@@ -116,6 +139,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-2",
     productId: "prod-leche",
+    variantId: "v-leche-1l",
     brandId: "brand-hacendado",
     supermarketId: "sm-mercadona",
     date: "2025-01-15",
@@ -129,6 +153,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-3",
     productId: "prod-leche",
+    variantId: "v-leche-6pack",
     brandId: "brand-pascual",
     supermarketId: "sm-carrefour",
     date: "2025-02-01",
@@ -143,6 +168,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-4",
     productId: "prod-leche",
+    variantId: "v-leche-1l",
     brandId: "brand-milbona",
     supermarketId: "sm-lidl",
     date: "2025-02-10",
@@ -159,6 +185,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-5",
     productId: "prod-aceite",
+    variantId: "v-aceite-1l",
     brandId: "brand-hacendado",
     supermarketId: "sm-mercadona",
     date: "2024-10-05",
@@ -172,6 +199,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-6",
     productId: "prod-aceite",
+    variantId: "v-aceite-1l",
     brandId: "brand-hacendado",
     supermarketId: "sm-mercadona",
     date: "2025-01-20",
@@ -186,6 +214,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-7",
     productId: "prod-aceite",
+    variantId: "v-aceite-3l",
     brandId: "brand-carbonell",
     supermarketId: "sm-carrefour",
     date: "2025-02-12",
@@ -202,6 +231,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-8",
     productId: "prod-arroz",
+    variantId: "v-arroz-1kg",
     brandId: "brand-hacendado",
     supermarketId: "sm-mercadona",
     date: "2025-01-10",
@@ -214,6 +244,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-9",
     productId: "prod-arroz",
+    variantId: "v-arroz-1kg",
     brandId: "brand-carrefour",
     supermarketId: "sm-carrefour",
     date: "2025-02-05",
@@ -229,6 +260,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-10",
     productId: "prod-pollo",
+    variantId: "v-pollo-650g",
     brandId: "brand-hacendado",
     supermarketId: "sm-mercadona",
     date: "2025-02-01",
@@ -244,6 +276,7 @@ export const INITIAL_PRICE_RECORDS: PriceRecord[] = [
   {
     id: "pr-11",
     productId: "prod-detergente",
+    variantId: "v-det-3l",
     brandId: "brand-bosqueverde",
     supermarketId: "sm-mercadona",
     date: "2025-01-18",

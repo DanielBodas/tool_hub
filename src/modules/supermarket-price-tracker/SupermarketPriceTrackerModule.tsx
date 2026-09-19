@@ -23,11 +23,15 @@ import {
   ChevronDown,
   ChevronUp,
   X,
+  Plus,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import {
   Supermarket,
   Brand,
   Product,
+  ProductVariant,
   PriceRecord,
   UnitType,
   OfferAssessment,
@@ -61,6 +65,10 @@ export function SupermarketPriceTrackerModule() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showRecentHistory, setShowRecentHistory] = useState(false);
 
+  // Settings Accordions & Search
+  const [settingsSearch, setSettingsSearch] = useState("");
+  const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
+
   // --- 1. VERIFIER STATE ---
   const [verifierProductId, setVerifierProductId] = useState<string>(
     INITIAL_PRODUCTS[0]?.id || ""
@@ -78,8 +86,19 @@ export function SupermarketPriceTrackerModule() {
     const prod = products.find((p) => p.id === prodId);
     if (prod) {
       setVerifierUnit(prod.defaultUnit);
+      if (prod.variants && prod.variants.length > 0) {
+        setVerifierQuantity(String(prod.variants[0].quantity));
+        setVerifierUnit(prod.variants[0].unit);
+      } else {
+        setVerifierQuantity("1");
+      }
     }
     setVerifierBrandId("");
+  };
+
+  const applyVerifierVariant = (v: ProductVariant) => {
+    setVerifierQuantity(String(v.quantity));
+    setVerifierUnit(v.unit);
   };
 
   // --- 2. HISTORY FILTER STATE ---
@@ -113,8 +132,19 @@ export function SupermarketPriceTrackerModule() {
     const prod = products.find((p) => p.id === prodId);
     if (prod) {
       setAddUnit(prod.defaultUnit);
+      if (prod.variants && prod.variants.length > 0) {
+        setAddQuantity(String(prod.variants[0].quantity));
+        setAddUnit(prod.variants[0].unit);
+      } else {
+        setAddQuantity("1");
+      }
     }
     setAddBrandId("");
+  };
+
+  const applyAddVariant = (v: ProductVariant) => {
+    setAddQuantity(String(v.quantity));
+    setAddUnit(v.unit);
   };
 
   // --- 4. SETTINGS / ENTITY MANAGEMENT STATE ---
@@ -456,6 +486,27 @@ export function SupermarketPriceTrackerModule() {
     return Array.from(set);
   }, [products]);
 
+  // Group Products by Category for scalable settings accordion
+  const groupedProducts = useMemo(() => {
+    const groups: Record<string, Product[]> = {};
+    const search = settingsSearch.toLowerCase().trim();
+
+    products.forEach((p) => {
+      if (
+        search &&
+        !p.name.toLowerCase().includes(search) &&
+        !p.category.toLowerCase().includes(search)
+      ) {
+        return;
+      }
+      const cat = p.category || "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(p);
+    });
+
+    return groups;
+  }, [products, settingsSearch]);
+
   const activeFilterCount = useMemo(() => {
     let count = 0;
     if (historySearch) count++;
@@ -549,6 +600,7 @@ export function SupermarketPriceTrackerModule() {
         name: editingProduct.name.trim(),
         category: editingProduct.category || "General",
         defaultUnit: editingProduct.defaultUnit || "L",
+        variants: editingProduct.variants || [],
         notes: editingProduct.notes || "",
       };
       updatedProd = [...products, newProd];
@@ -571,6 +623,14 @@ export function SupermarketPriceTrackerModule() {
     if (!verifierProductId) return [];
     return priceRecords.filter((r) => r.productId === verifierProductId);
   }, [priceRecords, verifierProductId]);
+
+  const selectedVerifierProduct = useMemo(() => {
+    return products.find((p) => p.id === verifierProductId);
+  }, [products, verifierProductId]);
+
+  const selectedAddProduct = useMemo(() => {
+    return products.find((p) => p.id === addProductId);
+  }, [products, addProductId]);
 
   return (
     <div className="space-y-2 max-w-7xl mx-auto px-1 sm:px-3 py-1 text-foreground min-w-0">
@@ -653,7 +713,7 @@ export function SupermarketPriceTrackerModule() {
       </div>
 
       {/* ========================================================================= */}
-      {/* TAB 1: VERIFICADOR DE OFERTA EN TIEMPO REAL (ULTRA COMPACT) */}
+      {/* TAB 1: VERIFICADOR DE OFERTA EN TIEMPO REAL (WITH FORMAT PRESETS) */}
       {/* ========================================================================= */}
       {activeTab === "verifier" && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 items-start min-w-0">
@@ -683,6 +743,29 @@ export function SupermarketPriceTrackerModule() {
                     </option>
                   ))}
                 </select>
+
+                {/* Product Format / Variant Preset Chips */}
+                {selectedVerifierProduct?.variants && selectedVerifierProduct.variants.length > 0 && (
+                  <div className="flex items-center gap-1 mt-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                    <span className="text-[8px] font-extrabold uppercase text-muted-foreground shrink-0">
+                      Formato:
+                    </span>
+                    {selectedVerifierProduct.variants.map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => applyVerifierVariant(v)}
+                        className={`px-1.5 py-0.5 rounded-md text-[9px] font-black transition-all shrink-0 border ${
+                          parseFloat(verifierQuantity) === v.quantity && verifierUnit === v.unit
+                            ? "bg-primary text-primary-foreground border-primary"
+                            : "bg-muted/40 border-border/60 text-foreground hover:bg-muted"
+                        }`}
+                      >
+                        {v.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Supermarket & Brand Grid */}
@@ -1168,6 +1251,29 @@ export function SupermarketPriceTrackerModule() {
                   </option>
                 ))}
               </select>
+
+              {/* Product Format / Variant Preset Chips */}
+              {selectedAddProduct?.variants && selectedAddProduct.variants.length > 0 && (
+                <div className="flex items-center gap-1 mt-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                  <span className="text-[8px] font-extrabold uppercase text-muted-foreground shrink-0">
+                    Formato:
+                  </span>
+                  {selectedAddProduct.variants.map((v) => (
+                    <button
+                      key={v.id}
+                      type="button"
+                      onClick={() => applyAddVariant(v)}
+                      className={`px-1.5 py-0.5 rounded-md text-[9px] font-black transition-all shrink-0 border ${
+                        parseFloat(addQuantity) === v.quantity && addUnit === v.unit
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-muted/40 border-border/60 text-foreground hover:bg-muted"
+                      }`}
+                    >
+                      {v.name}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Supermarket & Brand Grid */}
@@ -1322,64 +1428,78 @@ export function SupermarketPriceTrackerModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: CONFIGURACIÓN, TIENDAS, MARCAS Y SUS ENLACES */}
+      {/* TAB 4: CONFIGURACIÓN, TIENDAS, MARCAS Y SUS ENLACES (SCALABLE & CATEGORIZED) */}
       {/* ========================================================================= */}
       {activeTab === "settings" && (
         <div className="space-y-2 min-w-0">
 
-          {/* SUB-PILLS NAVIGATION */}
-          <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-fit overflow-x-auto">
-            <button
-              onClick={() => setSettingsSection("brands")}
-              className={`flex-1 sm:flex-initial px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
-                settingsSection === "brands"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Tag size={11} /> Marcas ({brands.length})
-            </button>
+          {/* SUB-PILLS & SEARCH TOOLBAR */}
+          <div className="flex items-center justify-between gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/80 shrink-0">
+              <button
+                onClick={() => setSettingsSection("brands")}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
+                  settingsSection === "brands"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Tag size={11} /> Marcas ({brands.length})
+              </button>
 
-            <button
-              onClick={() => setSettingsSection("supermarkets")}
-              className={`flex-1 sm:flex-initial px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
-                settingsSection === "supermarkets"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Store size={11} /> Supers ({supermarkets.length})
-            </button>
+              <button
+                onClick={() => setSettingsSection("supermarkets")}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
+                  settingsSection === "supermarkets"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Store size={11} /> Supers ({supermarkets.length})
+              </button>
 
-            <button
-              onClick={() => setSettingsSection("products")}
-              className={`flex-1 sm:flex-initial px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
-                settingsSection === "products"
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Package size={11} /> Productos ({products.length})
-            </button>
+              <button
+                onClick={() => setSettingsSection("products")}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
+                  settingsSection === "products"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Package size={11} /> Productos ({products.length})
+              </button>
+            </div>
+
+            {/* Instant Search Bar for Settings */}
+            <div className="relative flex-1 min-w-[140px]">
+              <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Buscar..."
+                value={settingsSearch}
+                onChange={(e) => setSettingsSearch(e.target.value)}
+                className="w-full bg-background border border-border/80 rounded-xl pl-6 pr-2 py-0.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
           </div>
 
-          {/* 1. BRANDS SECTION (WITH SUPERMARKET & PRODUCT LINKING) */}
+          {/* 1. BRANDS SECTION */}
           {settingsSection === "brands" && (
             <div className="bg-card rounded-2xl border border-border/80 p-2.5 shadow-2xs space-y-2 min-w-0">
               <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
                 <h3 className="text-xs font-black text-foreground flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5 text-primary" /> Marcas y Tiendas Vinculadas
+                  <Tag className="w-3.5 h-3.5 text-primary" /> Marcas y Vinculación
                 </h3>
 
                 <button
-                  onClick={() =>
+                  onClick={() => {
                     setEditingBrand({
                       name: "",
                       supermarketIds: [],
                       productIds: [],
                       notes: "",
-                    })
-                  }
+                    });
+                  }}
                   className="px-2 py-1 bg-primary text-primary-foreground rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0"
                 >
                   <PlusCircle size={11} /> Nueva Marca
@@ -1388,71 +1508,73 @@ export function SupermarketPriceTrackerModule() {
 
               {/* LIST OF BRANDS */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
-                {brands.map((b) => {
-                  const linkedSMs = supermarkets.filter((s) => b.supermarketIds?.includes(s.id));
-                  const linkedProds = products.filter((p) => b.productIds?.includes(p.id));
+                {brands
+                  .filter((b) => !settingsSearch || b.name.toLowerCase().includes(settingsSearch.toLowerCase()))
+                  .map((b) => {
+                    const linkedSMs = supermarkets.filter((s) => b.supermarketIds?.includes(s.id));
+                    const linkedProds = products.filter((p) => b.productIds?.includes(p.id));
 
-                  return (
-                    <div
-                      key={b.id}
-                      className="bg-muted/20 hover:bg-muted/40 rounded-2xl border border-border/60 p-2 flex flex-col justify-between gap-1 transition-all min-w-0"
-                    >
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="flex items-center justify-between gap-1">
-                          <h4 className="font-black text-xs text-foreground flex items-center gap-1 truncate">
-                            <Tag size={11} className="text-primary shrink-0" /> {b.name}
-                          </h4>
-                          <div className="flex items-center gap-0.5 shrink-0">
-                            <button
-                              onClick={() => setEditingBrand(b)}
-                              className="p-1 text-muted-foreground hover:text-foreground"
-                            >
-                              <Edit2 size={11} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteBrand(b.id)}
-                              className="p-1 text-muted-foreground hover:text-rose-500"
-                            >
-                              <Trash2 size={11} />
-                            </button>
+                    return (
+                      <div
+                        key={b.id}
+                        className="bg-muted/20 hover:bg-muted/40 rounded-2xl border border-border/60 p-2 flex flex-col justify-between gap-1 transition-all min-w-0"
+                      >
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center justify-between gap-1">
+                            <h4 className="font-black text-xs text-foreground flex items-center gap-1 truncate">
+                              <Tag size={11} className="text-primary shrink-0" /> {b.name}
+                            </h4>
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                onClick={() => {
+                                  setEditingBrand(b);
+                                }}
+                                className="p-1 text-muted-foreground hover:text-foreground"
+                              >
+                                <Edit2 size={11} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBrand(b.id)}
+                                className="p-1 text-muted-foreground hover:text-rose-500"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            <span className="font-bold text-foreground">Tienda: </span>
+                            {linkedSMs.length > 0 ? (
+                              <span className="inline-flex flex-wrap gap-1 mt-0.5">
+                                {linkedSMs.map((sm) => (
+                                  <span
+                                    key={sm.id}
+                                    className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px]"
+                                    style={{ backgroundColor: sm.color }}
+                                  >
+                                    {sm.name}
+                                  </span>
+                                ))}
+                              </span>
+                            ) : (
+                              <span className="italic">Todas las tiendas</span>
+                            )}
+                          </div>
+
+                          <div className="text-[10px] text-muted-foreground truncate">
+                            <span className="font-bold text-foreground">Productos: </span>
+                            {linkedProds.length > 0 ? (
+                              <span className="text-foreground font-semibold">
+                                {linkedProds.map((p) => p.name).join(", ")}
+                              </span>
+                            ) : (
+                              <span className="italic">Todos los productos</span>
+                            )}
                           </div>
                         </div>
-
-                        {/* Linked Supermarkets */}
-                        <div className="text-[10px] text-muted-foreground truncate">
-                          <span className="font-bold text-foreground">Tienda: </span>
-                          {linkedSMs.length > 0 ? (
-                            <span className="inline-flex flex-wrap gap-1 mt-0.5">
-                              {linkedSMs.map((sm) => (
-                                <span
-                                  key={sm.id}
-                                  className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px]"
-                                  style={{ backgroundColor: sm.color }}
-                                >
-                                  {sm.name}
-                                </span>
-                              ))}
-                            </span>
-                          ) : (
-                            <span className="italic">Todas las tiendas</span>
-                          )}
-                        </div>
-
-                        {/* Linked Products */}
-                        <div className="text-[10px] text-muted-foreground truncate">
-                          <span className="font-bold text-foreground">Productos: </span>
-                          {linkedProds.length > 0 ? (
-                            <span className="text-foreground font-semibold">
-                              {linkedProds.map((p) => p.name).join(", ")}
-                            </span>
-                          ) : (
-                            <span className="italic">Todos los productos</span>
-                          )}
-                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
           )}
@@ -1480,47 +1602,49 @@ export function SupermarketPriceTrackerModule() {
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-                {supermarkets.map((sm) => (
-                  <div
-                    key={sm.id}
-                    className="bg-muted/20 hover:bg-muted/40 rounded-2xl border border-border/60 p-2 flex items-center justify-between gap-1 min-w-0"
-                  >
-                    <div className="flex items-center gap-1 min-w-0">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full shrink-0"
-                        style={{ backgroundColor: sm.color }}
-                      />
-                      <span className="font-black text-xs text-foreground truncate">
-                        {sm.name}
-                      </span>
-                    </div>
+                {supermarkets
+                  .filter((sm) => !settingsSearch || sm.name.toLowerCase().includes(settingsSearch.toLowerCase()))
+                  .map((sm) => (
+                    <div
+                      key={sm.id}
+                      className="bg-muted/20 hover:bg-muted/40 rounded-2xl border border-border/60 p-2 flex items-center justify-between gap-1 min-w-0"
+                    >
+                      <div className="flex items-center gap-1 min-w-0">
+                        <div
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: sm.color }}
+                        />
+                        <span className="font-black text-xs text-foreground truncate">
+                          {sm.name}
+                        </span>
+                      </div>
 
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <button
-                        onClick={() => setEditingSupermarket(sm)}
-                        className="p-1 text-muted-foreground hover:text-foreground"
-                      >
-                        <Edit2 size={11} />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSupermarket(sm.id)}
-                        className="p-1 text-muted-foreground hover:text-rose-500"
-                      >
-                        <Trash2 size={11} />
-                      </button>
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          onClick={() => setEditingSupermarket(sm)}
+                          className="p-1 text-muted-foreground hover:text-foreground"
+                        >
+                          <Edit2 size={11} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSupermarket(sm.id)}
+                          className="p-1 text-muted-foreground hover:text-rose-500"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             </div>
           )}
 
-          {/* 3. PRODUCTS SECTION */}
+          {/* 3. PRODUCTS SECTION (CATEGORIZED ACCORDION LAYOUT FOR SCALABILITY) */}
           {settingsSection === "products" && (
             <div className="bg-card rounded-2xl border border-border/80 p-2.5 shadow-2xs space-y-2 min-w-0">
               <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
                 <h3 className="text-xs font-black text-foreground flex items-center gap-1">
-                  <Package className="w-3.5 h-3.5 text-primary" /> Productos
+                  <Package className="w-3.5 h-3.5 text-primary" /> Catálogo por Categorías
                 </h3>
 
                 <button
@@ -1529,6 +1653,7 @@ export function SupermarketPriceTrackerModule() {
                       name: "",
                       category: "Lácteos",
                       defaultUnit: "L",
+                      variants: [],
                       notes: "",
                     })
                   }
@@ -1538,42 +1663,86 @@ export function SupermarketPriceTrackerModule() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-1.5">
-                {products.map((p) => (
-                  <div
-                    key={p.id}
-                    className="bg-muted/20 hover:bg-muted/40 rounded-2xl border border-border/60 p-2 flex flex-col justify-between gap-1 min-w-0"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className="font-black text-xs text-foreground truncate">{p.name}</span>
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button
-                            onClick={() => setEditingProduct(p)}
-                            className="p-1 text-muted-foreground hover:text-foreground"
-                          >
-                            <Edit2 size={11} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(p.id)}
-                            className="p-1 text-muted-foreground hover:text-rose-500"
-                          >
-                            <Trash2 size={11} />
-                          </button>
-                        </div>
-                      </div>
+              {/* Categorized Collapsible Accordions */}
+              <div className="space-y-1.5">
+                {Object.keys(groupedProducts).length > 0 ? (
+                  Object.entries(groupedProducts).map(([cat, catProducts]) => {
+                    const isExpanded = expandedCategories[cat] !== false; // default open
 
-                      <div className="flex items-center gap-1 mt-0.5">
-                        <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-primary/10 text-primary">
-                          {p.category}
-                        </span>
-                        <span className="text-[8px] font-bold text-muted-foreground">
-                          Base: {p.defaultUnit}
-                        </span>
+                    return (
+                      <div
+                        key={cat}
+                        className="border border-border/60 rounded-xl overflow-hidden bg-muted/10"
+                      >
+                        <button
+                          onClick={() =>
+                            setExpandedCategories({
+                              ...expandedCategories,
+                              [cat]: !isExpanded,
+                            })
+                          }
+                          className="w-full p-2 bg-muted/30 hover:bg-muted/50 flex items-center justify-between text-xs font-black text-foreground"
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <span>📁 {cat}</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary">
+                              {catProducts.length}
+                            </span>
+                          </span>
+                          {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                        </button>
+
+                        {isExpanded && (
+                          <div className="p-1.5 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                            {catProducts.map((p) => (
+                              <div
+                                key={p.id}
+                                className="bg-card hover:bg-muted/40 rounded-xl border border-border/60 p-2 flex flex-col justify-between gap-1 min-w-0 shadow-2xs"
+                              >
+                                <div>
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-black text-xs text-foreground truncate">
+                                      {p.name}
+                                    </span>
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <button
+                                        onClick={() => setEditingProduct(p)}
+                                        className="p-1 text-muted-foreground hover:text-foreground"
+                                      >
+                                        <Edit2 size={11} />
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteProduct(p.id)}
+                                        className="p-1 text-muted-foreground hover:text-rose-500"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                    <span className="text-[8px] font-extrabold uppercase px-1 py-0.2 rounded bg-primary/10 text-primary">
+                                      Base: {p.defaultUnit}
+                                    </span>
+                                    {p.variants && p.variants.length > 0 && (
+                                      <span className="text-[8px] font-bold text-muted-foreground">
+                                        • {p.variants.length} formatos
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
-                    </div>
+                    );
+                  })
+                ) : (
+                  <div className="p-4 text-center text-muted-foreground text-xs font-semibold">
+                    No se encontraron productos.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           )}
@@ -1585,7 +1754,7 @@ export function SupermarketPriceTrackerModule() {
       {/* MOBILE OPTIMIZED MODALS */}
       {/* ========================================================================= */}
 
-      {/* BRAND EDITOR MODAL */}
+      {/* BRAND EDITOR MODAL WITH BATCH SELECT TOGGLES & SEARCH */}
       {editingBrand && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 [touch-action:pan-y]">
           <div className="bg-card border border-border rounded-2xl p-3.5 max-w-md w-full shadow-2xl space-y-2.5 max-h-[85dvh] overflow-y-auto min-w-0">
@@ -1616,11 +1785,38 @@ export function SupermarketPriceTrackerModule() {
                 />
               </div>
 
-              {/* Supermarket Multi-Select Toggles */}
+              {/* Supermarket Multi-Select Toggles with Search & Batch controls */}
               <div>
-                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                  Exclusividad de Supermercado
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground">
+                    Supermercados
+                  </label>
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-primary">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingBrand({
+                          ...editingBrand,
+                          supermarketIds: supermarkets.map((s) => s.id),
+                        })
+                      }
+                      className="hover:underline flex items-center gap-0.5"
+                    >
+                      <CheckSquare size={10} /> Todos
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingBrand({ ...editingBrand, supermarketIds: [] })
+                      }
+                      className="hover:underline flex items-center gap-0.5"
+                    >
+                      <Square size={10} /> Ninguno
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1 max-h-28 overflow-y-auto">
                   {supermarkets.map((sm) => {
                     const isChecked = editingBrand.supermarketIds?.includes(sm.id) || false;
@@ -1654,11 +1850,36 @@ export function SupermarketPriceTrackerModule() {
                 </div>
               </div>
 
-              {/* Product Multi-Select Toggles */}
+              {/* Product Multi-Select Toggles with Batch controls */}
               <div>
-                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                  Productos Disponibles
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground">
+                    Productos
+                  </label>
+                  <div className="flex items-center gap-1 text-[9px] font-bold text-primary">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingBrand({
+                          ...editingBrand,
+                          productIds: products.map((p) => p.id),
+                        })
+                      }
+                      className="hover:underline flex items-center gap-0.5"
+                    >
+                      <CheckSquare size={10} /> Todos
+                    </button>
+                    <span>•</span>
+                    <button
+                      type="button"
+                      onClick={() => setEditingBrand({ ...editingBrand, productIds: [] })}
+                      className="hover:underline flex items-center gap-0.5"
+                    >
+                      <Square size={10} /> Ninguno
+                    </button>
+                  </div>
+                </div>
+
                 <div className="space-y-1 bg-muted/10 p-1 rounded-xl border border-border/60 max-h-28 overflow-y-auto">
                   {products.map((p) => {
                     const isChecked = editingBrand.productIds?.includes(p.id) || false;
@@ -1773,10 +1994,10 @@ export function SupermarketPriceTrackerModule() {
         </div>
       )}
 
-      {/* PRODUCT EDITOR MODAL */}
+      {/* PRODUCT EDITOR MODAL (WITH VARIANT PRESET CREATOR) */}
       {editingProduct && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 [touch-action:pan-y]">
-          <div className="bg-card border border-border rounded-2xl p-3.5 max-w-xs w-full shadow-2xl space-y-2.5 min-w-0">
+          <div className="bg-card border border-border rounded-2xl p-3.5 max-w-sm w-full shadow-2xl space-y-2.5 max-h-[85dvh] overflow-y-auto min-w-0">
             <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
               <h3 className="font-black text-xs sm:text-sm text-foreground">
                 {editingProduct.id ? "Editar Producto" : "Nuevo Producto"}
@@ -1792,7 +2013,7 @@ export function SupermarketPriceTrackerModule() {
             <form onSubmit={handleSaveProduct} className="space-y-2">
               <div>
                 <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                  Nombre *
+                  Nombre del Producto *
                 </label>
                 <input
                   type="text"
@@ -1806,41 +2027,128 @@ export function SupermarketPriceTrackerModule() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                  Categoría
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ej: Lácteos, Frescos..."
-                  value={editingProduct.category || ""}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, category: e.target.value })
-                  }
-                  className="w-full bg-background border border-border rounded-xl px-2 py-1 text-xs font-bold"
-                />
+              <div className="grid grid-cols-2 gap-1.5">
+                <div>
+                  <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                    Categoría
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ej: Lácteos..."
+                    value={editingProduct.category || ""}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, category: e.target.value })
+                    }
+                    className="w-full bg-background border border-border rounded-xl px-2 py-1 text-xs font-bold"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                    Unidad Base
+                  </label>
+                  <select
+                    value={editingProduct.defaultUnit || "L"}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        defaultUnit: e.target.value as UnitType,
+                      })
+                    }
+                    className="w-full bg-background border border-border rounded-xl px-1.5 py-1 text-xs font-bold"
+                  >
+                    <option value="kg">kg</option>
+                    <option value="g">g</option>
+                    <option value="L">L</option>
+                    <option value="ml">ml</option>
+                    <option value="ud">ud</option>
+                  </select>
+                </div>
               </div>
 
+              {/* Formats / Variants List inside Product Editor */}
               <div>
-                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
-                  Unidad Base
-                </label>
-                <select
-                  value={editingProduct.defaultUnit || "L"}
-                  onChange={(e) =>
-                    setEditingProduct({
-                      ...editingProduct,
-                      defaultUnit: e.target.value as UnitType,
-                    })
-                  }
-                  className="w-full bg-background border border-border rounded-xl px-2 py-1 text-xs font-bold"
-                >
-                  <option value="kg">kg (Kilogramos)</option>
-                  <option value="g">g (Gramos)</option>
-                  <option value="L">L (Litros)</option>
-                  <option value="ml">ml (Mililitros)</option>
-                  <option value="ud">ud (Unidades)</option>
-                </select>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground">
+                    Formatos / Presentaciones
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const current = editingProduct.variants || [];
+                      const newVar: ProductVariant = {
+                        id: "v-" + Date.now(),
+                        name: "Formato " + (current.length + 1),
+                        quantity: 1,
+                        unit: editingProduct.defaultUnit || "L",
+                      };
+                      setEditingProduct({ ...editingProduct, variants: [...current, newVar] });
+                    }}
+                    className="text-[9px] font-bold text-primary hover:underline flex items-center gap-0.5"
+                  >
+                    <Plus size={10} /> Añadir Formato
+                  </button>
+                </div>
+
+                <div className="space-y-1 max-h-28 overflow-y-auto bg-muted/10 p-1 rounded-xl border border-border/60">
+                  {editingProduct.variants && editingProduct.variants.length > 0 ? (
+                    editingProduct.variants.map((v, idx) => (
+                      <div key={v.id} className="flex items-center gap-1 bg-card p-1 rounded-lg border border-border/50 text-xs">
+                        <input
+                          type="text"
+                          value={v.name}
+                          placeholder="Brik 1L, Garrafa 3L..."
+                          onChange={(e) => {
+                            const updated = [...(editingProduct.variants || [])];
+                            updated[idx] = { ...v, name: e.target.value };
+                            setEditingProduct({ ...editingProduct, variants: updated });
+                          }}
+                          className="flex-1 bg-background border border-border rounded px-1 py-0.5 text-[10px] font-bold min-w-0"
+                        />
+                        <input
+                          type="number"
+                          step="any"
+                          value={v.quantity}
+                          onChange={(e) => {
+                            const updated = [...(editingProduct.variants || [])];
+                            updated[idx] = { ...v, quantity: parseFloat(e.target.value) || 1 };
+                            setEditingProduct({ ...editingProduct, variants: updated });
+                          }}
+                          className="w-10 bg-background border border-border rounded px-1 py-0.5 text-[10px] font-bold text-center"
+                        />
+                        <select
+                          value={v.unit}
+                          onChange={(e) => {
+                            const updated = [...(editingProduct.variants || [])];
+                            updated[idx] = { ...v, unit: e.target.value as UnitType };
+                            setEditingProduct({ ...editingProduct, variants: updated });
+                          }}
+                          className="bg-background border border-border rounded px-1 py-0.5 text-[10px] font-bold"
+                        >
+                          <option value="kg">kg</option>
+                          <option value="g">g</option>
+                          <option value="L">L</option>
+                          <option value="ml">ml</option>
+                          <option value="ud">ud</option>
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const updated = editingProduct.variants?.filter((_, i) => i !== idx);
+                            setEditingProduct({ ...editingProduct, variants: updated });
+                          }}
+                          className="p-0.5 text-muted-foreground hover:text-rose-500"
+                        >
+                          <Trash2 size={10} />
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="text-[9px] text-muted-foreground italic p-1">
+                      Sin formatos adicionales (se usará la unidad base).
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-end gap-2 pt-1">
