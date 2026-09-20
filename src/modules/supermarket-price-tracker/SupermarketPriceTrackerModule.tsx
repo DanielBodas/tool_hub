@@ -26,6 +26,7 @@ import {
   Plus,
   CheckSquare,
   Square,
+  Check,
 } from "lucide-react";
 import {
   Supermarket,
@@ -1754,172 +1755,174 @@ export function SupermarketPriceTrackerModule() {
       {/* MOBILE OPTIMIZED MODALS */}
       {/* ========================================================================= */}
 
-      {/* BRAND EDITOR MODAL WITH BATCH SELECT TOGGLES & SEARCH */}
+      {/* BRAND EDITOR MODAL WITH INTERACTIVE PILL CHIPS */}
       {editingBrand && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-2.5 [touch-action:pan-y]">
-          <div className="bg-card border border-border rounded-2xl p-3.5 max-w-md w-full shadow-2xl space-y-2.5 max-h-[85dvh] overflow-y-auto min-w-0">
-            <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-              <h3 className="font-black text-xs sm:text-sm text-foreground">
-                {editingBrand.id ? "Editar Marca" : "Nueva Marca"}
-              </h3>
+          <div className="bg-card border border-border rounded-2xl p-3.5 max-w-md w-full shadow-2xl space-y-3 max-h-[88dvh] overflow-y-auto min-w-0">
+            <div className="flex items-center justify-between border-b border-border/60 pb-2">
+              <div className="flex items-center gap-1.5">
+                <div className="p-1.5 bg-primary/10 text-primary rounded-xl">
+                  <Tag size={14} />
+                </div>
+                <div>
+                  <h3 className="font-black text-xs sm:text-sm text-foreground">
+                    {editingBrand.id ? "Editar Marca" : "Nueva Marca"}
+                  </h3>
+                  <p className="text-[9px] font-medium text-muted-foreground">
+                    Configura la marca y sus tiendas o productos vinculados
+                  </p>
+                </div>
+              </div>
               <button
                 onClick={() => setEditingBrand(null)}
-                className="p-1 text-muted-foreground hover:text-foreground"
+                className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted"
               >
                 <X size={14} />
               </button>
             </div>
 
-            <form onSubmit={handleSaveBrand} className="space-y-2">
+            <form onSubmit={handleSaveBrand} className="space-y-3">
+              {/* BRAND NAME */}
               <div>
-                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-0.5">
+                <label className="block text-[9px] font-extrabold uppercase text-muted-foreground mb-1">
                   Nombre de la Marca *
                 </label>
                 <input
                   type="text"
-                  placeholder="Ej: Hacendado, Nestlé..."
+                  placeholder="Ej: Hacendado, Nestlé, Central Lechera..."
                   value={editingBrand.name || ""}
                   onChange={(e) => setEditingBrand({ ...editingBrand, name: e.target.value })}
                   required
-                  className="w-full bg-background border border-border rounded-xl px-2 py-1 text-xs font-bold"
+                  className="w-full bg-background border border-border rounded-xl px-2.5 py-1.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40"
                 />
               </div>
 
-              {/* Supermarket Multi-Select Toggles with Search & Batch controls */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground">
-                    Supermercados
+              {/* SUPERMARKET SELECTION CHIPS */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
+                    <Store size={11} className="text-primary" /> Supermercados donde se vende
                   </label>
-                  <div className="flex items-center gap-1 text-[9px] font-bold text-primary">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingBrand({
-                          ...editingBrand,
-                          supermarketIds: supermarkets.map((s) => s.id),
-                        })
-                      }
-                      className="hover:underline flex items-center gap-0.5"
-                    >
-                      <CheckSquare size={10} /> Todos
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingBrand({ ...editingBrand, supermarketIds: [] })
-                      }
-                      className="hover:underline flex items-center gap-0.5"
-                    >
-                      <Square size={10} /> Ninguno
-                    </button>
-                  </div>
+                  <span className="text-[9px] font-bold text-muted-foreground">
+                    {(editingBrand.supermarketIds?.length || 0) === 0
+                      ? "Todas las tiendas"
+                      : `${editingBrand.supermarketIds?.length} de ${supermarkets.length}`}
+                  </span>
                 </div>
 
-                <div className="space-y-1 max-h-28 overflow-y-auto">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {/* Quick All Chip */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingBrand({ ...editingBrand, supermarketIds: [] })}
+                    className={`px-2 py-1 rounded-xl text-[10px] font-black transition-all flex items-center gap-1 border ${
+                      (editingBrand.supermarketIds?.length || 0) === 0
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "bg-muted/30 text-muted-foreground border-border/60 hover:bg-muted/60"
+                    }`}
+                  >
+                    🌐 Todos los Supers
+                  </button>
+
                   {supermarkets.map((sm) => {
-                    const isChecked = editingBrand.supermarketIds?.includes(sm.id) || false;
+                    const isSelected = editingBrand.supermarketIds?.includes(sm.id) || false;
                     return (
-                      <label
+                      <button
                         key={sm.id}
-                        className="flex items-center justify-between p-1 rounded-xl border border-border/60 bg-muted/20 cursor-pointer text-xs font-bold hover:bg-muted/40"
+                        type="button"
+                        onClick={() => {
+                          const current = editingBrand.supermarketIds || [];
+                          const updated = isSelected
+                            ? current.filter((id) => id !== sm.id)
+                            : [...current, sm.id];
+                          setEditingBrand({ ...editingBrand, supermarketIds: updated });
+                        }}
+                        className={`px-2.5 py-1 rounded-xl text-[10px] font-extrabold transition-all flex items-center gap-1.5 border ${
+                          isSelected
+                            ? "border-primary bg-primary/10 text-foreground shadow-2xs ring-1 ring-primary/30"
+                            : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
+                        }`}
                       >
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span
-                            className="w-2.5 h-2.5 rounded-full shrink-0"
-                            style={{ backgroundColor: sm.color }}
-                          />
-                          <span className="truncate">{sm.name}</span>
-                        </div>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            const current = editingBrand.supermarketIds || [];
-                            const updated = e.target.checked
-                              ? [...current, sm.id]
-                              : current.filter((id) => id !== sm.id);
-                            setEditingBrand({ ...editingBrand, supermarketIds: updated });
-                          }}
-                          className="rounded text-primary focus:ring-primary"
+                        <span
+                          className="w-2 h-2 rounded-full shrink-0"
+                          style={{ backgroundColor: sm.color }}
                         />
-                      </label>
+                        <span>{sm.name}</span>
+                        {isSelected && <Check size={10} className="text-primary shrink-0" />}
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* Product Multi-Select Toggles with Batch controls */}
-              <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground">
-                    Productos
+              {/* PRODUCT SELECTION CHIPS */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
+                    <Package size={11} className="text-primary" /> Productos asociados
                   </label>
-                  <div className="flex items-center gap-1 text-[9px] font-bold text-primary">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEditingBrand({
-                          ...editingBrand,
-                          productIds: products.map((p) => p.id),
-                        })
-                      }
-                      className="hover:underline flex items-center gap-0.5"
-                    >
-                      <CheckSquare size={10} /> Todos
-                    </button>
-                    <span>•</span>
-                    <button
-                      type="button"
-                      onClick={() => setEditingBrand({ ...editingBrand, productIds: [] })}
-                      className="hover:underline flex items-center gap-0.5"
-                    >
-                      <Square size={10} /> Ninguno
-                    </button>
-                  </div>
+                  <span className="text-[9px] font-bold text-muted-foreground">
+                    {(editingBrand.productIds?.length || 0) === 0
+                      ? "Todos los productos"
+                      : `${editingBrand.productIds?.length} de ${products.length}`}
+                  </span>
                 </div>
 
-                <div className="space-y-1 bg-muted/10 p-1 rounded-xl border border-border/60 max-h-28 overflow-y-auto">
+                <div className="flex items-center gap-1 flex-wrap max-h-36 overflow-y-auto p-1.5 bg-muted/20 rounded-xl border border-border/60">
+                  {/* Quick All Chip */}
+                  <button
+                    type="button"
+                    onClick={() => setEditingBrand({ ...editingBrand, productIds: [] })}
+                    className={`px-2 py-1 rounded-xl text-[10px] font-black transition-all flex items-center gap-1 border ${
+                      (editingBrand.productIds?.length || 0) === 0
+                        ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                        : "bg-background text-muted-foreground border-border/60 hover:bg-muted/60"
+                    }`}
+                  >
+                    📦 Todos los Productos
+                  </button>
+
                   {products.map((p) => {
-                    const isChecked = editingBrand.productIds?.includes(p.id) || false;
+                    const isSelected = editingBrand.productIds?.includes(p.id) || false;
                     return (
-                      <label
+                      <button
                         key={p.id}
-                        className="flex items-center justify-between p-1 rounded-lg text-xs font-bold hover:bg-muted/40 cursor-pointer"
+                        type="button"
+                        onClick={() => {
+                          const current = editingBrand.productIds || [];
+                          const updated = isSelected
+                            ? current.filter((id) => id !== p.id)
+                            : [...current, p.id];
+                          setEditingBrand({ ...editingBrand, productIds: updated });
+                        }}
+                        className={`px-2 py-1 rounded-xl text-[10px] font-extrabold transition-all flex items-center gap-1 border ${
+                          isSelected
+                            ? "border-primary bg-primary/10 text-foreground shadow-2xs ring-1 ring-primary/30"
+                            : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
+                        }`}
                       >
-                        <span className="truncate">{p.name}</span>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => {
-                            const current = editingBrand.productIds || [];
-                            const updated = e.target.checked
-                              ? [...current, p.id]
-                              : current.filter((id) => id !== p.id);
-                            setEditingBrand({ ...editingBrand, productIds: updated });
-                          }}
-                          className="rounded text-primary focus:ring-primary"
-                        />
-                      </label>
+                        <span>{p.name}</span>
+                        {isSelected && <Check size={10} className="text-primary shrink-0" />}
+                      </button>
                     );
                   })}
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-2 pt-1">
+              {/* MODAL ACTIONS */}
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
                 <button
                   type="button"
                   onClick={() => setEditingBrand(null)}
-                  className="px-2.5 py-1 bg-muted text-muted-foreground rounded-xl text-xs font-bold"
+                  className="px-3 py-1.5 bg-muted hover:bg-muted/80 text-muted-foreground rounded-xl text-xs font-extrabold transition-all"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-3 py-1 bg-primary text-primary-foreground rounded-xl text-xs font-bold"
+                  className="px-4 py-1.5 bg-primary hover:bg-primary-hover text-primary-foreground rounded-xl text-xs font-black shadow-xs transition-all flex items-center gap-1"
                 >
-                  Guardar Marca
+                  <Check size={12} /> Guardar Marca
                 </button>
               </div>
             </form>
