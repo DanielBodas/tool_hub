@@ -66,8 +66,9 @@ export function SupermarketPriceTrackerModule() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [showRecentHistory, setShowRecentHistory] = useState(false);
 
-  // Settings Accordions & Search
+  // Settings Accordions, Filter & Search
   const [settingsSearch, setSettingsSearch] = useState("");
+  const [brandSupermarketFilter, setBrandSupermarketFilter] = useState<string>("ALL");
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({});
 
   // --- 1. VERIFIER STATE ---
@@ -1501,16 +1502,79 @@ export function SupermarketPriceTrackerModule() {
                       notes: "",
                     });
                   }}
-                  className="px-2 py-1 bg-primary text-primary-foreground rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0"
+                  className="px-2 py-1 bg-primary text-primary-foreground rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 shadow-2xs hover:bg-primary-hover"
                 >
                   <PlusCircle size={11} /> Nueva Marca
                 </button>
               </div>
 
-              {/* LIST OF BRANDS */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
+              {/* FAST SUPERMARKET FILTER PILLS BAR */}
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[10px]">
+                <span className="text-[9px] font-extrabold uppercase text-muted-foreground shrink-0">
+                  Super:
+                </span>
+                <button
+                  onClick={() => setBrandSupermarketFilter("ALL")}
+                  className={`px-2 py-0.5 rounded-lg font-black transition-all shrink-0 border ${
+                    brandSupermarketFilter === "ALL"
+                      ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                      : "bg-muted/40 border-border/60 text-foreground hover:bg-muted"
+                  }`}
+                >
+                  Todos ({brands.length})
+                </button>
+
+                <button
+                  onClick={() => setBrandSupermarketFilter("GENERAL")}
+                  className={`px-2 py-0.5 rounded-lg font-black transition-all shrink-0 border ${
+                    brandSupermarketFilter === "GENERAL"
+                      ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                      : "bg-muted/40 border-border/60 text-foreground hover:bg-muted"
+                  }`}
+                >
+                  🌐 Multi-Super
+                </button>
+
+                {supermarkets.map((sm) => {
+                  const count = brands.filter((b) => b.supermarketIds?.includes(sm.id)).length;
+                  const isSelected = brandSupermarketFilter === sm.id;
+
+                  return (
+                    <button
+                      key={sm.id}
+                      onClick={() => setBrandSupermarketFilter(sm.id)}
+                      className={`px-2 py-0.5 rounded-lg font-bold transition-all shrink-0 border flex items-center gap-1 ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-2xs"
+                          : "bg-muted/30 border-border/60 text-foreground hover:bg-muted/60"
+                      }`}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: isSelected ? "#fff" : sm.color }}
+                      />
+                      <span>{sm.name}</span>
+                      <span className="opacity-75 font-black text-[9px]">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* LIST OF BRANDS (ULTRA COMPACT & STREAMLINED) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
                 {brands
-                  .filter((b) => !settingsSearch || b.name.toLowerCase().includes(settingsSearch.toLowerCase()))
+                  .filter((b) => {
+                    if (settingsSearch && !b.name.toLowerCase().includes(settingsSearch.toLowerCase())) {
+                      return false;
+                    }
+                    if (brandSupermarketFilter === "GENERAL") {
+                      return !b.supermarketIds || b.supermarketIds.length === 0;
+                    }
+                    if (brandSupermarketFilter !== "ALL") {
+                      return b.supermarketIds?.includes(brandSupermarketFilter);
+                    }
+                    return true;
+                  })
                   .map((b) => {
                     const linkedSMs = supermarkets.filter((s) => b.supermarketIds?.includes(s.id));
                     const linkedProds = products.filter((p) => b.productIds?.includes(p.id));
@@ -1518,52 +1582,54 @@ export function SupermarketPriceTrackerModule() {
                     return (
                       <div
                         key={b.id}
-                        className="bg-muted/20 hover:bg-muted/40 rounded-2xl border border-border/60 p-2 flex flex-col justify-between gap-1 transition-all min-w-0"
+                        className="bg-card hover:bg-muted/30 rounded-xl border border-border/70 p-2 flex flex-col justify-between gap-1 transition-all min-w-0 shadow-2xs"
                       >
-                        <div className="space-y-0.5 min-w-0">
+                        <div className="space-y-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <h4 className="font-black text-xs text-foreground flex items-center gap-1 truncate">
                               <Tag size={11} className="text-primary shrink-0" /> {b.name}
                             </h4>
                             <div className="flex items-center gap-0.5 shrink-0">
                               <button
-                                onClick={() => {
-                                  setEditingBrand(b);
-                                }}
-                                className="p-1 text-muted-foreground hover:text-foreground"
+                                onClick={() => setEditingBrand(b)}
+                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
+                                title="Editar marca"
                               >
                                 <Edit2 size={11} />
                               </button>
                               <button
                                 onClick={() => handleDeleteBrand(b.id)}
-                                className="p-1 text-muted-foreground hover:text-rose-500"
+                                className="p-1 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-all"
+                                title="Eliminar marca"
                               >
                                 <Trash2 size={11} />
                               </button>
                             </div>
                           </div>
 
-                          <div className="text-[10px] text-muted-foreground truncate">
-                            <span className="font-bold text-foreground">Tienda: </span>
+                          {/* LINKED SUPERMARKETS CHIPS */}
+                          <div className="flex items-center gap-1 flex-wrap text-[9px]">
+                            <span className="font-extrabold text-muted-foreground shrink-0">Super:</span>
                             {linkedSMs.length > 0 ? (
-                              <span className="inline-flex flex-wrap gap-1 mt-0.5">
-                                {linkedSMs.map((sm) => (
-                                  <span
-                                    key={sm.id}
-                                    className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px]"
-                                    style={{ backgroundColor: sm.color }}
-                                  >
-                                    {sm.name}
-                                  </span>
-                                ))}
-                              </span>
+                              linkedSMs.map((sm) => (
+                                <span
+                                  key={sm.id}
+                                  className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px] truncate"
+                                  style={{ backgroundColor: sm.color }}
+                                >
+                                  {sm.name}
+                                </span>
+                              ))
                             ) : (
-                              <span className="italic">Todas las tiendas</span>
+                              <span className="text-muted-foreground/80 font-bold italic">
+                                Todos los Supers
+                              </span>
                             )}
                           </div>
 
-                          <div className="text-[10px] text-muted-foreground truncate">
-                            <span className="font-bold text-foreground">Productos: </span>
+                          {/* LINKED PRODUCTS SUMMARY */}
+                          <div className="text-[9px] text-muted-foreground truncate">
+                            <span className="font-extrabold text-foreground">Productos: </span>
                             {linkedProds.length > 0 ? (
                               <span className="text-foreground font-semibold">
                                 {linkedProds.map((p) => p.name).join(", ")}
@@ -1855,7 +1921,7 @@ export function SupermarketPriceTrackerModule() {
                 </div>
               </div>
 
-              {/* PRODUCT SELECTION CHIPS */}
+              {/* PRODUCT SELECTION GROUPED BY CATEGORY WITH SHORTCUTS */}
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <label className="text-[9px] font-extrabold uppercase text-muted-foreground flex items-center gap-1">
@@ -1868,42 +1934,90 @@ export function SupermarketPriceTrackerModule() {
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1 flex-wrap max-h-36 overflow-y-auto p-1.5 bg-muted/20 rounded-xl border border-border/60">
-                  {/* Quick All Chip */}
+                {/* Quick All Products Shortcut */}
+                <div className="flex items-center justify-between bg-muted/30 p-1.5 rounded-xl border border-border/60">
+                  <span className="text-[10px] font-bold text-foreground">
+                    ¿Esta marca produce todo tipo de productos?
+                  </span>
                   <button
                     type="button"
                     onClick={() => setEditingBrand({ ...editingBrand, productIds: [] })}
-                    className={`px-2 py-1 rounded-xl text-[10px] font-black transition-all flex items-center gap-1 border ${
+                    className={`px-2 py-0.5 rounded-lg text-[10px] font-black transition-all border ${
                       (editingBrand.productIds?.length || 0) === 0
                         ? "bg-primary text-primary-foreground border-primary shadow-2xs"
-                        : "bg-background text-muted-foreground border-border/60 hover:bg-muted/60"
+                        : "bg-background text-foreground border-border hover:bg-muted"
                     }`}
                   >
                     📦 Todos los Productos
                   </button>
+                </div>
 
-                  {products.map((p) => {
-                    const isSelected = editingBrand.productIds?.includes(p.id) || false;
+                {/* CATEGORIZED PRODUCT CHIPS */}
+                <div className="space-y-1.5 max-h-48 overflow-y-auto p-1.5 bg-muted/20 rounded-xl border border-border/60 divide-y divide-border/40">
+                  {Object.entries(
+                    products.reduce<Record<string, Product[]>>((acc, p) => {
+                      const cat = p.category || "General";
+                      if (!acc[cat]) acc[cat] = [];
+                      acc[cat].push(p);
+                      return acc;
+                    }, {})
+                  ).map(([cat, catProds]) => {
+                    const catProdIds = catProds.map((p) => p.id);
+                    const allCatSelected = catProdIds.every((id) =>
+                      editingBrand.productIds?.includes(id)
+                    );
+
                     return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => {
-                          const current = editingBrand.productIds || [];
-                          const updated = isSelected
-                            ? current.filter((id) => id !== p.id)
-                            : [...current, p.id];
-                          setEditingBrand({ ...editingBrand, productIds: updated });
-                        }}
-                        className={`px-2 py-1 rounded-xl text-[10px] font-extrabold transition-all flex items-center gap-1 border ${
-                          isSelected
-                            ? "border-primary bg-primary/10 text-foreground shadow-2xs ring-1 ring-primary/30"
-                            : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
-                        }`}
-                      >
-                        <span>{p.name}</span>
-                        {isSelected && <Check size={10} className="text-primary shrink-0" />}
-                      </button>
+                      <div key={cat} className="pt-1.5 first:pt-0 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] font-black uppercase text-foreground">
+                            📁 {cat}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = editingBrand.productIds || [];
+                              let updated: string[];
+                              if (allCatSelected) {
+                                updated = current.filter((id) => !catProdIds.includes(id));
+                              } else {
+                                updated = Array.from(new Set([...current, ...catProdIds]));
+                              }
+                              setEditingBrand({ ...editingBrand, productIds: updated });
+                            }}
+                            className="text-[8px] font-extrabold text-primary hover:underline"
+                          >
+                            {allCatSelected ? "Desmarcar categoría" : "Marcar categoría"}
+                          </button>
+                        </div>
+
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {catProds.map((p) => {
+                            const isSelected = editingBrand.productIds?.includes(p.id) || false;
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  const current = editingBrand.productIds || [];
+                                  const updated = isSelected
+                                    ? current.filter((id) => id !== p.id)
+                                    : [...current, p.id];
+                                  setEditingBrand({ ...editingBrand, productIds: updated });
+                                }}
+                                className={`px-2 py-0.5 rounded-lg text-[9px] font-extrabold transition-all flex items-center gap-1 border ${
+                                  isSelected
+                                    ? "border-primary bg-primary/10 text-foreground shadow-2xs ring-1 ring-primary/30"
+                                    : "border-border/60 bg-background text-muted-foreground hover:bg-muted/40"
+                                }`}
+                              >
+                                <span>{p.name}</span>
+                                {isSelected && <Check size={9} className="text-primary shrink-0" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
                     );
                   })}
                 </div>
