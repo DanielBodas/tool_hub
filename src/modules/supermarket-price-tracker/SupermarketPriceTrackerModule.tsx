@@ -24,8 +24,6 @@ import {
   ChevronUp,
   X,
   Plus,
-  CheckSquare,
-  Square,
   Check,
 } from "lucide-react";
 import {
@@ -638,53 +636,53 @@ export function SupermarketPriceTrackerModule() {
     <div className="space-y-2 max-w-7xl mx-auto px-1 sm:px-3 py-1 text-foreground min-w-0">
 
       {/* SLEEK STICKY CAPSULE TAB BAR WITH INTEGRATED ACTIONS */}
-      <div className="sticky top-9 z-30 bg-background/95 backdrop-blur-md pt-0.5 pb-1 flex items-center justify-between border-b border-border/40 gap-1 select-none">
-        <div className="flex items-center gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 shadow-2xs flex-1 max-w-md">
+      <div className="sticky top-9 z-30 bg-background/95 backdrop-blur-md pt-0.5 pb-1 flex items-center justify-between border-b border-border/40 gap-1 select-none min-w-0">
+        <div className="grid grid-cols-4 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 shadow-2xs flex-1 min-w-0">
           <button
             onClick={() => setActiveTab("verifier")}
-            className={`flex-1 py-1 px-1.5 sm:px-2.5 rounded-lg text-[10px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 min-w-0 ${
+            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
               activeTab === "verifier"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Sparkles size={12} className="shrink-0" />
-            <span className="truncate">Verificador</span>
+            <Sparkles size={11} className="shrink-0" />
+            <span className="truncate">Verificar</span>
           </button>
 
           <button
             onClick={() => setActiveTab("history")}
-            className={`flex-1 py-1 px-1.5 sm:px-2.5 rounded-lg text-[10px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 min-w-0 ${
+            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
               activeTab === "history"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <History size={12} className="shrink-0" />
-            <span className="truncate">Histórico</span>
+            <History size={11} className="shrink-0" />
+            <span className="truncate">Historial</span>
           </button>
 
           <button
             onClick={() => setActiveTab("add")}
-            className={`flex-1 py-1 px-1.5 sm:px-2.5 rounded-lg text-[10px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 min-w-0 ${
+            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
               activeTab === "add"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <PlusCircle size={12} className="shrink-0" />
-            <span className="truncate">Registrar</span>
+            <PlusCircle size={11} className="shrink-0" />
+            <span className="truncate">Añadir</span>
           </button>
 
           <button
             onClick={() => setActiveTab("settings")}
-            className={`flex-1 py-1 px-1.5 sm:px-2.5 rounded-lg text-[10px] sm:text-xs font-black transition-all flex items-center justify-center gap-1 min-w-0 ${
+            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
               activeTab === "settings"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
             }`}
           >
-            <Settings size={12} className="shrink-0" />
+            <Settings size={11} className="shrink-0" />
             <span className="truncate">Ajustes</span>
           </button>
         </div>
@@ -701,7 +699,7 @@ export function SupermarketPriceTrackerModule() {
             }`}
             title="Sincronizar MongoDB"
           >
-            <Database size={12} className={isSaving ? "animate-spin" : ""} />
+            <Database size={11} className={isSaving ? "animate-spin" : ""} />
           </button>
 
           <button
@@ -709,7 +707,7 @@ export function SupermarketPriceTrackerModule() {
             className="p-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg text-[10px] font-bold transition-all border border-border/60"
             title="Cargar datos de ejemplo"
           >
-            <RefreshCw size={12} />
+            <RefreshCw size={11} />
           </button>
         </div>
       </div>
@@ -791,9 +789,25 @@ export function SupermarketPriceTrackerModule() {
                 </div>
 
                 <div>
-                  <label className="block text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground mb-0.5">
-                    3. Marca
-                  </label>
+                  <div className="flex items-center justify-between mb-0.5">
+                    <label className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                      3. Marca
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingBrand({
+                          name: "",
+                          supermarketIds: verifierSupermarketId ? [verifierSupermarketId] : [],
+                          productIds: verifierProductId ? [verifierProductId] : [],
+                        })
+                      }
+                      className="text-[9px] font-black text-primary hover:underline flex items-center gap-0.5"
+                      title="Añadir nueva marca rápidamente"
+                    >
+                      <Plus size={10} /> Nueva
+                    </button>
+                  </div>
                   <select
                     value={verifierBrandId}
                     onChange={(e) => setVerifierBrandId(e.target.value)}
@@ -1300,9 +1314,25 @@ export function SupermarketPriceTrackerModule() {
               </div>
 
               <div>
-                <label className="block text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground mb-0.5">
-                  Marca
-                </label>
+                <div className="flex items-center justify-between mb-0.5">
+                  <label className="text-[9px] font-extrabold uppercase tracking-wider text-muted-foreground">
+                    Marca
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditingBrand({
+                        name: "",
+                        supermarketIds: addSupermarketId ? [addSupermarketId] : [],
+                        productIds: addProductId ? [addProductId] : [],
+                      })
+                    }
+                    className="text-[9px] font-black text-primary hover:underline flex items-center gap-0.5"
+                    title="Añadir nueva marca rápidamente"
+                  >
+                    <Plus size={10} /> Nueva
+                  </button>
+                </div>
                 <select
                   value={addBrandId}
                   onChange={(e) => setAddBrandId(e.target.value)}
@@ -1436,51 +1466,54 @@ export function SupermarketPriceTrackerModule() {
         <div className="space-y-2 min-w-0">
 
           {/* SUB-PILLS & SEARCH TOOLBAR */}
-          <div className="flex items-center justify-between gap-1.5 flex-wrap">
-            <div className="flex items-center gap-1 bg-card p-0.5 rounded-xl border border-border/80 shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 min-w-0">
+            <div className="grid grid-cols-3 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-auto shrink-0">
               <button
                 onClick={() => setSettingsSection("brands")}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
+                className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 min-w-0 ${
                   settingsSection === "brands"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Tag size={11} /> Marcas ({brands.length})
+                <Tag size={11} className="shrink-0" />
+                <span className="truncate">Marcas ({brands.length})</span>
               </button>
 
               <button
                 onClick={() => setSettingsSection("supermarkets")}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
+                className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 min-w-0 ${
                   settingsSection === "supermarkets"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Store size={11} /> Supers ({supermarkets.length})
+                <Store size={11} className="shrink-0" />
+                <span className="truncate">Supers ({supermarkets.length})</span>
               </button>
 
               <button
                 onClick={() => setSettingsSection("products")}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 shrink-0 ${
+                className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 min-w-0 ${
                   settingsSection === "products"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Package size={11} /> Productos ({products.length})
+                <Package size={11} className="shrink-0" />
+                <span className="truncate">Prods ({products.length})</span>
               </button>
             </div>
 
             {/* Instant Search Bar for Settings */}
-            <div className="relative flex-1 min-w-[140px]">
-              <Search className="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <div className="relative w-full sm:w-48 shrink-0">
+              <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
-                placeholder="Buscar..."
+                placeholder="Buscar en ajustes..."
                 value={settingsSearch}
                 onChange={(e) => setSettingsSearch(e.target.value)}
-                className="w-full bg-background border border-border/80 rounded-xl pl-6 pr-2 py-0.5 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full bg-background border border-border/80 rounded-xl pl-7 pr-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
           </div>
@@ -1509,7 +1542,7 @@ export function SupermarketPriceTrackerModule() {
               </div>
 
               {/* FAST SUPERMARKET FILTER PILLS BAR */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[10px]">
+              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[10px] w-full min-w-0 max-w-full">
                 <span className="text-[9px] font-extrabold uppercase text-muted-foreground shrink-0">
                   Super:
                 </span>
@@ -1560,8 +1593,8 @@ export function SupermarketPriceTrackerModule() {
                 })}
               </div>
 
-              {/* LIST OF BRANDS (ULTRA COMPACT & STREAMLINED) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-1.5">
+              {/* HIGH-DENSITY ULTRA-COMPACT BRANDS LIST */}
+              <div className="divide-y divide-border/60 bg-background rounded-2xl border border-border/80 overflow-hidden shadow-2xs">
                 {brands
                   .filter((b) => {
                     if (settingsSearch && !b.name.toLowerCase().includes(settingsSearch.toLowerCase())) {
@@ -1582,62 +1615,60 @@ export function SupermarketPriceTrackerModule() {
                     return (
                       <div
                         key={b.id}
-                        className="bg-card hover:bg-muted/30 rounded-xl border border-border/70 p-2 flex flex-col justify-between gap-1 transition-all min-w-0 shadow-2xs"
+                        className="p-1.5 sm:p-2 hover:bg-muted/30 transition-all flex items-center justify-between gap-1.5 min-w-0"
                       >
-                        <div className="space-y-1 min-w-0">
-                          <div className="flex items-center justify-between gap-1">
-                            <h4 className="font-black text-xs text-foreground flex items-center gap-1 truncate">
-                              <Tag size={11} className="text-primary shrink-0" /> {b.name}
-                            </h4>
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button
-                                onClick={() => setEditingBrand(b)}
-                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
-                                title="Editar marca"
-                              >
-                                <Edit2 size={11} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteBrand(b.id)}
-                                className="p-1 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-all"
-                                title="Eliminar marca"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </div>
-                          </div>
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <Tag size={12} className="text-primary shrink-0" />
 
-                          {/* LINKED SUPERMARKETS CHIPS */}
-                          <div className="flex items-center gap-1 flex-wrap text-[9px]">
-                            <span className="font-extrabold text-muted-foreground shrink-0">Super:</span>
-                            {linkedSMs.length > 0 ? (
-                              linkedSMs.map((sm) => (
-                                <span
-                                  key={sm.id}
-                                  className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px] truncate"
-                                  style={{ backgroundColor: sm.color }}
-                                >
-                                  {sm.name}
+                          <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+                            <span className="font-black text-xs text-foreground truncate">
+                              {b.name}
+                            </span>
+
+                            {/* Supermarket Badges */}
+                            <div className="flex items-center gap-1 flex-wrap shrink-0">
+                              {linkedSMs.length > 0 ? (
+                                linkedSMs.map((sm) => (
+                                  <span
+                                    key={sm.id}
+                                    className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px] truncate"
+                                    style={{ backgroundColor: sm.color }}
+                                  >
+                                    {sm.name}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="px-1.5 py-0.2 rounded bg-muted text-muted-foreground font-extrabold text-[8px]">
+                                  🌐 Multi-Super
                                 </span>
-                              ))
-                            ) : (
-                              <span className="text-muted-foreground/80 font-bold italic">
-                                Todos los Supers
-                              </span>
-                            )}
-                          </div>
+                              )}
+                            </div>
 
-                          {/* LINKED PRODUCTS SUMMARY */}
-                          <div className="text-[9px] text-muted-foreground truncate">
-                            <span className="font-extrabold text-foreground">Productos: </span>
-                            {linkedProds.length > 0 ? (
-                              <span className="text-foreground font-semibold">
-                                {linkedProds.map((p) => p.name).join(", ")}
-                              </span>
-                            ) : (
-                              <span className="italic">Todos los productos</span>
-                            )}
+                            {/* Linked Products Summary Pill */}
+                            <span className="text-[8px] font-bold text-muted-foreground/80 truncate">
+                              {linkedProds.length > 0
+                                ? `${linkedProds.length} prod${linkedProds.length > 1 ? "s" : ""}`
+                                : "Todos los prods"}
+                            </span>
                           </div>
+                        </div>
+
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            onClick={() => setEditingBrand(b)}
+                            className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
+                            title="Editar marca"
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteBrand(b.id)}
+                            className="p-1 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                            title="Eliminar marca"
+                          >
+                            <Trash2 size={12} />
+                          </button>
                         </div>
                       </div>
                     );
