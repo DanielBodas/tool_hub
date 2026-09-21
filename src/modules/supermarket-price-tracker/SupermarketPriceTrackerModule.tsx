@@ -1520,10 +1520,10 @@ export function SupermarketPriceTrackerModule() {
 
           {/* 1. BRANDS SECTION */}
           {settingsSection === "brands" && (
-            <div className="bg-card rounded-2xl border border-border/80 p-2.5 shadow-2xs space-y-2 min-w-0">
-              <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
-                <h3 className="text-xs font-black text-foreground flex items-center gap-1">
-                  <Tag className="w-3.5 h-3.5 text-primary" /> Marcas y Vinculación
+            <div className="bg-card rounded-2xl border border-border/80 p-2 shadow-2xs space-y-1.5 min-w-0">
+              <div className="flex items-center justify-between gap-1 border-b border-border/50 pb-1 min-w-0">
+                <h3 className="text-[11px] font-black text-foreground flex items-center gap-1 truncate">
+                  <Tag className="w-3 h-3 text-primary shrink-0" /> Marcas y Vinculación
                 </h3>
 
                 <button
@@ -1535,20 +1535,20 @@ export function SupermarketPriceTrackerModule() {
                       notes: "",
                     });
                   }}
-                  className="px-2 py-1 bg-primary text-primary-foreground rounded-xl text-[10px] font-bold transition-all flex items-center gap-1 shrink-0 shadow-2xs hover:bg-primary-hover"
+                  className="px-2 py-0.5 bg-primary text-primary-foreground rounded-lg text-[9px] font-black transition-all flex items-center gap-0.5 shrink-0 shadow-2xs hover:bg-primary-hover"
                 >
-                  <PlusCircle size={11} /> Nueva Marca
+                  <PlusCircle size={10} /> + Nueva
                 </button>
               </div>
 
               {/* FAST SUPERMARKET FILTER PILLS BAR */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none text-[10px] w-full min-w-0 max-w-full">
-                <span className="text-[9px] font-extrabold uppercase text-muted-foreground shrink-0">
+              <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none text-[9px] w-full min-w-0 max-w-full">
+                <span className="text-[8px] font-extrabold uppercase text-muted-foreground shrink-0">
                   Super:
                 </span>
                 <button
                   onClick={() => setBrandSupermarketFilter("ALL")}
-                  className={`px-2 py-0.5 rounded-lg font-black transition-all shrink-0 border ${
+                  className={`px-1.5 py-0.5 rounded-md font-black transition-all shrink-0 border ${
                     brandSupermarketFilter === "ALL"
                       ? "bg-primary text-primary-foreground border-primary shadow-2xs"
                       : "bg-muted/40 border-border/60 text-foreground hover:bg-muted"
@@ -1559,7 +1559,7 @@ export function SupermarketPriceTrackerModule() {
 
                 <button
                   onClick={() => setBrandSupermarketFilter("GENERAL")}
-                  className={`px-2 py-0.5 rounded-lg font-black transition-all shrink-0 border ${
+                  className={`px-1.5 py-0.5 rounded-md font-black transition-all shrink-0 border ${
                     brandSupermarketFilter === "GENERAL"
                       ? "bg-primary text-primary-foreground border-primary shadow-2xs"
                       : "bg-muted/40 border-border/60 text-foreground hover:bg-muted"
@@ -1576,7 +1576,7 @@ export function SupermarketPriceTrackerModule() {
                     <button
                       key={sm.id}
                       onClick={() => setBrandSupermarketFilter(sm.id)}
-                      className={`px-2 py-0.5 rounded-lg font-bold transition-all shrink-0 border flex items-center gap-1 ${
+                      className={`px-1.5 py-0.5 rounded-md font-bold transition-all shrink-0 border flex items-center gap-1 ${
                         isSelected
                           ? "bg-primary text-primary-foreground border-primary shadow-2xs"
                           : "bg-muted/30 border-border/60 text-foreground hover:bg-muted/60"
@@ -1587,14 +1587,14 @@ export function SupermarketPriceTrackerModule() {
                         style={{ backgroundColor: isSelected ? "#fff" : sm.color }}
                       />
                       <span>{sm.name}</span>
-                      <span className="opacity-75 font-black text-[9px]">({count})</span>
+                      <span className="opacity-75 font-black text-[8px]">({count})</span>
                     </button>
                   );
                 })}
               </div>
 
               {/* HIGH-DENSITY ULTRA-COMPACT BRANDS LIST */}
-              <div className="divide-y divide-border/60 bg-background rounded-2xl border border-border/80 overflow-hidden shadow-2xs">
+              <div className="divide-y divide-border/60 bg-background rounded-xl border border-border/80 overflow-hidden shadow-2xs">
                 {brands
                   .filter((b) => {
                     if (settingsSearch && !b.name.toLowerCase().includes(settingsSearch.toLowerCase())) {
@@ -1615,37 +1615,37 @@ export function SupermarketPriceTrackerModule() {
                     return (
                       <div
                         key={b.id}
-                        className="p-1.5 sm:p-2 hover:bg-muted/30 transition-all flex items-center justify-between gap-1.5 min-w-0"
+                        className="px-1.5 py-1 hover:bg-muted/30 transition-all flex items-center justify-between gap-1 min-w-0 text-[10px]"
                       >
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          <Tag size={12} className="text-primary shrink-0" />
+                        <div className="flex items-center gap-1 min-w-0 flex-1">
+                          <Tag size={10} className="text-primary shrink-0" />
 
-                          <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
-                            <span className="font-black text-xs text-foreground truncate">
+                          <div className="flex items-center gap-1 flex-wrap min-w-0 flex-1">
+                            <span className="font-black text-[11px] text-foreground truncate">
                               {b.name}
                             </span>
 
                             {/* Supermarket Badges */}
-                            <div className="flex items-center gap-1 flex-wrap shrink-0">
+                            <div className="flex items-center gap-0.5 flex-wrap shrink-0">
                               {linkedSMs.length > 0 ? (
                                 linkedSMs.map((sm) => (
                                   <span
                                     key={sm.id}
-                                    className="px-1.5 py-0.2 rounded font-extrabold text-white text-[8px] truncate"
+                                    className="px-1 py-0.2 rounded font-extrabold text-white text-[7.5px] truncate"
                                     style={{ backgroundColor: sm.color }}
                                   >
                                     {sm.name}
                                   </span>
                                 ))
                               ) : (
-                                <span className="px-1.5 py-0.2 rounded bg-muted text-muted-foreground font-extrabold text-[8px]">
+                                <span className="px-1 py-0.2 rounded bg-muted text-muted-foreground font-extrabold text-[7.5px]">
                                   🌐 Multi-Super
                                 </span>
                               )}
                             </div>
 
                             {/* Linked Products Summary Pill */}
-                            <span className="text-[8px] font-bold text-muted-foreground/80 truncate">
+                            <span className="text-[7.5px] font-bold text-muted-foreground/80 truncate">
                               {linkedProds.length > 0
                                 ? `${linkedProds.length} prod${linkedProds.length > 1 ? "s" : ""}`
                                 : "Todos los prods"}
@@ -1657,17 +1657,17 @@ export function SupermarketPriceTrackerModule() {
                         <div className="flex items-center gap-0.5 shrink-0">
                           <button
                             onClick={() => setEditingBrand(b)}
-                            className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-all"
+                            className="p-0.5 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
                             title="Editar marca"
                           >
-                            <Edit2 size={12} />
+                            <Edit2 size={11} />
                           </button>
                           <button
                             onClick={() => handleDeleteBrand(b.id)}
-                            className="p-1 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-all"
+                            className="p-0.5 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-md transition-all"
                             title="Eliminar marca"
                           >
-                            <Trash2 size={12} />
+                            <Trash2 size={11} />
                           </button>
                         </div>
                       </div>
