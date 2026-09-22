@@ -633,82 +633,84 @@ export function SupermarketPriceTrackerModule() {
   }, [products, addProductId]);
 
   return (
-    <div className="space-y-2 max-w-7xl mx-auto px-1 sm:px-3 py-1 text-foreground min-w-0">
+    <div className="space-y-2 max-w-full mx-auto px-1 sm:px-3 py-0.5 text-foreground min-w-0 overflow-x-hidden">
 
-      {/* SLEEK STICKY CAPSULE TAB BAR WITH INTEGRATED ACTIONS */}
-      <div className="sticky top-9 z-30 bg-background/95 backdrop-blur-md pt-0.5 pb-1 flex items-center justify-between border-b border-border/40 gap-1 select-none min-w-0">
-        <div className="grid grid-cols-4 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 shadow-2xs flex-1 min-w-0">
-          <button
-            onClick={() => setActiveTab("verifier")}
-            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
-              activeTab === "verifier"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Sparkles size={11} className="shrink-0" />
-            <span className="truncate">Verificar</span>
-          </button>
+      {/* SLEEK STICKY CAPSULE TAB BAR - FULL WIDTH CONTAINMENT */}
+      <div className="sticky top-9 z-30 bg-background/95 backdrop-blur-md pt-0.5 pb-1 space-y-1 border-b border-border/40 select-none w-full max-w-full min-w-0 overflow-hidden">
+        <div className="flex items-center justify-between gap-1 w-full min-w-0">
+          <div className="grid grid-cols-4 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 shadow-2xs w-full min-w-0">
+            <button
+              onClick={() => setActiveTab("verifier")}
+              className={`py-1 px-0.5 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                activeTab === "verifier"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sparkles size={11} className="shrink-0" />
+              <span className="truncate">Verificar</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("history")}
-            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
-              activeTab === "history"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <History size={11} className="shrink-0" />
-            <span className="truncate">Historial</span>
-          </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`py-1 px-0.5 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                activeTab === "history"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <History size={11} className="shrink-0" />
+              <span className="truncate">Historial</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("add")}
-            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
-              activeTab === "add"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <PlusCircle size={11} className="shrink-0" />
-            <span className="truncate">Añadir</span>
-          </button>
+            <button
+              onClick={() => setActiveTab("add")}
+              className={`py-1 px-0.5 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                activeTab === "add"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <PlusCircle size={11} className="shrink-0" />
+              <span className="truncate">Añadir</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`py-1 px-1 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 sm:gap-1 min-w-0 ${
-              activeTab === "settings"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Settings size={11} className="shrink-0" />
-            <span className="truncate">Ajustes</span>
-          </button>
-        </div>
+            <button
+              onClick={() => setActiveTab("settings")}
+              className={`py-1 px-0.5 sm:px-2 rounded-lg text-[9px] sm:text-xs font-black transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                activeTab === "settings"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Settings size={11} className="shrink-0" />
+              <span className="truncate">Ajustes</span>
+            </button>
+          </div>
 
-        {/* Sync / Defaults quick action buttons */}
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            onClick={() => saveDataToApiAndLocal()}
-            disabled={isSaving}
-            className={`p-1.5 rounded-lg text-[10px] font-bold transition-all border ${
-              dbStatus === "synced"
-                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
-                : "bg-amber-500/10 text-amber-600 border-amber-500/30"
-            }`}
-            title="Sincronizar MongoDB"
-          >
-            <Database size={11} className={isSaving ? "animate-spin" : ""} />
-          </button>
+          {/* Sync / Defaults quick action buttons */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => saveDataToApiAndLocal()}
+              disabled={isSaving}
+              className={`p-1 rounded-lg text-[9px] font-bold transition-all border ${
+                dbStatus === "synced"
+                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                  : "bg-amber-500/10 text-amber-600 border-amber-500/30"
+              }`}
+              title="Sincronizar MongoDB"
+            >
+              <Database size={11} className={isSaving ? "animate-spin" : ""} />
+            </button>
 
-          <button
-            onClick={handleResetToDefaults}
-            className="p-1.5 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg text-[10px] font-bold transition-all border border-border/60"
-            title="Cargar datos de ejemplo"
-          >
-            <RefreshCw size={11} />
-          </button>
+            <button
+              onClick={handleResetToDefaults}
+              className="p-1 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg text-[9px] font-bold transition-all border border-border/60"
+              title="Cargar datos de ejemplo"
+            >
+              <RefreshCw size={11} />
+            </button>
+          </div>
         </div>
       </div>
 
