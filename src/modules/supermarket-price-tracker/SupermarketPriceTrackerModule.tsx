@@ -149,13 +149,20 @@ export function SupermarketPriceTrackerModule() {
 
   // --- 4. SETTINGS / ENTITY MANAGEMENT STATE ---
   const [settingsSection, setSettingsSection] = useState<
-    "brands" | "supermarkets" | "products"
+    "brands" | "supermarkets" | "products" | "categories" | "general"
   >("brands");
 
   // Modals / Editors
   const [editingSupermarket, setEditingSupermarket] = useState<Partial<Supermarket> | null>(null);
   const [editingBrand, setEditingBrand] = useState<Partial<Brand> | null>(null);
   const [editingProduct, setEditingProduct] = useState<Partial<Product> | null>(null);
+
+  // Category Editor State
+  const [editingCategory, setEditingCategory] = useState<{ oldName: string; newName: string } | null>(null);
+  const [newCategoryName, setNewCategoryName] = useState("");
+
+  // General Settings / Thresholds State
+  const [cholloThreshold, setCholloThreshold] = useState<number>(2); // % within minimum for Chollo status
 
   // Data Loading & Persistence
   useEffect(() => {
@@ -356,7 +363,7 @@ export function SupermarketPriceTrackerModule() {
     let status: OfferAssessmentStatus = "BUEN_PRECIO";
     let message = "";
 
-    if (currentUnitVal <= minUnit * 1.02) {
+    if (currentUnitVal <= minUnit * (1 + cholloThreshold / 100)) {
       status = "CHOLLO";
       message = `¡OFERTAAZO REAL! El precio por unidad (${currentUnitVal.toFixed(2)}${baseUnitLabel}) está un ${Math.abs(diffVsAvgPercent)}% por debajo de la media habitual (${avgUnit.toFixed(2)}${baseUnitLabel}) y en el MÍNIMO HISTÓRICO.`;
     } else if (currentUnitVal < avgUnit) {
@@ -385,6 +392,7 @@ export function SupermarketPriceTrackerModule() {
     verifierQuantity,
     verifierUnit,
     priceRecords,
+    cholloThreshold,
   ]);
 
   // --- ADD RECORD HANDLER ---
@@ -617,6 +625,96 @@ export function SupermarketPriceTrackerModule() {
       setProducts(updated);
       saveDataToApiAndLocal(supermarkets, brands, updated, priceRecords);
     }
+  };
+
+  // --- CATEGORY EDITORS HANDLERS ---
+  const handleRenameCategory = (oldCat: string, newCat: string) => {
+    if (!newCat.trim() || oldCat === newCat.trim()) return;
+    const trimmed = newCat.trim();
+    const updatedProducts = products.map((p) =>
+      p.category === oldCat ? { ...p, category: trimmed } : p
+    );
+    setProducts(updatedProducts);
+    saveDataToApiAndLocal(supermarkets, brands, updatedProducts, priceRecords);
+    setEditingCategory(null);
+  };
+
+  const handleDeleteCategory = (catName: string) => {
+    if (confirm(`¿Eliminar la categoría "${catName}"? Sus productos pasarán a la categoría "General".`)) {
+      const updatedProducts = products.map((p) =>
+        p.category === catName ? { ...p, category: "General" } : p
+      );
+      setProducts(updatedProducts);
+      saveDataToApiAndLocal(supermarkets, brands, updatedProducts, priceRecords);
+    }
+  };
+
+  const handleAddCategory = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCategoryName.trim()) return;
+    const catName = newCategoryName.trim();
+    if (categoriesList.includes(catName)) {
+      alert("Esta categoría ya existe.");
+      return;
+    }
+    const newProd: Product = {
+      id: "prod-" + Date.now(),
+      name: `Ejemplo en ${catName}`,
+      category: catName,
+      defaultUnit: "ud",
+      variants: [],
+      notes: "Producto generado al crear la categoría",
+    };
+    const updatedProducts = [...products, newProd];
+    setProducts(updatedProducts);
+    saveDataToApiAndLocal(supermarkets, brands, updatedProducts, priceRecords);
+    setNewCategoryName("");
+    alert(`Categoría "${catName}" creada correctamente.`);
+  };
+
+  // --- DATA BACKUP & EXPORT/IMPORT HANDLERS ---
+  const handleExportData = () => {
+    const dataStr = JSON.stringify(
+      { supermarkets, brands, products, priceRecords },
+      null,
+      2
+    );
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `supermarket_price_tracker_backup_${new Date().toISOString().split("T")[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const json = JSON.parse(event.target?.result as string);
+        if (json.supermarkets && json.products) {
+          setSupermarkets(json.supermarkets || INITIAL_SUPERMARKETS);
+          setBrands(json.brands || []);
+          setProducts(json.products || []);
+          setPriceRecords(json.priceRecords || []);
+          saveDataToApiAndLocal(
+            json.supermarkets || INITIAL_SUPERMARKETS,
+            json.brands || [],
+            json.products || [],
+            json.priceRecords || []
+          );
+          alert("¡Copia de seguridad importada con éxito!");
+        } else {
+          alert("El archivo subido no tiene el formato correcto.");
+        }
+      } catch {
+        alert("Error al leer el archivo JSON.");
+      }
+    };
+    reader.readAsText(file);
   };
 
   const verifierRecords = useMemo(() => {
@@ -1467,43 +1565,72 @@ export function SupermarketPriceTrackerModule() {
       {activeTab === "settings" && (
         <div className="space-y-2 min-w-0 w-full max-w-full overflow-x-hidden">
 
-          {/* SUB-PILLS & SEARCH TOOLBAR */}
+          {/* SUB-PILLS & SEARCH TOOLBAR (5 SUB-SECTIONS NAV) */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 min-w-0 w-full max-w-full">
-            <div className="grid grid-cols-3 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-auto shrink-0 min-w-0">
+            <div className="grid grid-cols-5 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-auto shrink-0 min-w-0">
               <button
                 onClick={() => setSettingsSection("brands")}
-                className={`py-1 px-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
                   settingsSection === "brands"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
+                title="Ajuste de Marcas y Vinculaciones"
               >
-                <Tag size={10} className="shrink-0" />
-                <span className="truncate">Marcas ({brands.length})</span>
+                <Tag size={9} className="shrink-0" />
+                <span className="truncate">Marcas</span>
               </button>
 
               <button
                 onClick={() => setSettingsSection("supermarkets")}
-                className={`py-1 px-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
                   settingsSection === "supermarkets"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
+                title="Ajuste de Supermercados"
               >
-                <Store size={10} className="shrink-0" />
-                <span className="truncate">Supers ({supermarkets.length})</span>
+                <Store size={9} className="shrink-0" />
+                <span className="truncate">Supers</span>
               </button>
 
               <button
                 onClick={() => setSettingsSection("products")}
-                className={`py-1 px-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
                   settingsSection === "products"
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
+                title="Catálogo de Productos y Formatos"
               >
-                <Package size={10} className="shrink-0" />
-                <span className="truncate">Prods ({products.length})</span>
+                <Package size={9} className="shrink-0" />
+                <span className="truncate">Prods</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsSection("categories")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "categories"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Gestión de Categorías"
+              >
+                <Filter size={9} className="shrink-0" />
+                <span className="truncate">Cats</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsSection("general")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "general"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Copia de Seguridad y Umbrales"
+              >
+                <Settings size={9} className="shrink-0" />
+                <span className="truncate">Datos</span>
               </button>
             </div>
 
@@ -1675,6 +1802,226 @@ export function SupermarketPriceTrackerModule() {
                       </div>
                     );
                   })}
+              </div>
+            </div>
+          )}
+
+          {/* 4. CATEGORIES SECTION */}
+          {settingsSection === "categories" && (
+            <div className="bg-card rounded-2xl border border-border/80 p-2.5 shadow-2xs space-y-2 min-w-0">
+              <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5">
+                <h3 className="text-xs font-black text-foreground flex items-center gap-1">
+                  <Filter className="w-3.5 h-3.5 text-primary" /> Gestión de Categorías
+                </h3>
+
+                <span className="text-[10px] font-bold text-muted-foreground">
+                  {categoriesList.length} categorías activas
+                </span>
+              </div>
+
+              {/* Add Category Quick Form */}
+              <form onSubmit={handleAddCategory} className="flex items-center gap-1.5 bg-muted/20 p-2 rounded-xl border border-border/60">
+                <input
+                  type="text"
+                  placeholder="Nueva categoría (ej: Congelados, Bebé...)"
+                  value={newCategoryName}
+                  onChange={(e) => setNewCategoryName(e.target.value)}
+                  className="flex-1 bg-background border border-border/80 rounded-xl px-2.5 py-1 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-primary/40 min-w-0"
+                />
+                <button
+                  type="submit"
+                  className="px-3 py-1 bg-primary text-primary-foreground rounded-xl text-xs font-black shadow-xs shrink-0 flex items-center gap-0.5 hover:bg-primary-hover"
+                >
+                  <Plus size={12} /> Crear
+                </button>
+              </form>
+
+              {/* Categories Grid List */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {categoriesList
+                  .filter((cat) => !settingsSearch || cat.toLowerCase().includes(settingsSearch.toLowerCase()))
+                  .map((cat) => {
+                    const count = products.filter((p) => p.category === cat).length;
+                    const isEditingThis = editingCategory?.oldName === cat;
+
+                    return (
+                      <div
+                        key={cat}
+                        className="bg-muted/20 hover:bg-muted/40 rounded-xl border border-border/60 p-2 flex items-center justify-between gap-1.5 min-w-0"
+                      >
+                        {isEditingThis ? (
+                          <div className="flex items-center gap-1 flex-1 min-w-0">
+                            <input
+                              type="text"
+                              value={editingCategory.newName}
+                              onChange={(e) =>
+                                setEditingCategory({ ...editingCategory, newName: e.target.value })
+                              }
+                              className="flex-1 bg-background border border-border rounded-lg px-2 py-0.5 text-xs font-bold min-w-0"
+                            />
+                            <button
+                              onClick={() => handleRenameCategory(cat, editingCategory.newName)}
+                              className="p-1 bg-primary text-primary-foreground rounded-lg"
+                              title="Guardar cambio"
+                            >
+                              <Check size={11} />
+                            </button>
+                            <button
+                              onClick={() => setEditingCategory(null)}
+                              className="p-1 bg-muted text-muted-foreground rounded-lg"
+                              title="Cancelar"
+                            >
+                              <X size={11} />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <span className="text-xs">📁</span>
+                              <span className="font-extrabold text-xs text-foreground truncate">
+                                {cat}
+                              </span>
+                              <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-primary/10 text-primary shrink-0">
+                                {count} prods
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button
+                                onClick={() => setEditingCategory({ oldName: cat, newName: cat })}
+                                className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md"
+                                title="Renombrar categoría"
+                              >
+                                <Edit2 size={11} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteCategory(cat)}
+                                className="p-1 text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 rounded-md"
+                                title="Eliminar categoría"
+                              >
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          )}
+
+          {/* 5. GENERAL & DATA BACKUP SECTION */}
+          {settingsSection === "general" && (
+            <div className="bg-card rounded-2xl border border-border/80 p-2.5 shadow-2xs space-y-3 min-w-0">
+              <div className="border-b border-border/50 pb-1.5">
+                <h3 className="text-xs font-black text-foreground flex items-center gap-1">
+                  <Database className="w-3.5 h-3.5 text-primary" /> Datos, Backup y Ajustes Generales
+                </h3>
+              </div>
+
+              {/* STATISTICS SUMMARY CARDS */}
+              <div className="grid grid-cols-4 gap-1">
+                <div className="bg-muted/30 p-1.5 rounded-xl border border-border/60 text-center min-w-0">
+                  <span className="text-[8px] font-extrabold uppercase text-muted-foreground block truncate">
+                    Registros
+                  </span>
+                  <span className="text-xs font-black text-primary truncate block">
+                    {priceRecords.length}
+                  </span>
+                </div>
+
+                <div className="bg-muted/30 p-1.5 rounded-xl border border-border/60 text-center min-w-0">
+                  <span className="text-[8px] font-extrabold uppercase text-muted-foreground block truncate">
+                    Marcas
+                  </span>
+                  <span className="text-xs font-black text-primary truncate block">
+                    {brands.length}
+                  </span>
+                </div>
+
+                <div className="bg-muted/30 p-1.5 rounded-xl border border-border/60 text-center min-w-0">
+                  <span className="text-[8px] font-extrabold uppercase text-muted-foreground block truncate">
+                    Supers
+                  </span>
+                  <span className="text-xs font-black text-primary truncate block">
+                    {supermarkets.length}
+                  </span>
+                </div>
+
+                <div className="bg-muted/30 p-1.5 rounded-xl border border-border/60 text-center min-w-0">
+                  <span className="text-[8px] font-extrabold uppercase text-muted-foreground block truncate">
+                    Productos
+                  </span>
+                  <span className="text-xs font-black text-primary truncate block">
+                    {products.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* OFFER DIAGNOSTIC THRESHOLDS CONFIGURATION */}
+              <div className="bg-muted/20 p-2 rounded-xl border border-border/60 space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-black text-foreground">
+                    Sensibilidad de Chollo (% sobre el mínimo)
+                  </label>
+                  <span className="text-xs font-extrabold text-primary">
+                    +{cholloThreshold}%
+                  </span>
+                </div>
+                <p className="text-[9px] text-muted-foreground leading-tight">
+                  Ajusta el margen de tolerancia para clasificar un precio como &ldquo;Chollo Real&rdquo; si está dentro de este porcentaje sobre el mínimo histórico.
+                </p>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={cholloThreshold}
+                  onChange={(e) => setCholloThreshold(parseInt(e.target.value) || 0)}
+                  className="w-full h-1 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                />
+              </div>
+
+              {/* BACKUP EXPORT & IMPORT ACTION BUTTONS */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleExportData}
+                  className="py-2 px-3 bg-card border border-primary/40 hover:bg-primary/10 text-primary font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 shadow-2xs"
+                >
+                  <Database size={13} /> Exportar Copia de Seguridad JSON
+                </button>
+
+                <label className="py-2 px-3 bg-card border border-border hover:bg-muted text-foreground font-black text-xs rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs text-center">
+                  <RefreshCw size={13} /> Importar Copia de Seguridad JSON
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportData}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+
+              {/* FACTORY RESET CONTROL */}
+              <div className="border-t border-border/60 pt-2 flex items-center justify-between gap-2">
+                <div>
+                  <h4 className="text-[10px] font-black text-rose-600 dark:text-rose-400">
+                    Restablecer de Fábrica
+                  </h4>
+                  <p className="text-[8px] text-muted-foreground">
+                    Carga los supermercados y catálogo por defecto inicial.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleResetToDefaults}
+                  className="px-2.5 py-1 bg-rose-500/10 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-extrabold text-[10px] rounded-xl hover:bg-rose-500/20 transition-all shrink-0"
+                >
+                  Restablecer
+                </button>
               </div>
             </div>
           )}
