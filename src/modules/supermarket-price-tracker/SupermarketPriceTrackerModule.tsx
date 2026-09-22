@@ -1465,50 +1465,50 @@ export function SupermarketPriceTrackerModule() {
       {/* TAB 4: CONFIGURACIÓN, TIENDAS, MARCAS Y SUS ENLACES (SCALABLE & CATEGORIZED) */}
       {/* ========================================================================= */}
       {activeTab === "settings" && (
-        <div className="space-y-2 min-w-0">
+        <div className="space-y-2 min-w-0 w-full max-w-full overflow-x-hidden">
 
           {/* SUB-PILLS & SEARCH TOOLBAR */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 min-w-0">
-            <div className="grid grid-cols-3 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-auto shrink-0">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 min-w-0 w-full max-w-full">
+            <div className="grid grid-cols-3 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-auto shrink-0 min-w-0">
               <button
                 onClick={() => setSettingsSection("brands")}
-                className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 min-w-0 ${
+                className={`py-1 px-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
                   settingsSection === "brands"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Tag size={11} className="shrink-0" />
+                <Tag size={10} className="shrink-0" />
                 <span className="truncate">Marcas ({brands.length})</span>
               </button>
 
               <button
                 onClick={() => setSettingsSection("supermarkets")}
-                className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 min-w-0 ${
+                className={`py-1 px-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
                   settingsSection === "supermarkets"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Store size={11} className="shrink-0" />
+                <Store size={10} className="shrink-0" />
                 <span className="truncate">Supers ({supermarkets.length})</span>
               </button>
 
               <button
                 onClick={() => setSettingsSection("products")}
-                className={`py-1 px-1.5 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-1 min-w-0 ${
+                className={`py-1 px-1 rounded-lg text-[10px] font-bold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
                   settingsSection === "products"
                     ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                <Package size={11} className="shrink-0" />
+                <Package size={10} className="shrink-0" />
                 <span className="truncate">Prods ({products.length})</span>
               </button>
             </div>
 
             {/* Instant Search Bar for Settings */}
-            <div className="relative w-full sm:w-48 shrink-0">
+            <div className="relative w-full sm:w-48 shrink-0 min-w-0">
               <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
