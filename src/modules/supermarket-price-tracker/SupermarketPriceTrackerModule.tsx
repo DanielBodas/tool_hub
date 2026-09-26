@@ -810,6 +810,78 @@ export function SupermarketPriceTrackerModule() {
             </button>
           </div>
         </div>
+
+        {/* SETTINGS SUB-TABS (MARCAS, SUPERS, PRODS, CATS, DATOS) INTEGRATED INTO STICKY HEADER */}
+        {activeTab === "settings" && (
+          <div className="pt-1 min-w-0 w-full max-w-full">
+            <div className="grid grid-cols-5 gap-0.5 bg-muted/40 p-0.5 rounded-xl border border-border/80 w-full shrink-0 min-w-0">
+              <button
+                onClick={() => setSettingsSection("brands")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "brands"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Ajuste de Marcas y Vinculaciones"
+              >
+                <Tag size={9} className="shrink-0" />
+                <span className="truncate">Marcas</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsSection("supermarkets")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "supermarkets"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Ajuste de Supermercados"
+              >
+                <Store size={9} className="shrink-0" />
+                <span className="truncate">Supers</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsSection("products")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "products"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Catálogo de Productos y Formatos"
+              >
+                <Package size={9} className="shrink-0" />
+                <span className="truncate">Prods</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsSection("categories")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "categories"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Gestión de Categorías"
+              >
+                <Filter size={9} className="shrink-0" />
+                <span className="truncate">Cats</span>
+              </button>
+
+              <button
+                onClick={() => setSettingsSection("general")}
+                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
+                  settingsSection === "general"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                title="Copia de Seguridad y Umbrales"
+              >
+                <Settings size={9} className="shrink-0" />
+                <span className="truncate">Datos</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -1565,84 +1637,16 @@ export function SupermarketPriceTrackerModule() {
       {activeTab === "settings" && (
         <div className="space-y-2 min-w-0 w-full max-w-full overflow-x-hidden">
 
-          {/* SUB-PILLS & SEARCH TOOLBAR (5 SUB-SECTIONS NAV) */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5 min-w-0 w-full max-w-full">
-            <div className="grid grid-cols-5 gap-0.5 bg-card p-0.5 rounded-xl border border-border/80 w-full sm:w-auto shrink-0 min-w-0">
-              <button
-                onClick={() => setSettingsSection("brands")}
-                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
-                  settingsSection === "brands"
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="Ajuste de Marcas y Vinculaciones"
-              >
-                <Tag size={9} className="shrink-0" />
-                <span className="truncate">Marcas</span>
-              </button>
-
-              <button
-                onClick={() => setSettingsSection("supermarkets")}
-                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
-                  settingsSection === "supermarkets"
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="Ajuste de Supermercados"
-              >
-                <Store size={9} className="shrink-0" />
-                <span className="truncate">Supers</span>
-              </button>
-
-              <button
-                onClick={() => setSettingsSection("products")}
-                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
-                  settingsSection === "products"
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="Catálogo de Productos y Formatos"
-              >
-                <Package size={9} className="shrink-0" />
-                <span className="truncate">Prods</span>
-              </button>
-
-              <button
-                onClick={() => setSettingsSection("categories")}
-                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
-                  settingsSection === "categories"
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="Gestión de Categorías"
-              >
-                <Filter size={9} className="shrink-0" />
-                <span className="truncate">Cats</span>
-              </button>
-
-              <button
-                onClick={() => setSettingsSection("general")}
-                className={`py-1 px-0.5 rounded-lg text-[9px] sm:text-[10px] font-extrabold transition-all flex items-center justify-center gap-0.5 min-w-0 ${
-                  settingsSection === "general"
-                    ? "bg-primary text-primary-foreground shadow-2xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                title="Copia de Seguridad y Umbrales"
-              >
-                <Settings size={9} className="shrink-0" />
-                <span className="truncate">Datos</span>
-              </button>
-            </div>
-
-            {/* Instant Search Bar for Settings */}
-            <div className="relative w-full sm:w-48 shrink-0 min-w-0">
-              <Search className="w-3 h-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          {/* INSTANT SEARCH TOOLBAR FOR SETTINGS */}
+          <div className="flex items-center justify-end gap-1.5 min-w-0 w-full max-w-full">
+            <div className="relative w-full sm:w-64 shrink-0 min-w-0">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
               <input
                 type="text"
                 placeholder="Buscar en ajustes..."
                 value={settingsSearch}
                 onChange={(e) => setSettingsSearch(e.target.value)}
-                className="w-full bg-background border border-border/80 rounded-xl pl-7 pr-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-primary"
+                className="w-full bg-background border border-border/80 rounded-xl pl-8 pr-2 py-1 text-xs font-bold focus:outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
           </div>
