@@ -51,12 +51,20 @@ export async function GET() {
 
     const doc = await db.collection("data").findOne({ id: DATA_DOC_ID });
 
+    const defaultTradeRepublic = {
+      balance: 5000,
+      annualInterestRate: 3.0,
+      lastUpdated: new Date().toISOString().slice(0, 10),
+      notes: "Cuenta remunerada Trade Republic",
+    };
+
     if (!doc) {
       return NextResponse.json({
         liquidity: { totalLiquidity: 20500, monthlyExpenses: 2000 },
         liquidAccounts: [],
+        liquidHistory: [],
+        tradeRepublic: defaultTradeRepublic,
         airbusPackages: [],
-        otherInvestments: [],
         settings: {
           targetInvestmentRatio: 60,
           taxRate: 19,
@@ -67,8 +75,9 @@ export async function GET() {
     return NextResponse.json({
       liquidity: doc.liquidity || { totalLiquidity: 20500, monthlyExpenses: 2000 },
       liquidAccounts: doc.liquidAccounts || [],
+      liquidHistory: doc.liquidHistory || [],
+      tradeRepublic: doc.tradeRepublic || defaultTradeRepublic,
       airbusPackages: doc.airbusPackages || [],
-      otherInvestments: doc.otherInvestments || [],
       settings: doc.settings || {
         targetInvestmentRatio: 60,
         taxRate: 19,
@@ -91,7 +100,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { liquidity, liquidAccounts, airbusPackages, otherInvestments, settings } = body;
+    const { liquidity, liquidAccounts, liquidHistory, tradeRepublic, airbusPackages, settings } = body;
 
     const client = await clientPromise;
     const db = client.db(getDbName());
@@ -100,8 +109,14 @@ export async function POST(request: Request) {
       id: DATA_DOC_ID,
       liquidity: liquidity || { totalLiquidity: 20500, monthlyExpenses: 2000 },
       liquidAccounts: Array.isArray(liquidAccounts) ? liquidAccounts : [],
+      liquidHistory: Array.isArray(liquidHistory) ? liquidHistory : [],
+      tradeRepublic: tradeRepublic || {
+        balance: 5000,
+        annualInterestRate: 3.0,
+        lastUpdated: new Date().toISOString().slice(0, 10),
+        notes: "Cuenta remunerada Trade Republic",
+      },
       airbusPackages: Array.isArray(airbusPackages) ? airbusPackages : [],
-      otherInvestments: Array.isArray(otherInvestments) ? otherInvestments : [],
       settings: settings || { targetInvestmentRatio: 60, taxRate: 19 },
       updatedAt: new Date(),
     };
