@@ -69,10 +69,6 @@ function normalizeApiPayload(rawRankings: any, rawTournaments: any) {
 
 export async function GET() {
   try {
-    const authorized = await isAuthorized();
-    if (!authorized) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
 
     const client = await clientPromise;
     const db = client.db(
