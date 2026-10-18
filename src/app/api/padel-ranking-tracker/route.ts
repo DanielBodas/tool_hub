@@ -5,7 +5,12 @@ import { authOptions } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { loadAllToolEnvs } from "@/lib/env";
 import { isUserAllowedForTool } from "@/lib/toolAccess";
-import { DEFAULT_API_CONFIG } from "@/modules/padel-ranking-tracker/initialData";
+import {
+  DEFAULT_API_CONFIG,
+  INITIAL_MALE_PLAYERS,
+  INITIAL_FEMALE_PLAYERS,
+  INITIAL_TOURNAMENTS,
+} from "@/modules/padel-ranking-tracker/initialData";
 
 loadAllToolEnvs();
 
@@ -30,6 +35,38 @@ async function isAuthorized(): Promise<boolean> {
   return isUnlocked;
 }
 
+/**
+ * Flexible JSON Normalizer to accept various Padel API response formats.
+ */
+function normalizeApiPayload(rawRankings: any, rawTournaments: any) {
+  let malePlayers: any[] = [];
+  let femalePlayers: any[] = [];
+  let tournaments: any[] = [];
+
+  if (rawRankings) {
+    if (Array.isArray(rawRankings)) {
+      malePlayers = rawRankings.filter((p: any) => p.gender === "male" || p.circuit === "male" || !p.gender);
+      femalePlayers = rawRankings.filter((p: any) => p.gender === "female" || p.circuit === "female");
+    } else if (typeof rawRankings === "object") {
+      const list = rawRankings.malePlayers || rawRankings.male || rawRankings.rankings?.male || rawRankings.data || rawRankings.players || [];
+      const femaleList = rawRankings.femalePlayers || rawRankings.female || rawRankings.rankings?.female || [];
+
+      if (Array.isArray(list)) malePlayers = list;
+      if (Array.isArray(femaleList)) femalePlayers = femaleList;
+    }
+  }
+
+  if (rawTournaments) {
+    if (Array.isArray(rawTournaments)) {
+      tournaments = rawTournaments;
+    } else if (typeof rawTournaments === "object") {
+      tournaments = rawTournaments.tournaments || rawTournaments.data || rawTournaments.calendar || [];
+    }
+  }
+
+  return { malePlayers, femalePlayers, tournaments };
+}
+
 export async function GET() {
   try {
     const authorized = await isAuthorized();
@@ -42,9 +79,9 @@ export async function GET() {
       process.env.PADEL_RANKING_TRACKER_DB_NAME || "padel-ranking-tracker"
     );
 
-    // Retrieve saved API credentials (padelapi.org) and simulations
     const configDocs = await db.collection("config").find({}).toArray();
     const simDocs = await db.collection("simulated_outcomes").find({}).toArray();
+    const customDocs = await db.collection("custom_data").find({}).toArray();
 
     let apiConfig = configDocs.length > 0 ? configDocs[0] : DEFAULT_API_CONFIG;
     if (apiConfig._id) delete apiConfig._id;
@@ -61,13 +98,28 @@ export async function GET() {
     let malePlayers: any[] = [];
     let femalePlayers: any[] = [];
     let tournaments: any[] = [];
+    let lastDiagnostic: any = null;
 
-    // Proxy request to PadelAPI.org when API Key / Bearer token is provided
-    if (apiConfig.apiUrl && apiConfig.apiKey) {
+    // Check if custom / demo data was manually saved in DB
+    if (customDocs.length > 0) {
+      const custom = customDocs[0];
+      if (Array.isArray(custom.malePlayers) && custom.malePlayers.length > 0) {
+        malePlayers = custom.malePlayers;
+      }
+      if (Array.isArray(custom.femalePlayers) && custom.femalePlayers.length > 0) {
+        femalePlayers = custom.femalePlayers;
+      }
+      if (Array.isArray(custom.tournaments) && custom.tournaments.length > 0) {
+        tournaments = custom.tournaments;
+      }
+    }
+
+    // Proxy request to PadelAPI.org when credentials are provided
+    if (apiConfig.apiUrl && apiConfig.apiKey && malePlayers.length === 0) {
       try {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${apiConfig.apiKey}`,
+          Authorization: `Bearer ${apiConfig.apiKey.trim()}`,
         };
 
         const baseUrl = apiConfig.apiUrl.replace(/\/$/, "");
@@ -77,28 +129,38 @@ export async function GET() {
           fetch(`${baseUrl}/tournaments`, { headers, cache: "no-store" }),
         ]);
 
-        if (rankingsRes.status === "fulfilled" && rankingsRes.value.ok) {
-          const rankingsData = await rankingsRes.value.json();
-          malePlayers = rankingsData.malePlayers || rankingsData.male || [];
-          femalePlayers = rankingsData.femalePlayers || rankingsData.female || [];
+        let rawRankingsData = null;
+        let rawTournamentsData = null;
+        let httpStatus = 200;
+
+        if (rankingsRes.status === "fulfilled") {
+          httpStatus = rankingsRes.value.status;
+          if (rankingsRes.value.ok) {
+            rawRankingsData = await rankingsRes.value.json();
+          }
         }
 
         if (tournamentsRes.status === "fulfilled" && tournamentsRes.value.ok) {
-          const tournData = await tournamentsRes.value.json();
-          tournaments = Array.isArray(tournData) ? tournData : tournData.tournaments || [];
+          rawTournamentsData = await tournamentsRes.value.json();
         }
 
-        // Save historical query log snapshot for data traceability
-        await db.collection("snapshots").insertOne({
-          queriedAt: new Date().toISOString(),
-          source: baseUrl,
-          seasonYear: apiConfig.seasonConfig?.seasonYear || 2026,
-          maleCount: malePlayers.length,
-          femaleCount: femalePlayers.length,
-          tournamentCount: tournaments.length,
-        });
-      } catch (err) {
-        console.warn("PadelAPI.org fetch warning:", err);
+        const normalized = normalizeApiPayload(rawRankingsData, rawTournamentsData);
+        malePlayers = normalized.malePlayers;
+        femalePlayers = normalized.femalePlayers;
+        tournaments = normalized.tournaments;
+
+        lastDiagnostic = {
+          success: httpStatus >= 200 && httpStatus < 300,
+          httpStatus,
+          message: httpStatus === 200 ? "Conexión exitosa con PadelAPI.org" : `Error HTTP ${httpStatus}`,
+        };
+      } catch (err: any) {
+        console.warn("PadelAPI.org fetch error:", err);
+        lastDiagnostic = {
+          success: false,
+          httpStatus: 500,
+          message: err.message || "Error al conectar con la API de Pádel",
+        };
       }
     }
 
@@ -108,6 +170,7 @@ export async function GET() {
       tournaments,
       simulatedOutcomes: cleanSimulated,
       apiConfig,
+      lastDiagnostic,
     });
   } catch (e) {
     console.error("GET padel-ranking-tracker error:", e);
@@ -134,23 +197,120 @@ export async function POST(request: Request) {
       process.env.PADEL_RANKING_TRACKER_DB_NAME || "padel-ranking-tracker"
     );
 
-    if (body.apiConfig) {
+    // ACTION 1: Test API Connection Diagnostic
+    if (body.type === "test_connection") {
+      const apiUrl = (body.apiUrl || process.env.PADEL_API_URL || "https://padelapi.org/api").replace(/\/$/, "");
+      const apiKey = (body.apiKey || process.env.PADEL_API_KEY || "").trim();
+
+      if (!apiKey) {
+        return NextResponse.json({
+          success: false,
+          httpStatus: 400,
+          message: "Falta introducir el Token Bearer de la API",
+          maleCount: 0,
+          femaleCount: 0,
+          tournamentCount: 0,
+        });
+      }
+
+      try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        };
+
+        const rankingsUrl = `${apiUrl}/rankings`;
+        const tournamentsUrl = `${apiUrl}/tournaments`;
+
+        const [rankingsRes, tournamentsRes] = await Promise.allSettled([
+          fetch(rankingsUrl, { headers, cache: "no-store" }),
+          fetch(tournamentsUrl, { headers, cache: "no-store" }),
+        ]);
+
+        let httpStatus = 200;
+        let errorMessage = "";
+        let rawRankings = null;
+        let rawTournaments = null;
+
+        if (rankingsRes.status === "fulfilled") {
+          httpStatus = rankingsRes.value.status;
+          if (rankingsRes.value.ok) {
+            rawRankings = await rankingsRes.value.json();
+          } else {
+            errorMessage = `Error HTTP ${rankingsRes.value.status} en ${rankingsUrl}: ${rankingsRes.value.statusText}`;
+          }
+        } else {
+          errorMessage = `Error de conexión red/CORS a ${rankingsUrl}: ${rankingsRes.reason?.message || "Fallo de red"}`;
+        }
+
+        if (tournamentsRes.status === "fulfilled" && tournamentsRes.value.ok) {
+          rawTournaments = await tournamentsRes.value.json();
+        }
+
+        const normalized = normalizeApiPayload(rawRankings, rawTournaments);
+
+        const success = httpStatus >= 200 && httpStatus < 300;
+
+        return NextResponse.json({
+          success,
+          httpStatus,
+          message: success
+            ? `✅ Conexión exitosa a PadelAPI.org (HTTP ${httpStatus})`
+            : `❌ ${errorMessage || `Error HTTP ${httpStatus}`}`,
+          maleCount: normalized.malePlayers.length,
+          femaleCount: normalized.femalePlayers.length,
+          tournamentCount: normalized.tournaments.length,
+          malePlayers: normalized.malePlayers,
+          femalePlayers: normalized.femalePlayers,
+          tournaments: normalized.tournaments,
+        });
+      } catch (err: any) {
+        return NextResponse.json({
+          success: false,
+          httpStatus: 500,
+          message: `❌ Error de conexión: ${err.message || "No se pudo conectar a la API"}`,
+          maleCount: 0,
+          femaleCount: 0,
+          tournamentCount: 0,
+        });
+      }
+    }
+
+    // ACTION 2: Save API Config
+    if (body.type === "save_config" && body.apiConfig) {
       await db.collection("config").deleteMany({});
       const cleanConfig = { ...body.apiConfig };
       delete cleanConfig._id;
       await db.collection("config").insertOne(cleanConfig);
+      return NextResponse.json({ success: true });
     }
 
-    if (Array.isArray(body.simulatedOutcomes)) {
-      await db.collection("simulated_outcomes").deleteMany({});
-      if (body.simulatedOutcomes.length > 0) {
-        await db.collection("simulated_outcomes").insertMany(body.simulatedOutcomes);
-      }
+    // ACTION 3: Load Demo Seed Data into custom_data
+    if (body.type === "load_demo_data") {
+      await db.collection("custom_data").deleteMany({});
+      await db.collection("custom_data").insertOne({
+        malePlayers: INITIAL_MALE_PLAYERS,
+        femalePlayers: INITIAL_FEMALE_PLAYERS,
+        tournaments: INITIAL_TOURNAMENTS,
+        savedAt: new Date().toISOString(),
+      });
+      return NextResponse.json({
+        success: true,
+        malePlayers: INITIAL_MALE_PLAYERS,
+        femalePlayers: INITIAL_FEMALE_PLAYERS,
+        tournaments: INITIAL_TOURNAMENTS,
+      });
     }
 
-    return NextResponse.json({ success: true });
+    // ACTION 4: Clear custom demo data
+    if (body.type === "clear_custom_data") {
+      await db.collection("custom_data").deleteMany({});
+      return NextResponse.json({ success: true });
+    }
+
+    return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (e) {
     console.error("POST padel-ranking-tracker error:", e);
-    return NextResponse.json({ error: "Failed to save API credentials" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to process request" }, { status: 500 });
   }
 }

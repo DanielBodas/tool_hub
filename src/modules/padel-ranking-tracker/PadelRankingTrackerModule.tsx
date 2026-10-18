@@ -4,39 +4,30 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Trophy,
   Calendar,
-  Zap,
-  TrendingDown,
   Settings,
   Search,
-  Filter,
   RefreshCw,
-  Plus,
-  Trash2,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
   ArrowUpRight,
   ArrowDownRight,
   CheckCircle2,
-  MapPin,
   Globe,
   Shield,
-  HelpCircle,
-  Clock,
-  Layers,
   Info,
   Flame,
+  AlertTriangle,
+  Zap,
+  ChevronUp,
+  ChevronDown,
+  Trash2,
 } from "lucide-react";
 
 import {
   Gender,
   Player,
   Tournament,
-  TournamentCategory,
   SimulatedTournamentOutcome,
   PadelApiConfig,
-  SeasonConfig,
-  TournamentDefenseWeek,
 } from "./types";
 
 import {
@@ -69,9 +60,20 @@ export function PadelRankingTrackerModule() {
 
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isTestingApi, setIsTestingApi] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<{
     text: string;
     type: "success" | "error" | "info";
+  } | null>(null);
+
+  // Connection Diagnostic Result State
+  const [testResult, setTestResult] = useState<{
+    success: boolean;
+    httpStatus?: number;
+    message: string;
+    maleCount: number;
+    femaleCount: number;
+    tournamentCount: number;
   } | null>(null);
 
   // Search & Filter States
@@ -83,7 +85,7 @@ export function PadelRankingTrackerModule() {
   // Auto-clear notification toast
   useEffect(() => {
     if (statusMessage) {
-      const timer = setTimeout(() => setStatusMessage(null), 4000);
+      const timer = setTimeout(() => setStatusMessage(null), 5000);
       return () => clearTimeout(timer);
     }
   }, [statusMessage]);
@@ -101,6 +103,9 @@ export function PadelRankingTrackerModule() {
         setSimulatedOutcomes(data.simulatedOutcomes || []);
         if (data.apiConfig) {
           setApiConfig(data.apiConfig);
+        }
+        if (data.lastDiagnostic) {
+          setTestResult(data.lastDiagnostic);
         }
       }
     } catch (e) {
@@ -128,17 +133,111 @@ export function PadelRankingTrackerModule() {
         }),
       });
       if (res.ok) {
-        setStatusMessage({ text: "Credenciales de API guardadas", type: "success" });
+        setStatusMessage({ text: "Credenciales de API guardadas en la base de datos", type: "success" });
         await loadData();
       }
     } catch (e) {
       console.warn("Could not save API config", e);
       setStatusMessage({
-        text: "Error al guardar configuración de API",
+        text: "Error al guardar la configuración de la API",
         type: "error",
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Test API Connection Action
+  const handleTestApiConnection = async () => {
+    setIsTestingApi(true);
+    setTestResult(null);
+
+    try {
+      const res = await fetch("/api/padel-ranking-tracker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: "test_connection",
+          apiUrl: apiConfig.apiUrl,
+          apiKey: apiConfig.apiKey,
+        }),
+      });
+
+      const data = await res.json();
+      setTestResult({
+        success: data.success,
+        httpStatus: data.httpStatus,
+        message: data.message,
+        maleCount: data.maleCount || 0,
+        femaleCount: data.femaleCount || 0,
+        tournamentCount: data.tournamentCount || 0,
+      });
+
+      if (data.success) {
+        if (Array.isArray(data.malePlayers) && data.malePlayers.length > 0) {
+          setMalePlayers(data.malePlayers);
+        }
+        if (Array.isArray(data.femalePlayers) && data.femalePlayers.length > 0) {
+          setFemalePlayers(data.femalePlayers);
+        }
+        if (Array.isArray(data.tournaments) && data.tournaments.length > 0) {
+          setTournaments(data.tournaments);
+        }
+        setStatusMessage({ text: "Conexión con PadelAPI.org probada y confirmada con éxito", type: "success" });
+      } else {
+        setStatusMessage({ text: data.message || "Fallo en la prueba de conexión de API", type: "error" });
+      }
+    } catch (err: any) {
+      setTestResult({
+        success: false,
+        message: `Error de red: ${err.message || "No se pudo realizar la prueba"}`,
+        maleCount: 0,
+        femaleCount: 0,
+        tournamentCount: 0,
+      });
+      setStatusMessage({ text: "Error al realizar el test de API", type: "error" });
+    } finally {
+      setIsTestingApi(false);
+    }
+  };
+
+  // Load Demo Data Action
+  const handleLoadDemoData = async () => {
+    setIsSaving(true);
+    try {
+      const res = await fetch("/api/padel-ranking-tracker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "load_demo_data" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setMalePlayers(data.malePlayers || []);
+        setFemalePlayers(data.femalePlayers || []);
+        setTournaments(data.tournaments || []);
+        setStatusMessage({ text: "Datos de demostración cargados correctamente", type: "success" });
+      }
+    } catch (e) {
+      console.error("Failed to load demo data", e);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Clear Demo Data Action
+  const handleClearDemoData = async () => {
+    try {
+      await fetch("/api/padel-ranking-tracker", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "clear_custom_data" }),
+      });
+      setMalePlayers([]);
+      setFemalePlayers([]);
+      setTournaments([]);
+      setStatusMessage({ text: "Datos de demostración eliminados", type: "info" });
+    } catch (e) {
+      console.error("Error clearing custom data", e);
     }
   };
 
@@ -515,12 +614,21 @@ export function PadelRankingTrackerModule() {
             </p>
           </div>
 
-          <button
-            onClick={() => setActiveTab("config")}
-            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
-          >
-            <Settings size={14} /> Configurar URL y Bearer Token de API
-          </button>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 pt-1">
+            <button
+              onClick={() => setActiveTab("config")}
+              className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
+            >
+              <Settings size={14} /> Configurar URL y Token
+            </button>
+
+            <button
+              onClick={handleLoadDemoData}
+              className="px-4 py-2 bg-sky-600/15 hover:bg-sky-600/25 border border-sky-500/30 text-sky-400 font-extrabold text-xs rounded-xl transition-all inline-flex items-center gap-1.5"
+            >
+              <Zap size={14} /> Cargar Datos de Demostración (Offline)
+            </button>
+          </div>
         </div>
       )}
 
@@ -934,17 +1042,52 @@ export function PadelRankingTrackerModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 6: CONFIGURACIÓN & API */}
+      {/* TAB 6: CONFIGURACIÓN & API DIAGNOSTIC */}
       {/* ========================================================================= */}
       {activeTab === "config" && (
         <div className="space-y-3">
+
+          {/* DIAGNOSTIC CONNECTION FEEDBACK CARD */}
+          {testResult && (
+            <div
+              className={`p-3.5 rounded-2xl border text-xs space-y-1 transition-all ${
+                testResult.success
+                  ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-300"
+                  : "bg-rose-500/15 border-rose-500/40 text-rose-300"
+              }`}
+            >
+              <div className="font-black text-sm flex items-center gap-1.5">
+                {testResult.success ? <CheckCircle2 size={16} /> : <AlertTriangle size={16} />}
+                {testResult.message}
+              </div>
+
+              {testResult.success ? (
+                <p className="text-[11px] font-bold opacity-90">
+                  Respuesta recibida: {testResult.maleCount} Jugadores Masculinos, {testResult.femaleCount} Femeninos, {testResult.tournamentCount} Torneos.
+                </p>
+              ) : (
+                <p className="text-[11px] font-medium opacity-90">
+                  Si estás usando un token en pruebas o sin servidor activo, puedes pulsar abajo en <strong>«Cargar Datos de Demostración (Offline)»</strong> para verificar todas las pestañas de la aplicación.
+                </p>
+              )}
+            </div>
+          )}
+
           <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-3">
-            <div className="flex items-center gap-2 text-xs font-black text-foreground">
-              <Globe size={18} className="text-sky-400" /> Configuración de PadelAPI.org
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-xs font-black text-foreground">
+                <Globe size={18} className="text-sky-400" /> Configuración de PadelAPI.org
+              </span>
+
+              {isTestingApi && (
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
+                  <RefreshCw size={10} className="animate-spin" /> Probando conector...
+                </span>
+              )}
             </div>
 
             <p className="text-xs text-muted-foreground font-medium">
-              Introduce las credenciales de tu API de pádel. Solo el **Endpoint URL** y **Token Bearer** se guardarán en la base de datos de la plataforma.
+              Introduce tus credenciales Bearer para PadelAPI.org. Solamente el **URL Endpoint** y **Token Bearer** se almacenan en MongoDB.
             </p>
 
             <div className="space-y-2.5 text-xs">
@@ -1012,14 +1155,51 @@ export function PadelRankingTrackerModule() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                <button
+                  onClick={handleTestApiConnection}
+                  disabled={isTestingApi}
+                  className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <RefreshCw size={14} className={isTestingApi ? "animate-spin" : ""} /> Probar Conexión de API
+                </button>
+
+                <button
+                  onClick={() => saveApiConfig(apiConfig, simulatedOutcomes)}
+                  className="py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                >
+                  <Globe size={14} /> Guardar Credenciales BD
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* DEMO / FALLBACK DATA CONTROL CARD */}
+          <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-2">
+            <span className="text-xs font-black text-foreground flex items-center gap-1.5">
+              <Zap size={14} className="text-amber-500" /> Cargar / Limpiar Datos de Prueba
+            </span>
+            <p className="text-[11px] text-muted-foreground font-medium">
+              Si tu API key aún está pendiente de activación o deseas probar offline el circuito Premier Padel con datos verificados, puedes cargar o limpiar datos de demostración en un clic.
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
               <button
-                onClick={() => saveApiConfig(apiConfig, simulatedOutcomes)}
-                className="w-full py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                onClick={handleLoadDemoData}
+                className="py-2 bg-amber-600/15 hover:bg-amber-600/25 border border-amber-500/30 text-amber-400 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
               >
-                <RefreshCw size={14} /> Guardar Credenciales y Cargar Datos
+                <Zap size={12} /> Cargar Datos Demo
+              </button>
+
+              <button
+                onClick={handleClearDemoData}
+                className="py-2 bg-rose-600/15 hover:bg-rose-600/25 border border-rose-500/30 text-rose-400 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
+              >
+                <Trash2 size={12} /> Limpiar Datos
               </button>
             </div>
           </div>
+
         </div>
       )}
 
