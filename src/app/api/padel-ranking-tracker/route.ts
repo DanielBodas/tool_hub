@@ -5,44 +5,11 @@ import { authOptions } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { loadAllToolEnvs } from "@/lib/env";
 import { isUserAllowedForTool } from "@/lib/toolAccess";
-import {
-  INITIAL_MALE_PLAYERS,
-  INITIAL_FEMALE_PLAYERS,
-  INITIAL_TOURNAMENTS,
-  DEFAULT_API_CONFIG,
-} from "@/modules/padel-ranking-tracker/initialData";
+import { DEFAULT_API_CONFIG } from "@/modules/padel-ranking-tracker/initialData";
 
 loadAllToolEnvs();
 
 const TOOL_ID = "padel-ranking-tracker";
-
-async function replaceCollectionData(db: any, collectionName: string, items: any[]) {
-  try {
-    const col = db.collection(collectionName);
-    if (typeof col.deleteMany === "function") {
-      await col.deleteMany({});
-    } else if (typeof col.deleteOne === "function") {
-      const existing = await col.find({}).toArray();
-      for (const doc of existing) {
-        if (doc._id) await col.deleteOne({ _id: doc._id });
-        else if (doc.id) await col.deleteOne({ id: doc.id });
-      }
-    }
-
-    if (items && items.length > 0) {
-      if (typeof col.insertMany === "function") {
-        await col.insertMany(items);
-      } else if (typeof col.updateOne === "function") {
-        for (const item of items) {
-          const idKey = item._id || item.id || crypto.randomUUID();
-          await col.updateOne({ id: idKey }, { $set: item }, { upsert: true });
-        }
-      }
-    }
-  } catch (err) {
-    console.warn(`replaceCollectionData warning for ${collectionName}:`, err);
-  }
-}
 
 async function isAuthorized(): Promise<boolean> {
   const session = await getServerSession(authOptions);
@@ -75,50 +42,73 @@ export async function GET() {
       process.env.PADEL_RANKING_TRACKER_DB_NAME || "padel-ranking-tracker"
     );
 
-    let malePlayers = await db.collection("male_players").find({}).toArray();
-    let femalePlayers = await db.collection("female_players").find({}).toArray();
-    let tournaments = await db.collection("tournaments").find({}).toArray();
-    let simulatedOutcomes = await db.collection("simulated_outcomes").find({}).toArray();
-    let configDocs = await db.collection("config").find({}).toArray();
+    // Retrieve saved API config and simulated outcomes from database
+    const configDocs = await db.collection("config").find({}).toArray();
+    const simDocs = await db.collection("simulated_outcomes").find({}).toArray();
 
-    // Auto-seed defaults if database collections are empty
-    if (malePlayers.length === 0) {
-      await replaceCollectionData(db, "male_players", INITIAL_MALE_PLAYERS);
-      malePlayers = INITIAL_MALE_PLAYERS as any[];
+    let apiConfig = configDocs.length > 0 ? configDocs[0] : DEFAULT_API_CONFIG;
+    if (apiConfig._id) delete apiConfig._id;
+
+    // Use environment variables as fallback if DB config is empty
+    if (!apiConfig.apiUrl && process.env.PADEL_API_URL) {
+      apiConfig.apiUrl = process.env.PADEL_API_URL;
+    }
+    if (!apiConfig.apiKey && process.env.PADEL_API_KEY) {
+      apiConfig.apiKey = process.env.PADEL_API_KEY;
     }
 
-    if (femalePlayers.length === 0) {
-      await replaceCollectionData(db, "female_players", INITIAL_FEMALE_PLAYERS);
-      femalePlayers = INITIAL_FEMALE_PLAYERS as any[];
-    }
+    const cleanSimulated = simDocs.map(({ _id, ...rest }: any) => rest);
 
-    if (tournaments.length === 0) {
-      await replaceCollectionData(db, "tournaments", INITIAL_TOURNAMENTS);
-      tournaments = INITIAL_TOURNAMENTS as any[];
-    }
+    let malePlayers: any[] = [];
+    let femalePlayers: any[] = [];
+    let tournaments: any[] = [];
 
-    const cleanMale = malePlayers.map(({ _id, ...rest }: any) => rest);
-    const cleanFemale = femalePlayers.map(({ _id, ...rest }: any) => rest);
-    const cleanTournaments = tournaments.map(({ _id, ...rest }: any) => rest);
-    const cleanSimulated = simulatedOutcomes.map(({ _id, ...rest }: any) => rest);
-    const cleanConfig = configDocs.length > 0 ? configDocs[0] : DEFAULT_API_CONFIG;
+    // If API URL and API Key are configured, attempt to fetch live data from external Padel API
+    if (apiConfig.apiUrl) {
+      try {
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+        if (apiConfig.apiKey) {
+          headers["Authorization"] = `Bearer ${apiConfig.apiKey}`;
+          headers["x-api-key"] = apiConfig.apiKey;
+        }
+
+        const [rankingsRes, tournamentsRes] = await Promise.allSettled([
+          fetch(`${apiConfig.apiUrl.replace(/\/$/, "")}/rankings`, { headers, next: { revalidate: 300 } }),
+          fetch(`${apiConfig.apiUrl.replace(/\/$/, "")}/tournaments`, { headers, next: { revalidate: 300 } }),
+        ]);
+
+        if (rankingsRes.status === "fulfilled" && rankingsRes.value.ok) {
+          const rankingsData = await rankingsRes.value.json();
+          malePlayers = rankingsData.malePlayers || rankingsData.male || [];
+          femalePlayers = rankingsData.femalePlayers || rankingsData.female || [];
+        }
+
+        if (tournamentsRes.status === "fulfilled" && tournamentsRes.value.ok) {
+          const tournData = await tournamentsRes.value.json();
+          tournaments = Array.isArray(tournData) ? tournData : tournData.tournaments || [];
+        }
+      } catch (err) {
+        console.warn("External Padel API fetch error:", err);
+      }
+    }
 
     return NextResponse.json({
-      malePlayers: cleanMale,
-      femalePlayers: cleanFemale,
-      tournaments: cleanTournaments,
+      malePlayers,
+      femalePlayers,
+      tournaments,
       simulatedOutcomes: cleanSimulated,
-      apiConfig: cleanConfig,
+      apiConfig,
     });
   } catch (e) {
     console.error("GET padel-ranking-tracker error:", e);
     return NextResponse.json({
-      malePlayers: INITIAL_MALE_PLAYERS,
-      femalePlayers: INITIAL_FEMALE_PLAYERS,
-      tournaments: INITIAL_TOURNAMENTS,
+      malePlayers: [],
+      femalePlayers: [],
+      tournaments: [],
       simulatedOutcomes: [],
       apiConfig: DEFAULT_API_CONFIG,
-      isFallback: true,
     });
   }
 }
@@ -136,28 +126,24 @@ export async function POST(request: Request) {
       process.env.PADEL_RANKING_TRACKER_DB_NAME || "padel-ranking-tracker"
     );
 
-    if (body.type === "full_sync") {
-      if (Array.isArray(body.malePlayers)) {
-        await replaceCollectionData(db, "male_players", body.malePlayers);
-      }
-      if (Array.isArray(body.femalePlayers)) {
-        await replaceCollectionData(db, "female_players", body.femalePlayers);
-      }
-      if (Array.isArray(body.tournaments)) {
-        await replaceCollectionData(db, "tournaments", body.tournaments);
-      }
-      if (Array.isArray(body.simulatedOutcomes)) {
-        await replaceCollectionData(db, "simulated_outcomes", body.simulatedOutcomes);
-      }
-      if (body.apiConfig) {
-        await replaceCollectionData(db, "config", [body.apiConfig]);
-      }
-      return NextResponse.json({ success: true });
+    // Save only API credentials and simulation settings to MongoDB
+    if (body.apiConfig) {
+      await db.collection("config").deleteMany({});
+      const cleanConfig = { ...body.apiConfig };
+      delete cleanConfig._id;
+      await db.collection("config").insertOne(cleanConfig);
     }
 
-    return NextResponse.json({ error: "Invalid sync action" }, { status: 400 });
+    if (Array.isArray(body.simulatedOutcomes)) {
+      await db.collection("simulated_outcomes").deleteMany({});
+      if (body.simulatedOutcomes.length > 0) {
+        await db.collection("simulated_outcomes").insertMany(body.simulatedOutcomes);
+      }
+    }
+
+    return NextResponse.json({ success: true });
   } catch (e) {
     console.error("POST padel-ranking-tracker error:", e);
-    return NextResponse.json({ error: "Failed to save data" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save API config" }, { status: 500 });
   }
 }

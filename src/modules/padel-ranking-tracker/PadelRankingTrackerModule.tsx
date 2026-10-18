@@ -29,6 +29,7 @@ import {
   BarChart3,
   Globe,
   Sliders,
+  Link2,
 } from "lucide-react";
 
 import {
@@ -42,9 +43,6 @@ import {
 } from "./types";
 
 import {
-  INITIAL_MALE_PLAYERS,
-  INITIAL_FEMALE_PLAYERS,
-  INITIAL_TOURNAMENTS,
   DEFAULT_API_CONFIG,
   CATEGORY_POINTS_SCALES,
 } from "./initialData";
@@ -59,9 +57,9 @@ export function PadelRankingTrackerModule() {
   >("ranking");
 
   // Data States
-  const [malePlayers, setMalePlayers] = useState<Player[]>(INITIAL_MALE_PLAYERS);
-  const [femalePlayers, setFemalePlayers] = useState<Player[]>(INITIAL_FEMALE_PLAYERS);
-  const [tournaments, setTournaments] = useState<Tournament[]>(INITIAL_TOURNAMENTS);
+  const [malePlayers, setMalePlayers] = useState<Player[]>([]);
+  const [femalePlayers, setFemalePlayers] = useState<Player[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [simulatedOutcomes, setSimulatedOutcomes] = useState<
     SimulatedTournamentOutcome[]
   >([]);
@@ -84,13 +82,6 @@ export function PadelRankingTrackerModule() {
     useState<string>("");
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
 
-  // Modals States
-  const [showPlayerModal, setShowPlayerModal] = useState<boolean>(false);
-  const [editingPlayer, setEditingPlayer] = useState<Partial<Player> | null>(null);
-  const [showTournamentModal, setShowTournamentModal] = useState<boolean>(false);
-  const [editingTournament, setEditingTournament] =
-    useState<Partial<Tournament> | null>(null);
-
   // Auto-clear notification toast
   useEffect(() => {
     if (statusMessage) {
@@ -99,97 +90,54 @@ export function PadelRankingTrackerModule() {
     }
   }, [statusMessage]);
 
-  // Load Data from API / localStorage on Mount
-  useEffect(() => {
-    async function loadData() {
-      setIsLoading(true);
-      try {
-        const res = await fetch("/api/padel-ranking-tracker");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.malePlayers && data.malePlayers.length > 0) {
-            setMalePlayers(data.malePlayers);
-          }
-          if (data.femalePlayers && data.femalePlayers.length > 0) {
-            setFemalePlayers(data.femalePlayers);
-          }
-          if (data.tournaments && data.tournaments.length > 0) {
-            setTournaments(data.tournaments);
-          }
-          if (data.simulatedOutcomes) {
-            setSimulatedOutcomes(data.simulatedOutcomes);
-          }
-          if (data.apiConfig) {
-            setApiConfig(data.apiConfig);
-          }
-        } else {
-          loadFromLocalStorage();
-        }
-      } catch (e) {
-        console.warn("Failed to fetch API, falling back to local storage", e);
-        loadFromLocalStorage();
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    loadData();
-  }, []);
-
-  const loadFromLocalStorage = () => {
+  // Load Data from API on Mount
+  const loadData = async () => {
+    setIsLoading(true);
     try {
-      const local = localStorage.getItem(STORAGE_KEY);
-      if (local) {
-        const parsed: PadelModuleData = JSON.parse(local);
-        if (parsed.malePlayers) setMalePlayers(parsed.malePlayers);
-        if (parsed.femalePlayers) setFemalePlayers(parsed.femalePlayers);
-        if (parsed.tournaments) setTournaments(parsed.tournaments);
-        if (parsed.simulatedOutcomes) setSimulatedOutcomes(parsed.simulatedOutcomes);
-        if (parsed.apiConfig) setApiConfig(parsed.apiConfig);
+      const res = await fetch("/api/padel-ranking-tracker");
+      if (res.ok) {
+        const data = await res.json();
+        setMalePlayers(data.malePlayers || []);
+        setFemalePlayers(data.femalePlayers || []);
+        setTournaments(data.tournaments || []);
+        setSimulatedOutcomes(data.simulatedOutcomes || []);
+        if (data.apiConfig) {
+          setApiConfig(data.apiConfig);
+        }
       }
-    } catch (err) {
-      console.error("Error parsing local storage", err);
+    } catch (e) {
+      console.warn("Failed to fetch API data", e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  // Sync / Save Data
-  const saveData = async (
-    newMale = malePlayers,
-    newFemale = femalePlayers,
-    newTournaments = tournaments,
-    newSim = simulatedOutcomes,
-    newConfig = apiConfig
-  ) => {
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  // Save API Credentials and Simulation outcomes only
+  const saveApiConfig = async (newConfig = apiConfig, newSim = simulatedOutcomes) => {
     setIsSaving(true);
-    const payload: PadelModuleData = {
-      malePlayers: newMale,
-      femalePlayers: newFemale,
-      tournaments: newTournaments,
-      simulatedOutcomes: newSim,
-      apiConfig: newConfig,
-    };
-
-    // Save to localStorage
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
-    } catch (e) {
-      console.error("Failed to save to localStorage", e);
-    }
-
-    // Save to API Backend
     try {
       const res = await fetch("/api/padel-ranking-tracker", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "full_sync", ...payload }),
+        body: JSON.stringify({
+          type: "save_config",
+          apiConfig: newConfig,
+          simulatedOutcomes: newSim,
+        }),
       });
       if (res.ok) {
-        setStatusMessage({ text: "Datos guardados correctamente", type: "success" });
+        setStatusMessage({ text: "Configuración de API guardada en BD", type: "success" });
+        await loadData();
       }
     } catch (e) {
-      console.warn("Could not save to remote API, saved locally", e);
+      console.warn("Could not save API config", e);
       setStatusMessage({
-        text: "Guardado localmente (sin conexión)",
-        type: "info",
+        text: "Error al guardar la configuración de API",
+        type: "error",
       });
     } finally {
       setIsSaving(false);
@@ -201,7 +149,7 @@ export function PadelRankingTrackerModule() {
     return selectedGender === "male" ? malePlayers : femalePlayers;
   }, [selectedGender, malePlayers, femalePlayers]);
 
-  // Set default selected simulation tournament when switching to simulator tab
+  // Set default selected simulation tournament
   useEffect(() => {
     if (!selectedSimTournamentId && tournaments.length > 0) {
       const upcoming = tournaments.find((t) => t.status === "upcoming");
@@ -220,7 +168,7 @@ export function PadelRankingTrackerModule() {
     return activePlayers.filter(
       (p) =>
         p.name.toLowerCase().includes(q) ||
-        p.partnerName.toLowerCase().includes(q) ||
+        p.partnerName?.toLowerCase().includes(q) ||
         p.country.toLowerCase().includes(q)
     );
   }, [activePlayers, searchQuery]);
@@ -241,7 +189,7 @@ export function PadelRankingTrackerModule() {
     cutoffDate.setDate(now.getDate() + dropDaysFilter);
 
     return activePlayers.map((player) => {
-      const expiringEntries = player.pointsHistory.filter((entry) => {
+      const expiringEntries = (player.pointsHistory || []).filter((entry) => {
         if (!entry.expirationDate) return false;
         const expDate = new Date(entry.expirationDate);
         return dropDaysFilter === 0
@@ -286,7 +234,6 @@ export function PadelRankingTrackerModule() {
     const scale = targetSimTournament.pointsScale;
 
     return activePlayers.map((player) => {
-      // Find projected round
       const projectedRound =
         currentSimOutcome?.playerRoundAssignments?.[player.id] || "None";
       const projectedEarnedPoints =
@@ -294,10 +241,9 @@ export function PadelRankingTrackerModule() {
           ? scale[projectedRound as keyof typeof scale] || 0
           : 0;
 
-      // Check if this tournament replaces a previous edition tournament
       let expiredPreviousPoints = 0;
       if (targetSimTournament.replacesTournamentId) {
-        const prevEntry = player.pointsHistory.find(
+        const prevEntry = (player.pointsHistory || []).find(
           (h) => h.tournamentId === targetSimTournament.replacesTournamentId
         );
         if (prevEntry) {
@@ -305,13 +251,11 @@ export function PadelRankingTrackerModule() {
         }
       }
 
-      // Calculate net simulated official points
       const simOfficialPoints = Math.max(
         0,
         player.officialPoints - expiredPreviousPoints + projectedEarnedPoints
       );
 
-      // Calculate net simulated RACE points
       const simRacePoints = player.racePoints + projectedEarnedPoints;
 
       return {
@@ -328,14 +272,12 @@ export function PadelRankingTrackerModule() {
 
   // Compute Rank Shift in Simulation
   const simulatedRankingsWithShifts = useMemo(() => {
-    // Original official ranks
     const originalSorted = [...activePlayers].sort(
       (a, b) => b.officialPoints - a.officialPoints
     );
     const originalRankMap = new Map<string, number>();
     originalSorted.forEach((p, idx) => originalRankMap.set(p.id, idx + 1));
 
-    // Simulated sorted
     const simSorted = [...simulatedStandings].sort(
       (a, b) => b.simOfficialPoints - a.simOfficialPoints
     );
@@ -343,7 +285,7 @@ export function PadelRankingTrackerModule() {
     return simSorted.map((item, newIdx) => {
       const newRank = newIdx + 1;
       const oldRank = originalRankMap.get(item.player.id) || newRank;
-      const rankShift = oldRank - newRank; // positive = moved up, negative = moved down
+      const rankShift = oldRank - newRank;
       return {
         ...item,
         newRank,
@@ -374,7 +316,6 @@ export function PadelRankingTrackerModule() {
         updatedAssignments = { [playerId]: roundKey };
       }
 
-      // Also assign to partner if found
       const targetPlayer = activePlayers.find((p) => p.id === playerId);
       if (targetPlayer?.partnerName) {
         const partner = activePlayers.find(
@@ -399,13 +340,7 @@ export function PadelRankingTrackerModule() {
         newSims = [...prev, newOutcome];
       }
 
-      saveData(
-        malePlayers,
-        femalePlayers,
-        tournaments,
-        newSims,
-        apiConfig
-      );
+      saveApiConfig(apiConfig, newSims);
       return newSims;
     });
   };
@@ -419,249 +354,11 @@ export function PadelRankingTrackerModule() {
         )
     );
     setSimulatedOutcomes(newSims);
-    saveData(malePlayers, femalePlayers, tournaments, newSims, apiConfig);
+    saveApiConfig(apiConfig, newSims);
     setStatusMessage({
       text: "Simulación restablecida para este torneo",
       type: "info",
     });
-  };
-
-  // Add / Edit Player Handlers
-  const handleOpenAddPlayer = () => {
-    setEditingPlayer({
-      id: "p-" + Date.now(),
-      name: "",
-      country: "ESP 🇪🇸",
-      gender: selectedGender,
-      partnerName: "",
-      officialRanking: activePlayers.length + 1,
-      officialPoints: 1000,
-      raceRanking: activePlayers.length + 1,
-      racePoints: 500,
-      pointsHistory: [],
-    });
-    setShowPlayerModal(true);
-  };
-
-  const handleSavePlayer = () => {
-    if (!editingPlayer || !editingPlayer.name?.trim()) {
-      alert("Por favor introduce el nombre del jugador");
-      return;
-    }
-
-    const updatedPlayer: Player = {
-      id: editingPlayer.id || "p-" + Date.now(),
-      name: editingPlayer.name.trim(),
-      country: editingPlayer.country || "ESP 🇪🇸",
-      gender: selectedGender,
-      partnerName: editingPlayer.partnerName || "",
-      officialRanking: editingPlayer.officialRanking || 1,
-      officialPoints: Number(editingPlayer.officialPoints) || 0,
-      raceRanking: editingPlayer.raceRanking || 1,
-      racePoints: Number(editingPlayer.racePoints) || 0,
-      pointsHistory: editingPlayer.pointsHistory || [],
-    };
-
-    let newMale = malePlayers;
-    let newFemale = femalePlayers;
-
-    if (selectedGender === "male") {
-      const exists = malePlayers.some((p) => p.id === updatedPlayer.id);
-      if (exists) {
-        newMale = malePlayers.map((p) =>
-          p.id === updatedPlayer.id ? updatedPlayer : p
-        );
-      } else {
-        newMale = [...malePlayers, updatedPlayer];
-      }
-      setMalePlayers(newMale);
-    } else {
-      const exists = femalePlayers.some((p) => p.id === updatedPlayer.id);
-      if (exists) {
-        newFemale = femalePlayers.map((p) =>
-          p.id === updatedPlayer.id ? updatedPlayer : p
-        );
-      } else {
-        newFemale = [...femalePlayers, updatedPlayer];
-      }
-      setFemalePlayers(newFemale);
-    }
-
-    setShowPlayerModal(false);
-    setEditingPlayer(null);
-    saveData(newMale, newFemale, tournaments, simulatedOutcomes, apiConfig);
-    setStatusMessage({
-      text: `Jugador ${updatedPlayer.name} guardado con éxito`,
-      type: "success",
-    });
-  };
-
-  const handleDeletePlayer = (playerId: string) => {
-    if (!confirm("¿Seguro que deseas eliminar este jugador?")) return;
-
-    let newMale = malePlayers;
-    let newFemale = femalePlayers;
-
-    if (selectedGender === "male") {
-      newMale = malePlayers.filter((p) => p.id !== playerId);
-      setMalePlayers(newMale);
-    } else {
-      newFemale = femalePlayers.filter((p) => p.id !== playerId);
-      setFemalePlayers(newFemale);
-    }
-
-    saveData(newMale, newFemale, tournaments, simulatedOutcomes, apiConfig);
-    setStatusMessage({ text: "Jugador eliminado", type: "info" });
-  };
-
-  // Add / Edit Tournament Handlers
-  const handleOpenAddTournament = () => {
-    setEditingTournament({
-      id: "tourn-" + Date.now(),
-      name: "",
-      category: "P1",
-      location: "",
-      startDate: new Date().toISOString().split("T")[0],
-      endDate: new Date().toISOString().split("T")[0],
-      gender: "both",
-      status: "upcoming",
-      edition: "2025",
-      pointsScale: CATEGORY_POINTS_SCALES["P1"],
-      results: [],
-    });
-    setShowTournamentModal(true);
-  };
-
-  const handleSaveTournament = () => {
-    if (!editingTournament || !editingTournament.name?.trim()) {
-      alert("Por favor introduce el nombre del torneo");
-      return;
-    }
-
-    const cat = editingTournament.category || "P1";
-    const scale = CATEGORY_POINTS_SCALES[cat] || CATEGORY_POINTS_SCALES["P1"];
-
-    const updatedTourn: Tournament = {
-      id: editingTournament.id || "tourn-" + Date.now(),
-      name: editingTournament.name.trim(),
-      category: cat as TournamentCategory,
-      location: editingTournament.location || "Por determinar",
-      startDate: editingTournament.startDate || "",
-      endDate: editingTournament.endDate || "",
-      gender: editingTournament.gender || "both",
-      status: editingTournament.status || "upcoming",
-      edition: editingTournament.edition || "2025",
-      pointsScale: scale,
-      results: editingTournament.results || [],
-    };
-
-    const exists = tournaments.some((t) => t.id === updatedTourn.id);
-    let newTournaments = [];
-    if (exists) {
-      newTournaments = tournaments.map((t) =>
-        t.id === updatedTourn.id ? updatedTourn : t
-      );
-    } else {
-      newTournaments = [...tournaments, updatedTourn];
-    }
-
-    setTournaments(newTournaments);
-    setShowTournamentModal(false);
-    setEditingTournament(null);
-    saveData(
-      malePlayers,
-      femalePlayers,
-      newTournaments,
-      simulatedOutcomes,
-      apiConfig
-    );
-    setStatusMessage({
-      text: `Torneo ${updatedTourn.name} guardado con éxito`,
-      type: "success",
-    });
-  };
-
-  // Export JSON Backup
-  const handleExportJSON = () => {
-    const data: PadelModuleData = {
-      malePlayers,
-      femalePlayers,
-      tournaments,
-      simulatedOutcomes,
-      apiConfig,
-    };
-    const jsonStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([jsonStr], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `padel_tracker_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  // Import JSON Backup
-  const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      try {
-        const parsed = JSON.parse(event.target?.result as string);
-        if (parsed.malePlayers && parsed.femalePlayers) {
-          setMalePlayers(parsed.malePlayers);
-          setFemalePlayers(parsed.femalePlayers);
-          setTournaments(parsed.tournaments || INITIAL_TOURNAMENTS);
-          setSimulatedOutcomes(parsed.simulatedOutcomes || []);
-          if (parsed.apiConfig) setApiConfig(parsed.apiConfig);
-
-          saveData(
-            parsed.malePlayers,
-            parsed.femalePlayers,
-            parsed.tournaments || INITIAL_TOURNAMENTS,
-            parsed.simulatedOutcomes || [],
-            parsed.apiConfig || DEFAULT_API_CONFIG
-          );
-          setStatusMessage({
-            text: "Copia de seguridad importada con éxito",
-            type: "success",
-          });
-        } else {
-          alert("El archivo JSON no tiene el formato válido de Padel Tracker");
-        }
-      } catch (err) {
-        alert("Error al leer el archivo JSON");
-      }
-    };
-    reader.readAsText(file);
-  };
-
-  // Reset Data to Initial Defaults
-  const handleResetAllData = () => {
-    if (
-      confirm(
-        "¿Estás seguro de que deseas restablecer los datos a los valores de fábrica?"
-      )
-    ) {
-      setMalePlayers(INITIAL_MALE_PLAYERS);
-      setFemalePlayers(INITIAL_FEMALE_PLAYERS);
-      setTournaments(INITIAL_TOURNAMENTS);
-      setSimulatedOutcomes([]);
-      setApiConfig(DEFAULT_API_CONFIG);
-
-      saveData(
-        INITIAL_MALE_PLAYERS,
-        INITIAL_FEMALE_PLAYERS,
-        INITIAL_TOURNAMENTS,
-        [],
-        DEFAULT_API_CONFIG
-      );
-      setStatusMessage({
-        text: "Datos restablecidos a los valores iniciales",
-        type: "info",
-      });
-    }
   };
 
   return (
@@ -712,7 +409,7 @@ export function PadelRankingTrackerModule() {
           {/* Syncing Spinner Badge */}
           {isSaving && (
             <span className="text-[10px] font-extrabold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-              <RefreshCw size={10} className="animate-spin" /> Guardando...
+              <RefreshCw size={10} className="animate-spin" /> Conectando API...
             </span>
           )}
         </div>
@@ -811,9 +508,36 @@ export function PadelRankingTrackerModule() {
       </div>
 
       {/* ========================================================================= */}
+      {/* EMPTY STATE IF NO PLAYERS LOADED FROM API */}
+      {/* ========================================================================= */}
+      {!isLoading && activePlayers.length === 0 && activeTab !== "config" && (
+        <div className="bg-card p-6 rounded-2xl border border-dashed border-amber-500/40 text-center space-y-3 my-4">
+          <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-2xl flex items-center justify-center mx-auto">
+            <Globe size={24} />
+          </div>
+
+          <div className="space-y-1">
+            <h3 className="text-sm font-black text-foreground">
+              Sin datos de jugadores de la API de Pádel
+            </h3>
+            <p className="text-xs text-muted-foreground font-medium max-w-md mx-auto">
+              Para ver el ranking, la RACE del año y simular resultados, debes configurar el **URL Endpoint** y **Token/Key** de tu API de pádel. En la base de datos solo se guardará tu clave y endpoint.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setActiveTab("config")}
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
+          >
+            <Settings size={14} /> Configurar URL y Token de API
+          </button>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
       {/* TAB 1: RANKING & RACE OVERVIEW */}
       {/* ========================================================================= */}
-      {activeTab === "ranking" && (
+      {activeTab === "ranking" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
           {/* Sub-toggle & Search */}
@@ -943,7 +667,7 @@ export function PadelRankingTrackerModule() {
 
                     </div>
 
-                    {/* EXPANDED DETAILS: HISTORIAL Y CAÍDAS */}
+                    {/* EXPANDED DETAILS */}
                     {isExpanded && (
                       <div className="px-3 pb-3 pt-1 border-t border-border/50 bg-muted/20 space-y-2 text-xs">
                         <div className="flex justify-between items-center text-[10px] font-extrabold uppercase text-muted-foreground">
@@ -951,7 +675,7 @@ export function PadelRankingTrackerModule() {
                           <span>Expiración / Resta</span>
                         </div>
 
-                        {player.pointsHistory.length > 0 ? (
+                        {player.pointsHistory && player.pointsHistory.length > 0 ? (
                           <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
                             {player.pointsHistory.map((item) => (
                               <div
@@ -988,7 +712,7 @@ export function PadelRankingTrackerModule() {
                           </div>
                         ) : (
                           <p className="text-[10px] text-muted-foreground italic">
-                            No hay torneos registrados para este jugador.
+                            No hay desglose de torneos disponible.
                           </p>
                         )}
                       </div>
@@ -1005,10 +729,9 @@ export function PadelRankingTrackerModule() {
       {/* ========================================================================= */}
       {/* TAB 2: PUNTOS A RESTAR / EXPIRACIÓN POR FECHA */}
       {/* ========================================================================= */}
-      {activeTab === "drops" && (
+      {activeTab === "drops" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
-          {/* Days Filter Pills */}
           <div className="flex items-center justify-between gap-2 bg-card/40 p-2 rounded-xl border border-border/60">
             <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
               <Filter size={12} /> Período de resta:
@@ -1031,46 +754,6 @@ export function PadelRankingTrackerModule() {
             </div>
           </div>
 
-          {/* SUMMARY CARDS */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            <div className="bg-card p-2.5 rounded-xl border border-rose-500/30">
-              <span className="text-[10px] font-extrabold uppercase text-muted-foreground block">
-                Total Puntos a Restar
-              </span>
-              <span className="text-sm font-black text-rose-500 font-mono">
-                -
-                {playerDropsData
-                  .reduce((sum, p) => sum + p.totalPointsToLose, 0)
-                  .toLocaleString()}{" "}
-                pts
-              </span>
-            </div>
-
-            <div className="bg-card p-2.5 rounded-xl border border-amber-500/30">
-              <span className="text-[10px] font-extrabold uppercase text-muted-foreground block">
-                Mayor Caída de Puntos
-              </span>
-              <span className="text-xs font-black text-foreground truncate block">
-                {playerDropsData[0]?.player.name || "Ninguno"}
-              </span>
-              <span className="text-[10px] font-bold text-rose-400 font-mono">
-                -{playerDropsData[0]?.totalPointsToLose.toLocaleString()} pts
-              </span>
-            </div>
-
-            <div className="col-span-2 sm:col-span-1 bg-card p-2.5 rounded-xl border border-border/80">
-              <span className="text-[10px] font-extrabold uppercase text-muted-foreground block">
-                Período Seleccionado
-              </span>
-              <span className="text-xs font-black text-primary block">
-                {dropDaysFilter === 0
-                  ? "Próximos 12 Meses"
-                  : `Próximos ${dropDaysFilter} Días`}
-              </span>
-            </div>
-          </div>
-
-          {/* PLAYER DROPS BREAKDOWN LIST */}
           <div className="space-y-2">
             {playerDropsData.map(({ player, expiringEntries, totalPointsToLose, predictedOfficialPoints }) => (
               <div
@@ -1097,7 +780,6 @@ export function PadelRankingTrackerModule() {
                   </div>
                 </div>
 
-                {/* Expiring Tournaments Timeline */}
                 {expiringEntries.length > 0 ? (
                   <div className="pt-1 border-t border-border/40 space-y-1">
                     {expiringEntries.map((entry) => (
@@ -1130,10 +812,9 @@ export function PadelRankingTrackerModule() {
       {/* ========================================================================= */}
       {/* TAB 3: SIMULADOR DE TORNEOS */}
       {/* ========================================================================= */}
-      {activeTab === "simulator" && (
+      {activeTab === "simulator" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
-          {/* Target Tournament Selector */}
           <div className="bg-card p-3 rounded-2xl border border-purple-500/40 shadow-xs space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
@@ -1154,27 +835,15 @@ export function PadelRankingTrackerModule() {
             >
               {tournaments.map((t) => (
                 <option key={t.id} value={t.id}>
-                  {t.name} ({t.category}) • {t.location} • {t.status === "completed" ? "Finalizado" : "Próximo"}
+                  {t.name} ({t.category}) • {t.location}
                 </option>
               ))}
             </select>
-
-            {targetSimTournament && (
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-bold bg-purple-500/10 p-2 rounded-xl border border-purple-500/20">
-                <span>Fechas: {targetSimTournament.startDate} al {targetSimTournament.endDate}</span>
-                <span className="text-purple-400 font-extrabold">Categoría: {targetSimTournament.category} (Ganador: +{targetSimTournament.pointsScale.Winner} pts)</span>
-              </div>
-            )}
           </div>
 
-          {/* SIMULATOR STANDINGS TABLE */}
           <div className="space-y-2">
-            <div className="text-xs font-extrabold text-muted-foreground uppercase tracking-wider px-1">
-              Clasificación Simulada en Tiempo Real:
-            </div>
-
             {simulatedRankingsWithShifts.map((item) => {
-              const { player, projectedRound, projectedEarnedPoints, expiredPreviousPoints, simOfficialPoints, rankShift, newRank } = item;
+              const { player, projectedRound, simOfficialPoints, rankShift, newRank } = item;
               const scale = targetSimTournament?.pointsScale || CATEGORY_POINTS_SCALES["P1"];
 
               return (
@@ -1183,8 +852,6 @@ export function PadelRankingTrackerModule() {
                   className="bg-card p-3 rounded-2xl border border-border/80 space-y-2 transition-all hover:border-purple-500/40"
                 >
                   <div className="flex items-center justify-between gap-2">
-
-                    {/* Left Rank & Name */}
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <div className="flex flex-col items-center justify-center shrink-0 w-8">
                         <span className="text-xs font-black text-foreground font-mono">
@@ -1216,7 +883,6 @@ export function PadelRankingTrackerModule() {
                       </div>
                     </div>
 
-                    {/* Right Simulated Points */}
                     <div className="text-right shrink-0">
                       <div className="text-xs font-black text-purple-400 font-mono">
                         {simOfficialPoints.toLocaleString()} pts
@@ -1225,15 +891,9 @@ export function PadelRankingTrackerModule() {
                         Original: {player.officialPoints.toLocaleString()}
                       </span>
                     </div>
-
                   </div>
 
-                  {/* Projected Round Selector Buttons */}
                   <div className="pt-2 border-t border-border/50 flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none">
-                    <span className="text-[10px] font-bold text-muted-foreground shrink-0 mr-1">
-                      Resultado Proyectado:
-                    </span>
-
                     {(["Winner", "Finalist", "SF", "QF", "R16", "R32", "None"] as const).map((rKey) => {
                       const isSelected = projectedRound === rKey;
                       const pts = rKey !== "None" ? scale[rKey as keyof typeof scale] || 0 : 0;
@@ -1253,7 +913,6 @@ export function PadelRankingTrackerModule() {
                       );
                     })}
                   </div>
-
                 </div>
               );
             })}
@@ -1265,102 +924,30 @@ export function PadelRankingTrackerModule() {
       {/* ========================================================================= */}
       {/* TAB 4: TORNEOS Y RESULTADOS */}
       {/* ========================================================================= */}
-      {activeTab === "tournaments" && (
-        <div className="space-y-3">
-
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-xs font-extrabold text-muted-foreground uppercase">
-              Calendario Premier Padel 2024/2025 ({tournaments.length})
-            </span>
-
-            <button
-              onClick={handleOpenAddTournament}
-              className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center gap-1"
+      {activeTab === "tournaments" && tournaments.length > 0 && (
+        <div className="space-y-2.5">
+          {tournaments.map((tourn) => (
+            <div
+              key={tourn.id}
+              className="bg-card p-3 rounded-2xl border border-border/80 space-y-2"
             >
-              <Plus size={12} /> Nuevo Torneo
-            </button>
-          </div>
-
-          <div className="space-y-2.5">
-            {tournaments.map((tourn) => (
-              <div
-                key={tourn.id}
-                className="bg-card p-3 rounded-2xl border border-border/80 space-y-2 hover:border-amber-500/40 transition-all"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-md">
-                        {tourn.category}
-                      </span>
-                      <h3 className="text-xs font-black text-foreground truncate">
-                        {tourn.name}
-                      </h3>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 mt-1">
-                      <MapPin size={10} /> {tourn.location} • <Calendar size={10} /> {tourn.startDate} al {tourn.endDate}
-                    </p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-md">
+                      {tourn.category}
+                    </span>
+                    <h3 className="text-xs font-black text-foreground truncate">
+                      {tourn.name}
+                    </h3>
                   </div>
-
-                  <span
-                    className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full shrink-0 ${
-                      tourn.status === "completed"
-                        ? "bg-emerald-500/15 text-emerald-400 border border-emerald-500/30"
-                        : "bg-sky-500/15 text-sky-400 border border-sky-500/30"
-                    }`}
-                  >
-                    {tourn.status === "completed" ? "✅ Finalizado" : "📅 Próximo"}
-                  </span>
+                  <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 mt-1">
+                    <MapPin size={10} /> {tourn.location} • <Calendar size={10} /> {tourn.startDate} al {tourn.endDate}
+                  </p>
                 </div>
-
-                {/* Points Scale Breakdown */}
-                <div className="pt-2 border-t border-border/50 text-[10px] grid grid-cols-3 sm:grid-cols-6 gap-1 text-center font-mono bg-muted/20 p-2 rounded-xl">
-                  <div>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold block">Campeón</span>
-                    <span className="text-amber-400 font-bold">+{tourn.pointsScale.Winner}</span>
-                  </div>
-                  <div>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold block">Finalista</span>
-                    <span className="text-slate-300 font-bold">+{tourn.pointsScale.Finalist}</span>
-                  </div>
-                  <div>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold block">Semis</span>
-                    <span className="text-foreground font-bold">+{tourn.pointsScale.SF}</span>
-                  </div>
-                  <div>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold block">Cuartos</span>
-                    <span className="text-foreground font-bold">+{tourn.pointsScale.QF}</span>
-                  </div>
-                  <div>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold block">1/16</span>
-                    <span className="text-foreground font-bold">+{tourn.pointsScale.R16}</span>
-                  </div>
-                  <div>
-                    <span className="text-[8px] text-muted-foreground uppercase font-bold block">1/32</span>
-                    <span className="text-foreground font-bold">+{tourn.pointsScale.R32}</span>
-                  </div>
-                </div>
-
-                {/* Results list if completed */}
-                {tourn.results && tourn.results.length > 0 && (
-                  <div className="space-y-1 pt-1">
-                    <span className="text-[9px] font-extrabold uppercase text-muted-foreground">Resultados Destacados:</span>
-                    {tourn.results.map((res, idx) => (
-                      <div key={idx} className="flex justify-between text-[10px] bg-muted/40 p-1.5 rounded-lg">
-                        <span className="font-bold text-foreground truncate">
-                          {res.player1Name} & {res.player2Name}
-                        </span>
-                        <span className="font-mono font-extrabold text-amber-400 shrink-0">
-                          {res.round}: +{res.points} pts
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-            ))}
-          </div>
-
+            </div>
+          ))}
         </div>
       )}
 
@@ -1369,14 +956,16 @@ export function PadelRankingTrackerModule() {
       {/* ========================================================================= */}
       {activeTab === "config" && (
         <div className="space-y-3">
-
-          {/* API STATUS & CONNECTIVITY CARD */}
-          <div className="bg-card p-3 rounded-2xl border border-border/80 space-y-3">
+          <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-3">
             <div className="flex items-center gap-2 text-xs font-black text-foreground">
-              <Globe size={16} className="text-sky-400" /> API de Pádel y Sincronización
+              <Globe size={18} className="text-sky-400" /> Configuración de API de Pádel
             </div>
 
-            <div className="space-y-2 text-xs">
+            <p className="text-xs text-muted-foreground font-medium">
+              Introduce las credenciales de tu API de pádel. Solo la **URL** y el **Token de autorización** se guardarán en la base de datos de la plataforma.
+            </p>
+
+            <div className="space-y-2.5 text-xs">
               <div>
                 <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
                   URL Endpoint API Pádel:
@@ -1386,295 +975,28 @@ export function PadelRankingTrackerModule() {
                   value={apiConfig.apiUrl}
                   onChange={(e) => setApiConfig({ ...apiConfig, apiUrl: e.target.value })}
                   placeholder="https://api.padelfip.com/v1"
-                  className="w-full bg-muted/50 border border-border/80 rounded-xl p-2 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                  className="w-full bg-muted/50 border border-border/80 rounded-xl p-2.5 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
               </div>
 
               <div>
                 <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
-                  API Key / Token de Acceso:
+                  API Key / Token Bearer de Acceso:
                 </label>
                 <input
                   type="password"
                   value={apiConfig.apiKey}
                   onChange={(e) => setApiConfig({ ...apiConfig, apiKey: e.target.value })}
                   placeholder="••••••••••••••••"
-                  className="w-full bg-muted/50 border border-border/80 rounded-xl p-2 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
+                  className="w-full bg-muted/50 border border-border/80 rounded-xl p-2.5 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
               </div>
 
               <button
-                onClick={() => saveData(malePlayers, femalePlayers, tournaments, simulatedOutcomes, apiConfig)}
-                className="w-full py-2 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
+                onClick={() => saveApiConfig(apiConfig, simulatedOutcomes)}
+                className="w-full py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
               >
-                <RefreshCw size={12} /> Guardar Ajustes de API
-              </button>
-            </div>
-          </div>
-
-          {/* PLAYER & DATA MANAGEMENT ACTIONS */}
-          <div className="bg-card p-3 rounded-2xl border border-border/80 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black text-foreground flex items-center gap-1.5">
-                <Users size={14} className="text-amber-500" /> Gestión de Jugadores ({activePlayers.length})
-              </span>
-              <button
-                onClick={handleOpenAddPlayer}
-                className="px-2.5 py-1 bg-amber-600 hover:bg-amber-500 text-white font-extrabold text-xs rounded-lg shadow-2xs transition-all flex items-center gap-1"
-              >
-                <Plus size={11} /> Añadir Jugador/a
-              </button>
-            </div>
-
-            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-              {activePlayers.map((player) => (
-                <div
-                  key={player.id}
-                  className="flex items-center justify-between p-2 bg-muted/30 rounded-xl border border-border/50 text-xs"
-                >
-                  <span className="font-bold text-foreground truncate">
-                    {player.name} ({player.country})
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={() => handleDeletePlayer(player.id)}
-                      className="p-1 text-rose-400 hover:text-rose-300 rounded"
-                      title="Eliminar Jugador"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* BACKUP EXPORT & IMPORT */}
-          <div className="bg-card p-3 rounded-2xl border border-border/80 space-y-2">
-            <span className="text-xs font-black text-foreground flex items-center gap-1.5">
-              <Download size={14} className="text-emerald-400" /> Copia de Seguridad JSON
-            </span>
-
-            <div className="grid grid-cols-2 gap-2">
-              <button
-                onClick={handleExportJSON}
-                className="py-2 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/30 text-emerald-400 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
-              >
-                <Download size={12} /> Exportar JSON
-              </button>
-
-              <label className="py-2 bg-sky-600/15 hover:bg-sky-600/25 border border-sky-500/30 text-sky-400 font-extrabold text-xs rounded-xl transition-all flex items-center justify-center gap-1 cursor-pointer">
-                <Upload size={12} /> Importar JSON
-                <input
-                  type="file"
-                  accept=".json"
-                  onChange={handleImportJSON}
-                  className="hidden"
-                />
-              </label>
-            </div>
-
-            <button
-              onClick={handleResetAllData}
-              className="w-full py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 font-extrabold text-[10px] rounded-xl border border-rose-500/20 transition-all flex items-center justify-center gap-1"
-            >
-              <Trash2 size={11} /> Restablecer Todos los Datos de Fábrica
-            </button>
-          </div>
-
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 1: EDIT / ADD PLAYER */}
-      {/* ========================================================================= */}
-      {showPlayerModal && editingPlayer && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-card border border-border rounded-2xl p-4 w-full max-w-md space-y-3 shadow-xl">
-            <h3 className="text-sm font-black text-foreground">
-              {editingPlayer.id ? "Editar Jugador/a" : "Añadir Jugador/a"}
-            </h3>
-
-            <div className="space-y-2 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                  Nombre Completo:
-                </label>
-                <input
-                  type="text"
-                  value={editingPlayer.name || ""}
-                  onChange={(e) => setEditingPlayer({ ...editingPlayer, name: e.target.value })}
-                  className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  placeholder="Ej: Arturo Coello"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    País / Bandera:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingPlayer.country || ""}
-                    onChange={(e) => setEditingPlayer({ ...editingPlayer, country: e.target.value })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                    placeholder="ESP 🇪🇸"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Pareja Actual:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingPlayer.partnerName || ""}
-                    onChange={(e) => setEditingPlayer({ ...editingPlayer, partnerName: e.target.value })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                    placeholder="Agustín Tapia"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Puntos Oficiales:
-                  </label>
-                  <input
-                    type="number"
-                    value={editingPlayer.officialPoints || 0}
-                    onChange={(e) => setEditingPlayer({ ...editingPlayer, officialPoints: Number(e.target.value) })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Puntos RACE 2025:
-                  </label>
-                  <input
-                    type="number"
-                    value={editingPlayer.racePoints || 0}
-                    onChange={(e) => setEditingPlayer({ ...editingPlayer, racePoints: Number(e.target.value) })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowPlayerModal(false)}
-                className="px-3 py-1.5 bg-muted text-muted-foreground font-extrabold text-xs rounded-xl"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSavePlayer}
-                className="px-4 py-1.5 bg-primary text-primary-foreground font-black text-xs rounded-xl shadow-xs"
-              >
-                Guardar Jugador
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 2: EDIT / ADD TOURNAMENT */}
-      {/* ========================================================================= */}
-      {showTournamentModal && editingTournament && (
-        <div className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-xs flex items-center justify-center p-3">
-          <div className="bg-card border border-border rounded-2xl p-4 w-full max-w-md space-y-3 shadow-xl">
-            <h3 className="text-sm font-black text-foreground">
-              {editingTournament.id ? "Editar Torneo" : "Añadir Torneo"}
-            </h3>
-
-            <div className="space-y-2 text-xs">
-              <div>
-                <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                  Nombre del Torneo:
-                </label>
-                <input
-                  type="text"
-                  value={editingTournament.name || ""}
-                  onChange={(e) => setEditingTournament({ ...editingTournament, name: e.target.value })}
-                  className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  placeholder="Ej: Madrid P1 2025"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Categoría:
-                  </label>
-                  <select
-                    value={editingTournament.category || "P1"}
-                    onChange={(e) => setEditingTournament({ ...editingTournament, category: e.target.value as TournamentCategory })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  >
-                    {Object.keys(CATEGORY_POINTS_SCALES).map((cat) => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Ubicación:
-                  </label>
-                  <input
-                    type="text"
-                    value={editingTournament.location || ""}
-                    onChange={(e) => setEditingTournament({ ...editingTournament, location: e.target.value })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                    placeholder="Madrid, España"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Fecha Inicio:
-                  </label>
-                  <input
-                    type="date"
-                    value={editingTournament.startDate || ""}
-                    onChange={(e) => setEditingTournament({ ...editingTournament, startDate: e.target.value })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-[10px] font-bold text-muted-foreground uppercase block mb-0.5">
-                    Fecha Fin:
-                  </label>
-                  <input
-                    type="date"
-                    value={editingTournament.endDate || ""}
-                    onChange={(e) => setEditingTournament({ ...editingTournament, endDate: e.target.value })}
-                    className="w-full bg-muted/60 border border-border rounded-xl p-2 font-bold text-foreground"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                onClick={() => setShowTournamentModal(false)}
-                className="px-3 py-1.5 bg-muted text-muted-foreground font-extrabold text-xs rounded-xl"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSaveTournament}
-                className="px-4 py-1.5 bg-amber-600 text-white font-black text-xs rounded-xl shadow-xs"
-              >
-                Guardar Torneo
+                <RefreshCw size={14} /> Guardar Credenciales y Cargar Datos
               </button>
             </div>
           </div>
