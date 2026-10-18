@@ -3,6 +3,7 @@ import {
   Tournament,
   PadelApiConfig,
   PointsScale,
+  SeasonConfig,
 } from "./types";
 
 export const CATEGORY_POINTS_SCALES: Record<string, PointsScale> = {
@@ -15,14 +16,21 @@ export const CATEGORY_POINTS_SCALES: Record<string, PointsScale> = {
   "FIP Star": { Winner: 62, Finalist: 37, SF: 22, QF: 11, R16: 5, R32: 2 },
 };
 
+export const DEFAULT_SEASON_CONFIG: SeasonConfig = {
+  seasonYear: 2026,
+  topBestResultsCount: 22,
+  rulesVersion: "FIP Normativa Temporada 2026 (22 mejores resultados)",
+};
+
 export const DEFAULT_API_CONFIG: PadelApiConfig = {
-  apiUrl: process.env.PADEL_API_URL || "",
+  apiUrl: process.env.PADEL_API_URL || "https://padelapi.org/api",
   apiKey: process.env.PADEL_API_KEY || "",
+  seasonConfig: DEFAULT_SEASON_CONFIG,
   autoSync: true,
   lastSyncedAt: null,
 };
 
-// Player and tournament lists are fetched dynamically from the configured Padel API.
+// Lists are fetched dynamically from padelapi.org API (GET /api/seasons, /api/rankings, /api/tournaments)
 // No default/hardcoded players or tournaments are stored in memory or seeded.
 export const INITIAL_TOURNAMENTS: Tournament[] = [];
 export const INITIAL_MALE_PLAYERS: Player[] = [];

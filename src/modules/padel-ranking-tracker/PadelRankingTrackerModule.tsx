@@ -12,24 +12,20 @@ import {
   RefreshCw,
   Plus,
   Trash2,
-  Edit2,
   ChevronDown,
   ChevronUp,
-  Download,
-  Upload,
   Sparkles,
   ArrowUpRight,
   ArrowDownRight,
-  Minus,
   CheckCircle2,
   MapPin,
-  Award,
-  Users,
-  AlertCircle,
-  BarChart3,
   Globe,
-  Sliders,
-  Link2,
+  Shield,
+  HelpCircle,
+  Clock,
+  Layers,
+  Info,
+  Flame,
 } from "lucide-react";
 
 import {
@@ -39,7 +35,8 @@ import {
   TournamentCategory,
   SimulatedTournamentOutcome,
   PadelApiConfig,
-  PadelModuleData,
+  SeasonConfig,
+  TournamentDefenseWeek,
 } from "./types";
 
 import {
@@ -47,13 +44,18 @@ import {
   CATEGORY_POINTS_SCALES,
 } from "./initialData";
 
-const STORAGE_KEY = "padel_ranking_tracker_local_v1";
+import {
+  computeOfficialPoints,
+  processAnnualRace,
+  buildDefenseSchedule,
+  simulatePlayerScore,
+} from "./padelEngine";
 
 export function PadelRankingTrackerModule() {
   // Global States
   const [selectedGender, setSelectedGender] = useState<Gender>("male");
   const [activeTab, setActiveTab] = useState<
-    "ranking" | "drops" | "simulator" | "tournaments" | "config"
+    "ranking" | "race" | "drops" | "simulator" | "calendar" | "config"
   >("ranking");
 
   // Data States
@@ -74,10 +76,6 @@ export function PadelRankingTrackerModule() {
 
   // Search & Filter States
   const [searchQuery, setSearchQuery] = useState<string>("");
-  const [rankingSubTab, setRankingSubTab] = useState<
-    "official" | "race" | "comparison"
-  >("official");
-  const [dropDaysFilter, setDropDaysFilter] = useState<number>(60);
   const [selectedSimTournamentId, setSelectedSimTournamentId] =
     useState<string>("");
   const [expandedPlayerId, setExpandedPlayerId] = useState<string | null>(null);
@@ -116,7 +114,7 @@ export function PadelRankingTrackerModule() {
     loadData();
   }, []);
 
-  // Save API Credentials and Simulation outcomes only
+  // Save API Credentials
   const saveApiConfig = async (newConfig = apiConfig, newSim = simulatedOutcomes) => {
     setIsSaving(true);
     try {
@@ -130,13 +128,13 @@ export function PadelRankingTrackerModule() {
         }),
       });
       if (res.ok) {
-        setStatusMessage({ text: "Configuración de API guardada en BD", type: "success" });
+        setStatusMessage({ text: "Credenciales de API guardadas", type: "success" });
         await loadData();
       }
     } catch (e) {
       console.warn("Could not save API config", e);
       setStatusMessage({
-        text: "Error al guardar la configuración de API",
+        text: "Error al guardar configuración de API",
         type: "error",
       });
     } finally {
@@ -145,9 +143,38 @@ export function PadelRankingTrackerModule() {
   };
 
   // Active Players according to active Gender
-  const activePlayers = useMemo(() => {
+  const rawActivePlayers = useMemo(() => {
     return selectedGender === "male" ? malePlayers : femalePlayers;
   }, [selectedGender, malePlayers, femalePlayers]);
+
+  // Compute Official Rankings with Season Top N Rules (22 best results for 2026)
+  const activePlayers = useMemo(() => {
+    const seasonConfig = apiConfig.seasonConfig || {
+      seasonYear: 2026,
+      topBestResultsCount: 22,
+      rulesVersion: "2026 FIP 22 Best Results",
+    };
+
+    const evaluated = rawActivePlayers.map((player) => {
+      const { officialPoints, contributingResults } = computeOfficialPoints(
+        player.pointsHistory || [],
+        seasonConfig
+      );
+
+      const pointsDefendedUpcoming = (player.pointsHistory || [])
+        .filter((h) => h.status === "proximo_vencer")
+        .reduce((sum, h) => sum + h.points, 0);
+
+      return {
+        ...player,
+        officialPoints: player.officialPoints || officialPoints,
+        contributingResults,
+        pointsDefendedUpcoming,
+      };
+    });
+
+    return processAnnualRace(evaluated);
+  }, [rawActivePlayers, apiConfig]);
 
   // Set default selected simulation tournament
   useEffect(() => {
@@ -182,40 +209,12 @@ export function PadelRankingTrackerModule() {
     return [...filteredPlayers].sort((a, b) => b.racePoints - a.racePoints);
   }, [filteredPlayers]);
 
-  // Calculation for Points Drop / Expiration
-  const playerDropsData = useMemo(() => {
-    const now = new Date();
-    const cutoffDate = new Date();
-    cutoffDate.setDate(now.getDate() + dropDaysFilter);
+  // Defense Schedule Calendar
+  const defenseSchedule = useMemo(() => {
+    return buildDefenseSchedule(activePlayers, tournaments);
+  }, [activePlayers, tournaments]);
 
-    return activePlayers.map((player) => {
-      const expiringEntries = (player.pointsHistory || []).filter((entry) => {
-        if (!entry.expirationDate) return false;
-        const expDate = new Date(entry.expirationDate);
-        return dropDaysFilter === 0
-          ? true
-          : expDate >= now && expDate <= cutoffDate;
-      });
-
-      const totalPointsToLose = expiringEntries.reduce(
-        (sum, entry) => sum + entry.points,
-        0
-      );
-      const predictedOfficialPoints = Math.max(
-        0,
-        player.officialPoints - totalPointsToLose
-      );
-
-      return {
-        player,
-        expiringEntries,
-        totalPointsToLose,
-        predictedOfficialPoints,
-      };
-    }).sort((a, b) => b.totalPointsToLose - a.totalPointsToLose);
-  }, [activePlayers, dropDaysFilter]);
-
-  // Simulation Engine Calculations
+  // Simulation Calculations
   const targetSimTournament = useMemo(() => {
     return tournaments.find((t) => t.id === selectedSimTournamentId);
   }, [tournaments, selectedSimTournamentId]);
@@ -228,61 +227,42 @@ export function PadelRankingTrackerModule() {
     );
   }, [simulatedOutcomes, selectedSimTournamentId, selectedGender]);
 
-  const simulatedStandings = useMemo(() => {
+  const simulatedRankingsWithShifts = useMemo(() => {
     if (!targetSimTournament) return [];
 
-    const scale = targetSimTournament.pointsScale;
+    const seasonConfig = apiConfig.seasonConfig || {
+      seasonYear: 2026,
+      topBestResultsCount: 22,
+      rulesVersion: "FIP 2026",
+    };
 
-    return activePlayers.map((player) => {
+    const simulatedList = activePlayers.map((player) => {
       const projectedRound =
         currentSimOutcome?.playerRoundAssignments?.[player.id] || "None";
-      const projectedEarnedPoints =
-        projectedRound in scale
-          ? scale[projectedRound as keyof typeof scale] || 0
-          : 0;
 
-      let expiredPreviousPoints = 0;
-      if (targetSimTournament.replacesTournamentId) {
-        const prevEntry = (player.pointsHistory || []).find(
-          (h) => h.tournamentId === targetSimTournament.replacesTournamentId
-        );
-        if (prevEntry) {
-          expiredPreviousPoints = prevEntry.points;
-        }
-      }
-
-      const simOfficialPoints = Math.max(
-        0,
-        player.officialPoints - expiredPreviousPoints + projectedEarnedPoints
+      const { simOfficialPoints, netPointChange } = simulatePlayerScore(
+        player,
+        targetSimTournament,
+        projectedRound,
+        seasonConfig
       );
-
-      const simRacePoints = player.racePoints + projectedEarnedPoints;
 
       return {
         player,
         projectedRound,
-        projectedEarnedPoints,
-        expiredPreviousPoints,
         simOfficialPoints,
-        simRacePoints,
-        netPointChange: projectedEarnedPoints - expiredPreviousPoints,
+        netPointChange,
       };
     });
-  }, [activePlayers, targetSimTournament, currentSimOutcome]);
 
-  // Compute Rank Shift in Simulation
-  const simulatedRankingsWithShifts = useMemo(() => {
-    const originalSorted = [...activePlayers].sort(
-      (a, b) => b.officialPoints - a.officialPoints
-    );
     const originalRankMap = new Map<string, number>();
-    originalSorted.forEach((p, idx) => originalRankMap.set(p.id, idx + 1));
+    sortedOfficialPlayers.forEach((p, idx) => originalRankMap.set(p.id, idx + 1));
 
-    const simSorted = [...simulatedStandings].sort(
+    const sortedSim = [...simulatedList].sort(
       (a, b) => b.simOfficialPoints - a.simOfficialPoints
     );
 
-    return simSorted.map((item, newIdx) => {
+    return sortedSim.map((item, newIdx) => {
       const newRank = newIdx + 1;
       const oldRank = originalRankMap.get(item.player.id) || newRank;
       const rankShift = oldRank - newRank;
@@ -293,9 +273,8 @@ export function PadelRankingTrackerModule() {
         rankShift,
       };
     });
-  }, [activePlayers, simulatedStandings]);
+  }, [activePlayers, targetSimTournament, currentSimOutcome, sortedOfficialPlayers, apiConfig]);
 
-  // Simulator Handler: Assign Round finish to player
   const handleAssignRound = (playerId: string, roundKey: string) => {
     if (!selectedSimTournamentId) return;
 
@@ -401,15 +380,14 @@ export function PadelRankingTrackerModule() {
                 Padel Ranking & RACE Tracker
               </h1>
               <p className="text-[10px] text-muted-foreground font-semibold">
-                FIP / Premier Padel • Resta de puntos • Simulador
+                FIP • Regla {apiConfig.seasonConfig?.topBestResultsCount || 22} mejores resultados ({apiConfig.seasonConfig?.seasonYear || 2026})
               </p>
             </div>
           </div>
 
-          {/* Syncing Spinner Badge */}
           {isSaving && (
             <span className="text-[10px] font-extrabold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
-              <RefreshCw size={10} className="animate-spin" /> Conectando API...
+              <RefreshCw size={10} className="animate-spin" /> Conectando PadelAPI.org...
             </span>
           )}
         </div>
@@ -442,73 +420,85 @@ export function PadelRankingTrackerModule() {
 
       {/* -------------------- STICKY CAPSULE NAVIGATION BAR -------------------- */}
       <div className="sticky top-12 z-20 bg-card/90 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 shadow-md">
-        <div className="grid grid-cols-5 gap-1 text-center">
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none whitespace-nowrap">
 
           <button
             onClick={() => setActiveTab("ranking")}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "ranking"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
-            <Trophy size={14} />
-            <span className="truncate">Ranking</span>
+            <Trophy size={13} />
+            <span>Ranking FIP</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("race")}
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
+              activeTab === "race"
+                ? "bg-amber-600 text-white shadow-xs"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            }`}
+          >
+            <Flame size={13} />
+            <span>Anual (RACE)</span>
           </button>
 
           <button
             onClick={() => setActiveTab("drops")}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "drops"
                 ? "bg-rose-600 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
-            <TrendingDown size={14} />
-            <span className="truncate">Resta Puntos</span>
+            <Shield size={13} />
+            <span>Defensa Puntos</span>
           </button>
 
           <button
             onClick={() => setActiveTab("simulator")}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "simulator"
                 ? "bg-purple-600 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
-            <Sparkles size={14} />
-            <span className="truncate">Simulador</span>
+            <Sparkles size={13} />
+            <span>Proyección</span>
           </button>
 
           <button
-            onClick={() => setActiveTab("tournaments")}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
-              activeTab === "tournaments"
-                ? "bg-amber-600 text-white shadow-xs"
+            onClick={() => setActiveTab("calendar")}
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
+              activeTab === "calendar"
+                ? "bg-sky-600 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
-            <Calendar size={14} />
-            <span className="truncate">Torneos</span>
+            <Calendar size={13} />
+            <span>Calendario</span>
           </button>
 
           <button
             onClick={() => setActiveTab("config")}
-            className={`py-2 px-1 rounded-xl text-[10px] sm:text-xs font-extrabold transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+            className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "config"
                 ? "bg-zinc-700 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
-            <Settings size={14} />
-            <span className="truncate">Ajustes & API</span>
+            <Settings size={13} />
+            <span>Ajustes & API</span>
           </button>
 
         </div>
       </div>
 
       {/* ========================================================================= */}
-      {/* EMPTY STATE IF NO PLAYERS LOADED FROM API */}
+      {/* EMPTY STATE IF NO PLAYERS FROM PADELAPI.ORG */}
       {/* ========================================================================= */}
       {!isLoading && activePlayers.length === 0 && activeTab !== "config" && (
         <div className="bg-card p-6 rounded-2xl border border-dashed border-amber-500/40 text-center space-y-3 my-4">
@@ -518,10 +508,10 @@ export function PadelRankingTrackerModule() {
 
           <div className="space-y-1">
             <h3 className="text-sm font-black text-foreground">
-              Sin datos de jugadores de la API de Pádel
+              Sin datos de PadelAPI.org
             </h3>
             <p className="text-xs text-muted-foreground font-medium max-w-md mx-auto">
-              Para ver el ranking, la RACE del año y simular resultados, debes configurar el **URL Endpoint** y **Token/Key** de tu API de pádel. En la base de datos solo se guardará tu clave y endpoint.
+              Para consultar el ranking FIP oficial, la clasificación anual calculada y simular proyecciones, introduce tu token Bearer de **https://padelapi.org/api**. Solo se guardarán tu endpoint y token.
             </p>
           </div>
 
@@ -529,45 +519,25 @@ export function PadelRankingTrackerModule() {
             onClick={() => setActiveTab("config")}
             className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
           >
-            <Settings size={14} /> Configurar URL y Token de API
+            <Settings size={14} /> Configurar URL y Bearer Token de API
           </button>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 1: RANKING & RACE OVERVIEW */}
+      {/* TAB 1: RANKING OFICIAL FIP (Regla 22 Mejores Resultados 2026) */}
       {/* ========================================================================= */}
       {activeTab === "ranking" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
-          {/* Sub-toggle & Search */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-card/40 p-2 rounded-xl border border-border/60">
-
-            {/* Sub-tabs */}
-            <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/50">
-              <button
-                onClick={() => setRankingSubTab("official")}
-                className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all ${
-                  rankingSubTab === "official"
-                    ? "bg-card text-primary shadow-2xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🏆 Ranking Oficial (52s)
-              </button>
-              <button
-                onClick={() => setRankingSubTab("race")}
-                className={`px-3 py-1 rounded-lg text-xs font-extrabold transition-all ${
-                  rankingSubTab === "race"
-                    ? "bg-card text-amber-500 shadow-2xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                🔥 RACE del Año 2025
-              </button>
+            <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+              <Trophy size={14} className="text-amber-500" /> Ranking Oficial FIP (52 Semanas)
+              <span className="text-[10px] text-muted-foreground font-semibold bg-muted px-2 py-0.5 rounded-full">
+                {apiConfig.seasonConfig?.rulesVersion || "Normativa 2026 (22 Mejores)"}
+              </span>
             </div>
 
-            {/* Quick Search */}
             <div className="relative flex-1 sm:max-w-xs">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground w-3.5 h-3.5" />
               <input
@@ -577,231 +547,181 @@ export function PadelRankingTrackerModule() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border bg-card text-xs font-semibold focus:outline-hidden focus:ring-1 focus:ring-primary"
               />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground hover:text-foreground font-bold"
-                >
-                  Limpiar
-                </button>
-              )}
             </div>
-
           </div>
 
-          {/* STANDINGS LIST */}
           <div className="space-y-2">
-            {(rankingSubTab === "official" ? sortedOfficialPlayers : sortedRacePlayers)
-              .map((player, index) => {
-                const rankNumber = index + 1;
-                const isExpanded = expandedPlayerId === player.id;
-                const points =
-                  rankingSubTab === "official"
-                    ? player.officialPoints
-                    : player.racePoints;
+            {sortedOfficialPlayers.map((player, index) => {
+              const rankNumber = index + 1;
+              const isExpanded = expandedPlayerId === player.id;
 
-                return (
-                  <div
-                    key={player.id}
-                    className={`bg-card rounded-2xl border transition-all overflow-hidden ${
-                      rankNumber <= 3
-                        ? "border-amber-500/40 shadow-xs"
-                        : "border-border/80 hover:border-primary/40"
-                    }`}
-                  >
-                    {/* Compact Card Header */}
-                    <div className="p-3 flex items-center justify-between gap-2">
+              return (
+                <div
+                  key={player.id}
+                  className={`bg-card rounded-2xl border transition-all overflow-hidden ${
+                    rankNumber <= 3
+                      ? "border-amber-500/40 shadow-xs"
+                      : "border-border/80 hover:border-primary/40"
+                  }`}
+                >
+                  <div className="p-3 flex items-center justify-between gap-2">
 
-                      {/* Left: Position & Name */}
-                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <div
-                          className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
-                            rankNumber === 1
-                              ? "bg-gradient-to-br from-amber-400 to-yellow-600 text-slate-950 shadow-xs"
-                              : rankNumber === 2
-                              ? "bg-gradient-to-br from-slate-300 to-slate-500 text-slate-950"
-                              : rankNumber === 3
-                              ? "bg-gradient-to-br from-amber-700 to-amber-900 text-amber-100"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          #{rankNumber}
-                        </div>
-
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-1.5">
-                            <h3 className="text-xs font-black text-foreground truncate">
-                              {player.name}
-                            </h3>
-                            <span className="text-[10px] text-muted-foreground font-bold shrink-0">
-                              {player.country}
-                            </span>
-                          </div>
-                          {player.partnerName && (
-                            <p className="text-[10px] text-muted-foreground font-semibold truncate">
-                              Pareja: <span className="text-foreground">{player.partnerName}</span>
-                            </p>
-                          )}
-                        </div>
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div
+                        className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                          rankNumber === 1
+                            ? "bg-gradient-to-br from-amber-400 to-yellow-600 text-slate-950 shadow-xs"
+                            : rankNumber === 2
+                            ? "bg-gradient-to-br from-slate-300 to-slate-500 text-slate-950"
+                            : rankNumber === 3
+                            ? "bg-gradient-to-br from-amber-700 to-amber-900 text-amber-100"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        #{rankNumber}
                       </div>
 
-                      {/* Right: Points Badge & Expand Toggle */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="text-right">
-                          <div className="text-xs font-black text-primary font-mono">
-                            {points.toLocaleString()} pts
-                          </div>
-                          <span className="text-[9px] text-muted-foreground uppercase font-extrabold block">
-                            {rankingSubTab === "official" ? "Ranking Oficial" : "RACE 2025"}
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-xs font-black text-foreground truncate">
+                            {player.name}
+                          </h3>
+                          <span className="text-[10px] text-muted-foreground font-bold shrink-0">
+                            {player.country}
                           </span>
                         </div>
-
-                        <button
-                          onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
-                          className="p-1.5 bg-muted/50 hover:bg-muted text-muted-foreground rounded-lg transition-all"
-                          title="Ver desglose de torneos"
-                        >
-                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </button>
-                      </div>
-
-                    </div>
-
-                    {/* EXPANDED DETAILS */}
-                    {isExpanded && (
-                      <div className="px-3 pb-3 pt-1 border-t border-border/50 bg-muted/20 space-y-2 text-xs">
-                        <div className="flex justify-between items-center text-[10px] font-extrabold uppercase text-muted-foreground">
-                          <span>Historial de Torneos Contribuyentes</span>
-                          <span>Expiración / Resta</span>
-                        </div>
-
-                        {player.pointsHistory && player.pointsHistory.length > 0 ? (
-                          <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
-                            {player.pointsHistory.map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center justify-between gap-2 p-1.5 bg-card rounded-lg border border-border/60 text-[11px]"
-                              >
-                                <div className="min-w-0">
-                                  <div className="font-bold text-foreground truncate">
-                                    {item.tournamentName}
-                                  </div>
-                                  <div className="text-[9px] text-muted-foreground font-semibold flex items-center gap-1">
-                                    <span className="bg-primary/10 text-primary px-1 rounded font-bold">
-                                      {item.category}
-                                    </span>
-                                    <span>• {item.round}</span>
-                                    {item.isRacePoint && (
-                                      <span className="bg-amber-500/10 text-amber-500 px-1 rounded font-extrabold">
-                                        RACE
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div className="text-right shrink-0">
-                                  <div className="font-mono font-bold text-emerald-500">
-                                    +{item.points} pts
-                                  </div>
-                                  <div className="text-[9px] text-rose-400 font-medium">
-                                    Resta: {item.expirationDate || "N/A"}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-[10px] text-muted-foreground italic">
-                            No hay desglose de torneos disponible.
+                        {player.partnerName && (
+                          <p className="text-[10px] text-muted-foreground font-semibold truncate">
+                            Pareja: <span className="text-foreground">{player.partnerName}</span>
                           </p>
                         )}
                       </div>
-                    )}
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <div className="text-xs font-black text-primary font-mono">
+                          {player.officialPoints.toLocaleString()} pts
+                        </div>
+                        <span className="text-[9px] text-muted-foreground uppercase font-extrabold block">
+                          FIP Oficial ({player.contributingResults?.length || 0}/22)
+                        </span>
+                      </div>
+
+                      <button
+                        onClick={() => setExpandedPlayerId(isExpanded ? null : player.id)}
+                        className="p-1.5 bg-muted/50 hover:bg-muted text-muted-foreground rounded-lg transition-all"
+                        title="Ver 22 mejores resultados computables"
+                      >
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                    </div>
 
                   </div>
-                );
-              })}
+
+                  {isExpanded && (
+                    <div className="px-3 pb-3 pt-1 border-t border-border/50 bg-muted/20 space-y-2 text-xs">
+                      <div className="flex justify-between items-center text-[10px] font-extrabold uppercase text-muted-foreground">
+                        <span>Resultados Computables (Top {apiConfig.seasonConfig?.topBestResultsCount || 22})</span>
+                        <span>Expiración FIP</span>
+                      </div>
+
+                      {player.contributingResults && player.contributingResults.length > 0 ? (
+                        <div className="space-y-1 max-h-48 overflow-y-auto pr-1">
+                          {player.contributingResults.map((item) => (
+                            <div
+                              key={item.id}
+                              className="flex items-center justify-between gap-2 p-1.5 bg-card rounded-lg border border-border/60 text-[11px]"
+                            >
+                              <div className="min-w-0">
+                                <div className="font-bold text-foreground truncate">
+                                  {item.tournamentName}
+                                </div>
+                                <div className="text-[9px] text-muted-foreground font-semibold flex items-center gap-1">
+                                  <span className="bg-primary/10 text-primary px-1 rounded font-bold">
+                                    {item.category}
+                                  </span>
+                                  <span>• {item.round}</span>
+                                </div>
+                              </div>
+
+                              <div className="text-right shrink-0">
+                                <div className="font-mono font-bold text-emerald-500">
+                                  +{item.points} pts
+                                </div>
+                                <div className="text-[9px] text-rose-400 font-medium">
+                                  Vence: {item.expirationDate || "Ciclo 52 semanas"}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-[10px] text-muted-foreground italic">
+                          Sin desglose de resultados disponible.
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                </div>
+              );
+            })}
           </div>
 
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 2: PUNTOS A RESTAR / EXPIRACIÓN POR FECHA */}
+      {/* TAB 2: CLASIFICACIÓN ANUAL (Calculada por la Aplicación) */}
       {/* ========================================================================= */}
-      {activeTab === "drops" && activePlayers.length > 0 && (
+      {activeTab === "race" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
-          <div className="flex items-center justify-between gap-2 bg-card/40 p-2 rounded-xl border border-border/60">
-            <span className="text-xs font-bold text-muted-foreground flex items-center gap-1">
-              <Filter size={12} /> Período de resta:
-            </span>
-
-            <div className="flex items-center gap-1 overflow-x-auto pb-0.5">
-              {[30, 60, 90, 180, 0].map((days) => (
-                <button
-                  key={days}
-                  onClick={() => setDropDaysFilter(days)}
-                  className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all shrink-0 ${
-                    dropDaysFilter === days
-                      ? "bg-rose-600 text-white shadow-2xs"
-                      : "bg-card border border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {days === 0 ? "Todo el Año" : `${days} Días`}
-                </button>
-              ))}
+          <div className="bg-amber-500/10 border border-amber-500/30 p-2.5 rounded-xl text-xs flex items-start gap-2">
+            <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold text-amber-500 block">
+                Clasificación Anual calculada por la aplicación
+              </span>
+              <span className="text-[11px] text-muted-foreground font-medium">
+                Métrica independiente que acumula los puntos ganados exclusivamente en la temporada actual. Premier Padel no publica una RACE oficial con fórmula idéntica a otros deportes.
+              </span>
             </div>
           </div>
 
           <div className="space-y-2">
-            {playerDropsData.map(({ player, expiringEntries, totalPointsToLose, predictedOfficialPoints }) => (
+            {sortedRacePlayers.map((player) => (
               <div
                 key={player.id}
-                className="bg-card p-3 rounded-2xl border border-border/80 hover:border-rose-500/40 transition-all space-y-2"
+                className="bg-card p-3 rounded-2xl border border-border/80 flex items-center justify-between gap-2"
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-7 h-7 bg-amber-500/15 text-amber-500 rounded-xl flex items-center justify-center font-black text-xs shrink-0">
+                    #{player.raceRanking}
+                  </div>
+
                   <div className="min-w-0">
                     <h3 className="text-xs font-black text-foreground truncate">
                       {player.name} ({player.country})
                     </h3>
-                    <p className="text-[10px] text-muted-foreground font-medium">
-                      Puntos Actuales: <span className="font-mono font-bold text-foreground">{player.officialPoints.toLocaleString()}</span>
-                    </p>
-                  </div>
-
-                  <div className="text-right shrink-0">
-                    <div className="text-xs font-black text-rose-500 font-mono">
-                      -{totalPointsToLose.toLocaleString()} pts
-                    </div>
-                    <div className="text-[9px] font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.2 rounded-md">
-                      Predicción: {predictedOfficialPoints.toLocaleString()} pts
+                    <div className="text-[10px] text-muted-foreground font-medium flex items-center gap-2">
+                      <span>Torneos Disputados: <strong className="text-foreground">{player.tournamentsPlayed || 0}</strong></span>
+                      {player.pointDiffAhead ? (
+                        <span className="text-rose-400">-{player.pointDiffAhead} pts del anterior</span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
 
-                {expiringEntries.length > 0 ? (
-                  <div className="pt-1 border-t border-border/40 space-y-1">
-                    {expiringEntries.map((entry) => (
-                      <div
-                        key={entry.id}
-                        className="flex items-center justify-between text-[10px] bg-muted/30 px-2 py-1 rounded-lg"
-                      >
-                        <span className="font-bold text-foreground truncate">
-                          {entry.tournamentName} ({entry.category})
-                        </span>
-                        <div className="flex items-center gap-2 font-mono shrink-0">
-                          <span className="text-rose-400 font-bold">-{entry.points} pts</span>
-                          <span className="text-muted-foreground text-[9px]">Fecha: {entry.expirationDate}</span>
-                        </div>
-                      </div>
-                    ))}
+                <div className="text-right shrink-0">
+                  <div className="text-xs font-black text-amber-500 font-mono">
+                    {player.racePoints.toLocaleString()} pts
                   </div>
-                ) : (
-                  <p className="text-[9px] text-muted-foreground italic pt-1">
-                    Sin caídas de puntos en este período.
-                  </p>
-                )}
+                  <span className="text-[9px] uppercase font-extrabold text-muted-foreground block">
+                    Temporada {apiConfig.seasonConfig?.seasonYear || 2026}
+                  </span>
+                </div>
               </div>
             ))}
           </div>
@@ -810,24 +730,72 @@ export function PadelRankingTrackerModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 3: SIMULADOR DE TORNEOS */}
+      {/* TAB 3: DEFENSA DE PUNTOS & VARIACIONES */}
+      {/* ========================================================================= */}
+      {activeTab === "drops" && activePlayers.length > 0 && (
+        <div className="space-y-3">
+
+          <div className="bg-card p-3 rounded-2xl border border-border/80 space-y-2 text-xs">
+            <h3 className="font-black text-foreground flex items-center gap-1.5">
+              <Shield size={14} className="text-rose-500" /> Puntos Ganados vs. Puntos a Defender
+            </h3>
+            <p className="text-muted-foreground text-[11px] font-medium">
+              Los puntos a defender son puntuaciones de la temporada anterior que caducan al cumplirse las 52 semanas. La variación real depende del resultado en la nueva edición: <strong className="text-foreground">Ejemplo: 600 (nuevo) - 1.000 (previo) = -400 pts</strong>.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            {activePlayers.map((player) => (
+              <div
+                key={player.id}
+                className="bg-card p-3 rounded-2xl border border-border/80 space-y-2"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-black text-foreground truncate">
+                      {player.name}
+                    </h3>
+                    <p className="text-[10px] text-muted-foreground font-medium">
+                      Puntos Oficiales: <span className="font-mono font-bold text-foreground">{player.officialPoints.toLocaleString()}</span>
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <div className="text-xs font-black text-rose-500 font-mono">
+                      -{player.pointsDefendedUpcoming.toLocaleString()} pts a defender
+                    </div>
+                    <span className="text-[9px] text-muted-foreground uppercase font-bold">Próximas Semanas</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB 4: PROYECCIONALES & ESCENARIOS (Simulador) */}
       {/* ========================================================================= */}
       {activeTab === "simulator" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
-          <div className="bg-card p-3 rounded-2xl border border-purple-500/40 shadow-xs space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-xs font-black uppercase tracking-wider text-purple-400 flex items-center gap-1.5">
-                <Sparkles size={14} /> Torneo a Simular:
-              </span>
-              <button
-                onClick={handleResetSimulation}
-                className="text-[10px] font-extrabold text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2 py-1 rounded-lg border border-rose-500/20"
-              >
-                Restablecer Simulaciones
-              </button>
-            </div>
+          <div className="bg-purple-500/10 border border-purple-500/30 p-2.5 rounded-xl text-xs flex items-center justify-between gap-2">
+            <span className="text-purple-400 font-bold flex items-center gap-1">
+              <Sparkles size={14} /> Escenarios Proyectados (Estimación Hipotética)
+            </span>
+            <button
+              onClick={handleResetSimulation}
+              className="text-[10px] font-extrabold text-rose-400 hover:text-rose-300 bg-rose-500/10 px-2 py-1 rounded-lg"
+            >
+              Restablecer Escenarios
+            </button>
+          </div>
 
+          <div className="bg-card p-3 rounded-2xl border border-purple-500/40 space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-wider text-purple-400 block">
+              Seleccionar Torneo a Simular:
+            </label>
             <select
               value={selectedSimTournamentId}
               onChange={(e) => setSelectedSimTournamentId(e.target.value)}
@@ -877,9 +845,9 @@ export function PadelRankingTrackerModule() {
                         <h4 className="text-xs font-black text-foreground truncate">
                           {player.name}
                         </h4>
-                        <p className="text-[10px] text-muted-foreground font-medium truncate">
-                          Pareja: {player.partnerName || "Sin Pareja"}
-                        </p>
+                        <span className="text-[9px] font-extrabold text-purple-400 bg-purple-500/10 px-1.5 py-0.2 rounded-md">
+                          Proyección Hipotética
+                        </span>
                       </div>
                     </div>
 
@@ -888,7 +856,7 @@ export function PadelRankingTrackerModule() {
                         {simOfficialPoints.toLocaleString()} pts
                       </div>
                       <span className="text-[9px] font-bold text-muted-foreground">
-                        Original: {player.officialPoints.toLocaleString()}
+                        Oficial: {player.officialPoints.toLocaleString()}
                       </span>
                     </div>
                   </div>
@@ -922,47 +890,61 @@ export function PadelRankingTrackerModule() {
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 4: TORNEOS Y RESULTADOS */}
+      {/* TAB 5: CALENDARIO DE DEFENSA DE PUNTOS */}
       {/* ========================================================================= */}
-      {activeTab === "tournaments" && tournaments.length > 0 && (
-        <div className="space-y-2.5">
-          {tournaments.map((tourn) => (
-            <div
-              key={tourn.id}
-              className="bg-card p-3 rounded-2xl border border-border/80 space-y-2"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500/15 text-amber-500 px-2 py-0.5 rounded-md">
-                      {tourn.category}
+      {activeTab === "calendar" && (
+        <div className="space-y-3">
+          <div className="text-xs font-black text-foreground flex items-center gap-1.5">
+            <Calendar size={14} className="text-sky-400" /> Calendario de Vencimientos y Defensa
+          </div>
+
+          <div className="space-y-2">
+            {defenseSchedule.length > 0 ? (
+              defenseSchedule.map((item, idx) => (
+                <div
+                  key={idx}
+                  className="bg-card p-3 rounded-2xl border border-border/80 flex items-center justify-between gap-2"
+                >
+                  <div className="min-w-0">
+                    <span className="text-[9px] font-extrabold uppercase text-amber-500 bg-amber-500/10 px-1.5 py-0.2 rounded-md">
+                      {item.defenseWeek}
                     </span>
-                    <h3 className="text-xs font-black text-foreground truncate">
-                      {tourn.name}
+                    <h3 className="text-xs font-black text-foreground truncate mt-0.5">
+                      {item.playerName} • {item.tournamentName}
                     </h3>
+                    <p className="text-[10px] text-muted-foreground font-medium">
+                      Puntos edición previa: <strong className="text-rose-400">-{item.prevEditionPoints} pts</strong>
+                    </p>
                   </div>
-                  <p className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1 mt-1">
-                    <MapPin size={10} /> {tourn.location} • <Calendar size={10} /> {tourn.startDate} al {tourn.endDate}
-                  </p>
+
+                  <div className="text-right shrink-0">
+                    <div className={`text-xs font-black font-mono ${item.potentialBalance >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                      {item.potentialBalance >= 0 ? `+${item.potentialBalance}` : item.potentialBalance} pts max
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))}
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground italic text-center p-4 bg-card rounded-2xl border border-dashed border-border/60">
+                No hay semanas de defensa registradas en el calendario.
+              </p>
+            )}
+          </div>
         </div>
       )}
 
       {/* ========================================================================= */}
-      {/* TAB 5: CONFIGURACIÓN & API */}
+      {/* TAB 6: CONFIGURACIÓN & API */}
       {/* ========================================================================= */}
       {activeTab === "config" && (
         <div className="space-y-3">
           <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-3">
             <div className="flex items-center gap-2 text-xs font-black text-foreground">
-              <Globe size={18} className="text-sky-400" /> Configuración de API de Pádel
+              <Globe size={18} className="text-sky-400" /> Configuración de PadelAPI.org
             </div>
 
             <p className="text-xs text-muted-foreground font-medium">
-              Introduce las credenciales de tu API de pádel. Solo la **URL** y el **Token de autorización** se guardarán en la base de datos de la plataforma.
+              Introduce las credenciales de tu API de pádel. Solo el **Endpoint URL** y **Token Bearer** se guardarán en la base de datos de la plataforma.
             </p>
 
             <div className="space-y-2.5 text-xs">
@@ -974,7 +956,7 @@ export function PadelRankingTrackerModule() {
                   type="text"
                   value={apiConfig.apiUrl}
                   onChange={(e) => setApiConfig({ ...apiConfig, apiUrl: e.target.value })}
-                  placeholder="https://api.padelfip.com/v1"
+                  placeholder="https://padelapi.org/api"
                   className="w-full bg-muted/50 border border-border/80 rounded-xl p-2.5 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
               </div>
@@ -990,6 +972,44 @@ export function PadelRankingTrackerModule() {
                   placeholder="••••••••••••••••"
                   className="w-full bg-muted/50 border border-border/80 rounded-xl p-2.5 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div>
+                  <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
+                    Año de Temporada:
+                  </label>
+                  <input
+                    type="number"
+                    value={apiConfig.seasonConfig?.seasonYear || 2026}
+                    onChange={(e) => setApiConfig({
+                      ...apiConfig,
+                      seasonConfig: {
+                        ...(apiConfig.seasonConfig || { rulesVersion: "FIP 2026", topBestResultsCount: 22, seasonYear: 2026 }),
+                        seasonYear: Number(e.target.value),
+                      }
+                    })}
+                    className="w-full bg-muted/50 border border-border/80 rounded-xl p-2 font-mono text-xs text-foreground"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
+                    Nº Mejores Resultados (FIP):
+                  </label>
+                  <input
+                    type="number"
+                    value={apiConfig.seasonConfig?.topBestResultsCount || 22}
+                    onChange={(e) => setApiConfig({
+                      ...apiConfig,
+                      seasonConfig: {
+                        ...(apiConfig.seasonConfig || { rulesVersion: "FIP 2026", topBestResultsCount: 22, seasonYear: 2026 }),
+                        topBestResultsCount: Number(e.target.value),
+                      }
+                    })}
+                    className="w-full bg-muted/50 border border-border/80 rounded-xl p-2 font-mono text-xs text-foreground"
+                  />
+                </div>
               </div>
 
               <button

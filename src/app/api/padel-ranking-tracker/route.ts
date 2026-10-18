@@ -42,16 +42,15 @@ export async function GET() {
       process.env.PADEL_RANKING_TRACKER_DB_NAME || "padel-ranking-tracker"
     );
 
-    // Retrieve saved API config and simulated outcomes from database
+    // Retrieve saved API credentials (padelapi.org) and simulations
     const configDocs = await db.collection("config").find({}).toArray();
     const simDocs = await db.collection("simulated_outcomes").find({}).toArray();
 
     let apiConfig = configDocs.length > 0 ? configDocs[0] : DEFAULT_API_CONFIG;
     if (apiConfig._id) delete apiConfig._id;
 
-    // Use environment variables as fallback if DB config is empty
-    if (!apiConfig.apiUrl && process.env.PADEL_API_URL) {
-      apiConfig.apiUrl = process.env.PADEL_API_URL;
+    if (!apiConfig.apiUrl) {
+      apiConfig.apiUrl = process.env.PADEL_API_URL || "https://padelapi.org/api";
     }
     if (!apiConfig.apiKey && process.env.PADEL_API_KEY) {
       apiConfig.apiKey = process.env.PADEL_API_KEY;
@@ -63,20 +62,19 @@ export async function GET() {
     let femalePlayers: any[] = [];
     let tournaments: any[] = [];
 
-    // If API URL and API Key are configured, attempt to fetch live data from external Padel API
-    if (apiConfig.apiUrl) {
+    // Proxy request to PadelAPI.org when API Key / Bearer token is provided
+    if (apiConfig.apiUrl && apiConfig.apiKey) {
       try {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${apiConfig.apiKey}`,
         };
-        if (apiConfig.apiKey) {
-          headers["Authorization"] = `Bearer ${apiConfig.apiKey}`;
-          headers["x-api-key"] = apiConfig.apiKey;
-        }
+
+        const baseUrl = apiConfig.apiUrl.replace(/\/$/, "");
 
         const [rankingsRes, tournamentsRes] = await Promise.allSettled([
-          fetch(`${apiConfig.apiUrl.replace(/\/$/, "")}/rankings`, { headers, next: { revalidate: 300 } }),
-          fetch(`${apiConfig.apiUrl.replace(/\/$/, "")}/tournaments`, { headers, next: { revalidate: 300 } }),
+          fetch(`${baseUrl}/rankings`, { headers, cache: "no-store" }),
+          fetch(`${baseUrl}/tournaments`, { headers, cache: "no-store" }),
         ]);
 
         if (rankingsRes.status === "fulfilled" && rankingsRes.value.ok) {
@@ -89,8 +87,18 @@ export async function GET() {
           const tournData = await tournamentsRes.value.json();
           tournaments = Array.isArray(tournData) ? tournData : tournData.tournaments || [];
         }
+
+        // Save historical query log snapshot for data traceability
+        await db.collection("snapshots").insertOne({
+          queriedAt: new Date().toISOString(),
+          source: baseUrl,
+          seasonYear: apiConfig.seasonConfig?.seasonYear || 2026,
+          maleCount: malePlayers.length,
+          femaleCount: femalePlayers.length,
+          tournamentCount: tournaments.length,
+        });
       } catch (err) {
-        console.warn("External Padel API fetch error:", err);
+        console.warn("PadelAPI.org fetch warning:", err);
       }
     }
 
@@ -126,7 +134,6 @@ export async function POST(request: Request) {
       process.env.PADEL_RANKING_TRACKER_DB_NAME || "padel-ranking-tracker"
     );
 
-    // Save only API credentials and simulation settings to MongoDB
     if (body.apiConfig) {
       await db.collection("config").deleteMany({});
       const cleanConfig = { ...body.apiConfig };
@@ -144,6 +151,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true });
   } catch (e) {
     console.error("POST padel-ranking-tracker error:", e);
-    return NextResponse.json({ error: "Failed to save API config" }, { status: 500 });
+    return NextResponse.json({ error: "Failed to save API credentials" }, { status: 500 });
   }
 }

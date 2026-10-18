@@ -1,110 +1,96 @@
 # 🎾 Padel Ranking & RACE Tracker
 
-**Padel Ranking & RACE Tracker** es una herramienta para el seguimiento y simulación del ranking profesional de pádel masculino y femenino (FIP / Premier Padel).
-
-> **Nota de Arquitectura**: La herramienta **NO guarda ni almacena jugadores o resultados por defecto** en la base de datos. Toda la información de ránkings, puntos y torneos se obtiene de forma dinámica a través de la **API de Pádel** configurada por el usuario. Lo único que se persiste en la base de datos es la **URL de la API**, el **Token de autorización** y los escenarios simulados.
+Módulo para la consulta, análisis, defensa de puntos y simulación del ranking profesional de pádel (FIP / Premier Padel), integrado con la API **[PadelAPI.org](https://padelapi.org)**.
 
 ---
 
-## 🚀 Características Principales
+## 📌 Especificaciones Funcionales y Reglas de Cálculo
 
-1. **Datos 100% Dinámicos desde API**:
-   - Conexión directa con tu proveedor de API de pádel (FIP, RapidAPI u otros endpoints REST).
-   - Solamente se guardan en MongoDB la URL de la API y el token Bearer.
-2. **Ranking Oficial vs. RACE del Año**:
-   - **Ranking Oficial (FIP / Premier Padel)**: Sistema de puntuación móvil (*rolling*) de 52 semanas.
-   - **RACE del Año**: Clasificación acumulada exclusivamente con los puntos ganados a partir del 1 de enero del año actual.
-3. **Caída y Resta de Puntos por Fecha (Expiración)**:
-   - Desglose transparente de los puntos que cada jugador restará según las fechas de caducidad devueltas por la API.
-   - Cálculo automático de **Predicción de Puntos Netos** = *(Puntos Actuales - Puntos a Restar + Puntos Nuevos/Simulados)*.
-4. **Simulador de Torneos y Resultados Futuros**:
-   - Permite seleccionar torneos del calendario y proyectar la ronda alcanzada por cada pareja (Campeón, Finalista, Semis, Cuartos, Octavos, etc.).
-   - Recalcula al instante las posiciones del Ranking y de la RACE, mostrando ascensos y descensos (`+2`, `-1`, `=`).
-5. **Diseño Mobile-First**:
-   - Interfaz adaptada a smartphones con cápsula de navegación adhesiva (*sticky*) y controles táctiles rápida.
+### 1. Ranking Oficial FIP (Regla de los 22 Mejores Resultados 2026)
+- Refleja los resultados válidos durante una ventana temporal móvil de **52 semanas**.
+- **Regla Temporada 2026**: Computa únicamente la suma de los **22 mejores resultados** del jugador. El número de resultados computables es configurable por temporada.
+- La aplicación muestra:
+  - Posición actual y puntos totales oficiales.
+  - Variación de posición y puntos respecto a la última actualización.
+  - Resultados específicos del Top 22 que contribuyen al total.
+  - Puntos pendientes de defender en las próximas semanas.
+  - Fecha de última consulta y fuente verificable.
 
 ---
 
-## ⚙️ Configuración y Variables de Entorno (`.env`)
+### 2. Clasificación Anual (RACE)
+- Representa el rendimiento acumulado exclusivamente durante la **temporada en curso** (desde el inicio del año competitivo).
+- **Aviso Importante**: Aparece etiquetada como **«Clasificación Anual calculada por la aplicación»** debido a que Premier Padel no publica una RACE oficial independiente con una fórmula unificada propia.
+- Mantiene:
+  - Puntos conseguidos en el año actual.
+  - Posición anual y número de torneos disputados.
+  - Diferencia de puntos (*gap*) respecto al jugador inmediatamente superior e inferior.
 
-Puedes configurar tu API de pádel desde la pestaña **⚙️ Ajustes & API** de la interfaz o mediante tu archivo `.env`:
+---
+
+### 3. Defensa y Caducidad de Puntos del Año Anterior
+- Al cumplirse el ciclo de 52 semanas (según el calendario de la semana de defensa oficial del torneo), los puntos anteriores vencen.
+- **Ejemplo de Variación Atribuible**:
+  - Un jugador obtuvo **1.000 puntos** en la edición anterior de un P1.
+  - En la nueva edición obtiene **600 puntos**.
+  - **Variación del resultado sustituido**: $600 - 1.000 = -400 \text{ puntos}$.
+  - La variación final del ranking oficial se recalcula re-evaluando el conjunto de los 22 mejores resultados.
+- Estados de resultados históricos: `vigente`, `próximo a vencer` y `vencido`.
+
+---
+
+### 4. Diferencia entre Puntos Ganados y Puntos a Defender
+- **Puntos Ganados**: Suma de puntos obtenidos en los torneos del año actual.
+- **Puntos a Defender**: Puntos del año previo próximos a caducar. No se restan automáticamente a ciegas; su impacto depende del resultado conseguido en la nueva edición.
+
+---
+
+### 5. Proyección y Simulador de Resultados
+- Permite simular escenarios para cualquier torneo futuro:
+  - Eliminación en 1ª Ronda (R64 / R32).
+  - Octavos (R16), Cuartos (QF), Semifinal (SF).
+  - Finalista o Campeón.
+- Al seleccionar una ronda, el sistema:
+  1. Deduce los puntos del torneo anterior sustituido.
+  2. Suma los puntos oficiales según la categoría del torneo (Major, P1, P2, Tour Finals).
+  3. **Re-calcula el conjunto de los 22 mejores resultados** para determinar la nueva puntuación oficial.
+  4. Muestra la posición proyectada estimada con la etiqueta explícita **«Estimación / Proyección Hipotética»**.
+
+---
+
+### 6. Calendario de Defensa de Puntos
+- Vista de calendario ordenada por semana de vencimiento.
+- Muestra el balance potencial de puntos y el impacto previsto en el ranking.
+
+---
+
+## 📡 Conexión a PadelAPI.org
+
+La aplicación se conecta a PadelAPI.org enviando la cabecera HTTP de autorización:
+
+```http
+GET https://padelapi.org/api/seasons
+Authorization: Bearer TU_API_TOKEN
+```
+
+### Endpoints Utilizados:
+- `GET https://padelapi.org/api/seasons`: Consulta las temporadas y reglas de cálculo.
+- `GET https://padelapi.org/api/rankings`: Obtiene las clasificaciones oficiales de categorías masculina y femenina.
+- `GET https://padelapi.org/api/tournaments`: Obtiene el calendario de torneos y tablas de puntuación por ronda.
+
+---
+
+## ⚙️ Variables de Entorno (`.env`)
+
+Configura tus credenciales desde la pestaña **⚙️ Ajustes & API** o en tu `.env`:
 
 ```env
-# URL base de la API de pádel (obligatorio para cargar datos)
-PADEL_API_URL="https://api.tu-proveedor-padel.com/v1"
+# URL base de PadelAPI.org
+PADEL_API_URL="https://padelapi.org/api"
 
-# Token / API Key Bearer
-PADEL_API_KEY="tu_token_aqui"
+# Token de autenticación Bearer de padelapi.org
+PADEL_API_KEY="TU_API_TOKEN_BEARER"
 
-# Nombre de la base de datos MongoDB (donde se guarda solo la config y simulaciones)
+# Base de datos MongoDB (almacena solo credenciales, reglas y simulaciones)
 PADEL_RANKING_TRACKER_DB_NAME="padel-ranking-tracker"
-
-# PIN de acceso rápido a la herramienta
-PADEL_RANKING_TRACKER_PIN="1234"
 ```
-
----
-
-## 📡 Formato Esperado de la API Externa
-
-La API configurada debe exponer los siguientes endpoints JSON:
-
-### 1. `GET /rankings`
-Devuelve el listado de jugadores/as con su desglose de puntos:
-
-```json
-{
-  "malePlayers": [
-    {
-      "id": "m-1",
-      "name": "Arturo Coello",
-      "country": "ESP 🇪🇸",
-      "officialPoints": 13800,
-      "racePoints": 3000,
-      "partnerName": "Agustín Tapia",
-      "pointsHistory": [
-        {
-          "tournamentId": "t-1",
-          "tournamentName": "Qatar Major 2025",
-          "category": "Major",
-          "round": "Winner",
-          "points": 2000,
-          "expirationDate": "2026-03-09"
-        }
-      ]
-    }
-  ],
-  "femalePlayers": []
-}
-```
-
-### 2. `GET /tournaments`
-Devuelve el calendario de torneos y sus escalas de puntos por ronda:
-
-```json
-[
-  {
-    "id": "t-1",
-    "name": "GNP Mexico P1 2025",
-    "category": "P1",
-    "location": "Acapulco, México",
-    "startDate": "2025-03-24",
-    "endDate": "2025-03-30",
-    "status": "upcoming",
-    "pointsScale": {
-      "Winner": 1000,
-      "Finalist": 600,
-      "SF": 360,
-      "QF": 180,
-      "R16": 90,
-      "R32": 45
-    }
-  }
-]
-```
-
----
-
-## 🧮 Algoritmo de Predicción y Simulación
-
-$$\text{Puntos Predichos} = \text{Puntos Actuales} - \sum \text{Puntos Expirados} + \text{Puntos Proyectados en Simulador}$$
