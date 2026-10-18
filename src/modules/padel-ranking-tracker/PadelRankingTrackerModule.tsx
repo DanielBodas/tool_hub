@@ -491,27 +491,43 @@ export function PadelRankingTrackerModule() {
           )}
         </div>
 
-        {/* Gender Toggle Pill */}
-        <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 w-full sm:w-auto justify-stretch">
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+          {/* Gender Toggle Pill */}
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 flex-1 sm:flex-initial">
+            <button
+              onClick={() => setSelectedGender("male")}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                selectedGender === "male"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <span>👨</span> MASCULINO
+            </button>
+            <button
+              onClick={() => setSelectedGender("female")}
+              className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                selectedGender === "female"
+                  ? "bg-pink-600 text-white shadow-xs"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <span>👩</span> FEMENINO
+            </button>
+          </div>
+
+          {/* Top-Right Settings Gear Icon Button (Rueda Dentada) */}
           <button
-            onClick={() => setSelectedGender("male")}
-            className={`flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-              selectedGender === "male"
-                ? "bg-primary text-primary-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            onClick={() => setActiveTab("config")}
+            className={`p-2 rounded-xl border transition-all flex items-center gap-1.5 shrink-0 ${
+              activeTab === "config"
+                ? "bg-zinc-800 text-amber-400 border-amber-500/50 shadow-xs"
+                : "bg-muted/60 hover:bg-muted border-border/80 text-muted-foreground hover:text-foreground"
             }`}
+            title="Ajustes y Configuración de API (Rueda Dentada)"
           >
-            <span>👨</span> MASCULINO
-          </button>
-          <button
-            onClick={() => setSelectedGender("female")}
-            className={`flex-1 sm:flex-initial px-4 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
-              selectedGender === "female"
-                ? "bg-pink-600 text-white shadow-xs"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-            }`}
-          >
-            <span>👩</span> FEMENINO
+            <Settings size={18} className={activeTab === "config" ? "animate-spin-slow text-amber-400" : ""} />
+            <span className="text-xs font-bold hidden xs:inline">Ajustes</span>
           </button>
         </div>
 
@@ -1074,14 +1090,27 @@ export function PadelRankingTrackerModule() {
           )}
 
           <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-3">
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-xs font-black text-foreground">
                 <Globe size={18} className="text-sky-400" /> Configuración de PadelAPI.org
               </span>
 
-              {isTestingApi && (
-                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full flex items-center gap-1">
-                  <RefreshCw size={10} className="animate-spin" /> Probando conector...
+              {/* Status Badge */}
+              {isTestingApi ? (
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/30 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <RefreshCw size={10} className="animate-spin" /> Probando...
+                </span>
+              ) : testResult?.success ? (
+                <span className="text-[10px] font-extrabold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <CheckCircle2 size={12} /> API Conectada ({testResult.maleCount + testResult.femaleCount} jug.)
+                </span>
+              ) : testResult ? (
+                <span className="text-[10px] font-extrabold text-rose-400 bg-rose-500/15 border border-rose-500/30 px-2.5 py-1 rounded-full flex items-center gap-1">
+                  <AlertTriangle size={12} /> Error de API
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-full">
+                  Sin verificar
                 </span>
               )}
             </div>
