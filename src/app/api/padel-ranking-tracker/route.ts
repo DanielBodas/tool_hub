@@ -164,6 +164,13 @@ export async function GET() {
       }
     }
 
+    // Default Fallback: If no API data was retrieved or API credentials are not set, provide initial preset data out-of-the-box
+    if (malePlayers.length === 0 && femalePlayers.length === 0) {
+      malePlayers = INITIAL_MALE_PLAYERS;
+      femalePlayers = INITIAL_FEMALE_PLAYERS;
+      tournaments = INITIAL_TOURNAMENTS;
+    }
+
     return NextResponse.json({
       malePlayers,
       femalePlayers,
