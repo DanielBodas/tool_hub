@@ -4,77 +4,113 @@ import {
   JobOffer,
   EvaluationResult,
   ConceptGroupResult,
+  DetailedConceptResult,
+  PriorityScenario,
+  SensitivityAnalysisResult,
+  SensitivityInsight,
 } from "./types";
 
 export const DEFAULT_GROUPS: ConceptGroup[] = [
   {
     id: "g_direct",
-    name: "Retribución Directa",
-    description: "Salario, bonus y compensaciones económicas líquidas o directas",
+    name: "Economía y Compensación",
+    description: "Salario base, bonus, vales comida y aportaciones monetarias directas",
     color: "emerald",
+    weight: 30,
+    order: 1,
+    isActive: true,
   },
   {
     id: "g_flexibility",
-    name: "Flexibilidad y Conciliación",
-    description: "Teletrabajo, vacaciones y tiempos de desplazamiento",
+    name: "Conciliación y Flexibilidad",
+    description: "Teletrabajo, horario, vacaciones y tiempo libre disponible",
     color: "indigo",
+    weight: 25,
+    order: 2,
+    isActive: true,
   },
   {
     id: "g_benefits",
     name: "Beneficios y Salud",
-    description: "Seguros médicos, planes de pensiones y cheques beneficio",
+    description: "Seguro médico, plan de pensiones y presupuesto de formación",
     color: "blue",
+    weight: 20,
+    order: 3,
+    isActive: true,
   },
   {
     id: "g_culture",
-    name: "Cultura y Futuro",
-    description: "Desarrollo profesional, ambiente de equipo y proyección",
+    name: "Cultura y Desarrollo",
+    description: "Proyección profesional, aprendizaje, equipo y estabilidad",
     color: "amber",
+    weight: 25,
+    order: 4,
+    isActive: true,
   },
 ];
 
 export const DEFAULT_CONCEPTS: Concept[] = [
+  // ECONOMÍA (Group weight: 30%)
   {
     id: "c_salary_base",
     groupId: "g_direct",
     name: "Salario Base Bruto",
-    description: "Sueldo fijo anual bruto en contrato",
+    description: "Sueldo fijo anual bruto (€/año)",
     unit: "EUR_YEAR",
-    type: "monetary_direct",
-    weight: 10,
-    isPositive: true,
+    conceptType: "economic",
+    weightWithinGroup: 60, // Global weight = 30% * 60% = 18%
+    order: 1,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    isMonetaryTotal: true,
+    isVeto: false,
+    vetoThreshold: 40000,
+    vetoType: "min",
   },
   {
     id: "c_bonus_annual",
     groupId: "g_direct",
     name: "Bonus / Variable Estimado",
-    description: "Compensación variable anual esperada por objetivos",
+    description: "Compensación variable anual esperada (€/año)",
     unit: "EUR_YEAR",
-    type: "monetary_direct",
-    weight: 8,
-    isPositive: true,
+    conceptType: "economic",
+    weightWithinGroup: 25, // Global weight = 30% * 25% = 7.5%
+    order: 2,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    isMonetaryTotal: true,
   },
   {
     id: "c_meal_vouchers",
     groupId: "g_direct",
     name: "Subvención Comedor / Cheque Gourmet",
-    description: "Importe mensual equivalente en tickets restaurante / tarjeta comedor",
+    description: "Importe mensual en tarjeta restaurante (€/mes)",
     unit: "EUR_MONTH",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 12, // 12 months = annual value
-    weight: 6,
-    isPositive: true,
+    conceptType: "economic",
+    weightWithinGroup: 15, // Global weight = 30% * 15% = 4.5%
+    order: 3,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    isMonetaryTotal: true,
+    monetaryEquivalencePerUnit: 12, // 12 months per year
   },
+
+  // CONCILIACIÓN Y FLEXIBILIDAD (Group weight: 25%)
   {
     id: "c_telework",
     groupId: "g_flexibility",
     name: "Días de Teletrabajo / Semana",
-    description: "Días semanales trabajando desde casa",
+    description: "Días semanales trabajando en remoto",
     unit: "DAYS_WEEK",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 900, // ~900€ anuales ahorrados por día semanal en transporte y tiempo
-    weight: 9,
-    isPositive: true,
+    conceptType: "objective",
+    weightWithinGroup: 50, // Global weight = 25% * 50% = 12.5%
+    order: 1,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    idealValue: 5,
+    isVeto: false,
+    vetoThreshold: 1,
+    vetoType: "min",
   },
   {
     id: "c_vacation",
@@ -82,72 +118,94 @@ export const DEFAULT_CONCEPTS: Concept[] = [
     name: "Días de Vacaciones / Año",
     description: "Días laborables retribuidos de descanso anual",
     unit: "DAYS_YEAR",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 160, // Valor monetario estimado por día laborable de descanso extra
-    weight: 7,
-    isPositive: true,
+    conceptType: "objective",
+    weightWithinGroup: 30, // Global weight = 25% * 30% = 7.5%
+    order: 2,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
   },
   {
     id: "c_commute",
     groupId: "g_flexibility",
     name: "Desplazamiento Diario (Minutos)",
-    description: "Minutos de ida y vuelta al lugar de trabajo por día presencial",
+    description: "Minutos ida y vuelta al lugar de trabajo por día presencial",
     unit: "MINUTES_DAY",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: -25, // Impacto monetario negativo estimado por minuto diario de trayecto
-    weight: 6,
-    isPositive: false,
+    conceptType: "objective",
+    weightWithinGroup: 20, // Global weight = 25% * 20% = 5.0%
+    order: 3,
+    isActive: true,
+    preferenceDirection: "LESS_IS_BETTER",
+    isVeto: false,
+    vetoThreshold: 60,
+    vetoType: "max",
   },
+
+  // BENEFICIOS Y SALUD (Group weight: 20%)
   {
     id: "c_health",
     groupId: "g_benefits",
     name: "Seguro Médico Privado",
     description: "Cobertura médica privada financiada por la empresa",
     unit: "BOOLEAN",
-    type: "monetary_calculated",
-    monetaryEquivalencePerUnit: 1200, // Valor de mercado anual de la póliza
-    weight: 7,
-    isPositive: true,
+    conceptType: "economic",
+    weightWithinGroup: 40, // Global weight = 20% * 40% = 8.0%
+    order: 1,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    isMonetaryTotal: true,
+    monetaryEquivalencePerUnit: 1200,
   },
   {
     id: "c_pension",
     groupId: "g_benefits",
     name: "Plan de Pensiones (Aportación Empresa)",
-    description: "Aportación directa anual de la empresa al plan de empleo",
+    description: "Aportación directa anual de la empresa al plan (€/año)",
     unit: "EUR_YEAR",
-    type: "monetary_direct",
-    weight: 6,
-    isPositive: true,
+    conceptType: "economic",
+    weightWithinGroup: 35, // Global weight = 20% * 35% = 7.0%
+    order: 2,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    isMonetaryTotal: true,
   },
   {
     id: "c_training",
     groupId: "g_benefits",
     name: "Presupuesto de Formación",
-    description: "Fondo anual disponible para cursos, conferencias y certificaciones",
+    description: "Fondo anual para cursos, conferencias y certs (€/año)",
     unit: "EUR_YEAR",
-    type: "monetary_direct",
-    weight: 5,
-    isPositive: true,
+    conceptType: "economic",
+    weightWithinGroup: 25, // Global weight = 20% * 25% = 5.0%
+    order: 3,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
+    isMonetaryTotal: true,
   },
+
+  // CULTURA Y DESARROLLO (Group weight: 25%)
   {
     id: "c_growth",
     groupId: "g_culture",
     name: "Proyección y Plan de Carrera",
-    description: "Oportunidades reales de ascenso y aprendizaje técnico (1 al 10)",
+    description: "Oportunidades reales de ascenso y aprendizaje técnico",
     unit: "SCORE_10",
-    type: "weighted_score",
-    weight: 9,
-    isPositive: true,
+    conceptType: "subjective",
+    weightWithinGroup: 60, // Global weight = 25% * 60% = 15.0%
+    order: 1,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
   },
   {
     id: "c_environment",
     groupId: "g_culture",
     name: "Ambiente de Trabajo y Estabilidad",
-    description: "Cultura de empresa, relaciones con equipo y solidez (1 al 10)",
+    description: "Cultura de equipo, liderazgo y solidez de la empresa",
     unit: "SCORE_10",
-    type: "weighted_score",
-    weight: 8,
-    isPositive: true,
+    conceptType: "subjective",
+    weightWithinGroup: 40, // Global weight = 25% * 40% = 10.0%
+    order: 2,
+    isActive: true,
+    preferenceDirection: "MORE_IS_BETTER",
   },
 ];
 
@@ -178,6 +236,14 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_growth: 6,
       c_environment: 7,
     },
+    conceptScores: {
+      c_growth: 60,
+      c_environment: 70,
+    },
+    conceptNotes: {
+      c_growth: "Proyecto estable pero pocas oportunidades de promocionar pronto.",
+      c_environment: "Buen ambiente entre compañeros.",
+    },
   },
   {
     id: "oferta_tech_corp",
@@ -204,6 +270,14 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_training: 2000,
       c_growth: 8,
       c_environment: 8,
+    },
+    conceptScores: {
+      c_growth: 85,
+      c_environment: 80,
+    },
+    conceptNotes: {
+      c_growth: "Posición de liderazgo con equipo a cargo y tecnología punta.",
+      c_environment: "Muy buenas valoraciones en Glassdoor.",
     },
   },
   {
@@ -232,6 +306,61 @@ export const DEFAULT_OFFERS: JobOffer[] = [
       c_growth: 9,
       c_environment: 6,
     },
+    conceptScores: {
+      c_growth: 90,
+      c_environment: 60,
+    },
+    conceptNotes: {
+      c_growth: "Alta complejidad técnica en infraestructura financiera.",
+      c_environment: "Ritmo muy exigente y horas extras frecuentes.",
+    },
+  },
+];
+
+export const PRESET_TEMPLATES = [
+  {
+    id: "balanced",
+    name: "Equilibrado (Estándar)",
+    description: "Distribución armónica entre Economía (30%), Conciliación (25%), Desarrollo (25%) y Salud (20%).",
+    groupWeights: {
+      g_direct: 30,
+      g_flexibility: 25,
+      g_benefits: 20,
+      g_culture: 25,
+    },
+  },
+  {
+    id: "economic",
+    name: "Prioridad Económica",
+    description: "Enfocado al máximo impacto salarial e ingresos monetarios (Economía 50%).",
+    groupWeights: {
+      g_direct: 50,
+      g_flexibility: 15,
+      g_benefits: 20,
+      g_culture: 15,
+    },
+  },
+  {
+    id: "career",
+    name: "Carrera y Aprendizaje",
+    description: "Prioriza el desarrollo técnico, proyección y reputación de la empresa (Cultura 45%).",
+    groupWeights: {
+      g_direct: 25,
+      g_flexibility: 15,
+      g_benefits: 15,
+      g_culture: 45,
+    },
+  },
+  {
+    id: "quality_life",
+    name: "Calidad de Vida y Conciliación",
+    description: "Prioriza el teletrabajo, vacaciones, cercanía y flexibilidad horaria (Conciliación 45%).",
+    groupWeights: {
+      g_direct: 20,
+      g_flexibility: 45,
+      g_benefits: 15,
+      g_culture: 20,
+    },
   },
 ];
 
@@ -239,7 +368,6 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   const kmOneWay = offer.commuteKmOneWay || 0;
   if (kmOneWay <= 0) return 0;
 
-  // Determine presencial office days per week
   let presencialDaysPerWeek = 0;
   if (offer.workModality === "remoto") {
     presencialDaysPerWeek = 0;
@@ -248,16 +376,14 @@ export function calculateCommuteAnnualExpense(offer: JobOffer): number {
   } else if (offer.workModality === "hibrido") {
     presencialDaysPerWeek = offer.officeDaysPerWeek !== undefined ? offer.officeDaysPerWeek : 3;
   } else {
-    // Fallback based on c_telework
     const teleworkDays = typeof offer.values["c_telework"] === "number" ? offer.values["c_telework"] : 0;
     presencialDaysPerWeek = Math.max(0, 5 - teleworkDays);
   }
 
   if (presencialDaysPerWeek <= 0) return 0;
 
-  const workingWeeksPerYear = 44; // 220 working days / 5 = 44 weeks
+  const workingWeeksPerYear = 44;
   const presencialDaysPerYear = presencialDaysPerWeek * workingWeeksPerYear;
-
   const kmPerYear = presencialDaysPerYear * (kmOneWay * 2);
   const fuelL100 = offer.commuteFuelL100 || 6.5;
   const fuelPriceEurL = offer.fuelPriceEurL || 1.55;
@@ -272,73 +398,143 @@ export function calculateConceptMonetaryValue(
   concept: Concept,
   rawValue: number | boolean | undefined
 ): number {
-  if (rawValue === undefined || rawValue === null) return 0;
+  if (rawValue === undefined || rawValue === null || !concept.isMonetaryTotal) return 0;
 
-  if (concept.type === "monetary_direct") {
+  if (concept.unit === "EUR_YEAR") {
     return typeof rawValue === "number" ? rawValue : 0;
   }
 
-  if (concept.type === "monetary_calculated") {
-    const multiplier = concept.monetaryEquivalencePerUnit ?? 1;
-    if (concept.unit === "BOOLEAN") {
-      return rawValue === true || rawValue === 1 ? multiplier : 0;
-    }
+  if (concept.unit === "EUR_MONTH") {
     const numeric = typeof rawValue === "number" ? rawValue : 0;
+    const multiplier = concept.monetaryEquivalencePerUnit ?? 12;
     return numeric * multiplier;
   }
 
-  // Weighted score has no direct monetary addition (monetary = 0, computed in score)
+  if (concept.unit === "BOOLEAN") {
+    const multiplier = concept.monetaryEquivalencePerUnit ?? 0;
+    return rawValue === true || rawValue === 1 ? multiplier : 0;
+  }
+
+  if (concept.monetaryEquivalencePerUnit && concept.monetaryEquivalencePerUnit > 0) {
+    const numeric = typeof rawValue === "number" ? rawValue : 0;
+    return numeric * concept.monetaryEquivalencePerUnit;
+  }
+
   return 0;
 }
 
 export function calculateConceptNormalizedScore(
   concept: Concept,
-  rawValue: number | boolean | undefined
+  rawValue: number | boolean | undefined,
+  directScore: number | undefined,
+  allValuesForConcept: (number | boolean | undefined)[]
 ): number {
-  if (rawValue === undefined || rawValue === null) return 0;
-
-  let val = 0;
-  if (typeof rawValue === "boolean") {
-    val = rawValue ? 10 : 0;
-  } else {
-    val = Number(rawValue);
+  // If user entered an explicit 0-100 direct score override
+  if (directScore !== undefined && directScore !== null && !isNaN(directScore)) {
+    return Math.min(100, Math.max(0, directScore));
   }
 
-  // Normalize based on unit
+  if (rawValue === undefined || rawValue === null) return 0;
+
+  const numVal = typeof rawValue === "boolean" ? (rawValue ? 1 : 0) : Number(rawValue);
+
+  // Preference direction: IDEAL
+  if (concept.preferenceDirection === "IDEAL" && concept.idealValue !== undefined) {
+    const ideal = concept.idealValue;
+    const diff = Math.abs(numVal - ideal);
+    const maxDiff = Math.max(ideal, 5); // baseline distance scale
+    const score = Math.max(0, 100 - (diff / maxDiff) * 100);
+    return Math.round(score);
+  }
+
+  // Economic concepts using Min-Max Normalization across active offers
+  if (concept.conceptType === "economic" || concept.unit === "EUR_YEAR" || concept.unit === "EUR_MONTH") {
+    const numericValues = allValuesForConcept
+      .map((v) => {
+        if (v === undefined || v === null) return 0;
+        if (typeof v === "boolean") return v ? 1 : 0;
+        return Number(v);
+      })
+      .filter((v) => !isNaN(v));
+
+    if (numericValues.length === 0) return 100;
+
+    const min = Math.min(...numericValues);
+    const max = Math.max(...numericValues);
+
+    if (max === min) return 100; // All offers share exact same value -> assign 100 pts
+
+    let score = ((numVal - min) / (max - min)) * 100;
+    if (concept.preferenceDirection === "LESS_IS_BETTER") {
+      score = ((max - numVal) / (max - min)) * 100;
+    }
+    return Math.round(Math.min(100, Math.max(0, score)));
+  }
+
+  // Objective / Unit-based normalization
   let score = 0;
   switch (concept.unit) {
     case "SCORE_10":
-      score = Math.min(10, Math.max(0, val));
+      score = numVal * 10;
       break;
     case "BOOLEAN":
-      score = val ? 10 : 0;
+      score = numVal ? 100 : 0;
       break;
     case "DAYS_WEEK":
-      score = Math.min(10, (val / 5) * 10);
+      score = Math.min(100, (numVal / 5) * 100);
       break;
     case "DAYS_YEAR":
-      // Baseline 22 days -> 5 pts, 30 days -> 10 pts
-      score = Math.min(10, Math.max(0, ((val - 20) / 10) * 10));
+      // Baseline 22 days -> 50 pts, 32 days -> 100 pts
+      score = Math.min(100, Math.max(0, ((numVal - 20) / 10) * 100));
       break;
     case "MINUTES_DAY":
-      // 0 min -> 10 pts, 60+ min -> 0 pts
-      score = Math.max(0, 10 - (val / 60) * 10);
+      // 0 min -> 100 pts, 60 min -> 0 pts
+      score = Math.max(0, 100 - (numVal / 60) * 100);
       break;
-    case "EUR_YEAR":
-    case "EUR_MONTH":
+    case "PERCENT":
+      score = Math.min(100, Math.max(0, numVal));
+      break;
     default:
-      // Monetanized scores use value scaling relative to 50k baseline
-      const annualApprox =
-        concept.unit === "EUR_MONTH" ? val * 12 : val;
-      score = Math.min(10, Math.max(0, (annualApprox / 70000) * 10));
+      score = Math.min(100, Math.max(0, numVal * 10));
       break;
   }
 
-  if (!concept.isPositive) {
-    score = 10 - score;
+  if (concept.preferenceDirection === "LESS_IS_BETTER") {
+    score = 100 - score;
   }
 
-  return score;
+  return Math.round(Math.min(100, Math.max(0, score)));
+}
+
+export function checkConceptVeto(
+  concept: Concept,
+  rawValue: number | boolean | undefined
+): { failsVeto: boolean; reason?: string } {
+  if (!concept.isVeto || concept.vetoThreshold === undefined || rawValue === undefined || rawValue === null) {
+    return { failsVeto: false };
+  }
+
+  const numVal = typeof rawValue === "boolean" ? (rawValue ? 1 : 0) : Number(rawValue);
+  const threshold = concept.vetoThreshold;
+
+  if (concept.vetoType === "max" || concept.preferenceDirection === "LESS_IS_BETTER") {
+    if (numVal > threshold) {
+      return {
+        failsVeto: true,
+        reason: `${concept.name}: ${numVal} supera el máximo permitido (${threshold})`,
+      };
+    }
+  } else {
+    // Default to min threshold
+    if (numVal < threshold) {
+      return {
+        failsVeto: true,
+        reason: `${concept.name}: ${numVal} no alcanza el mínimo imprescindible (${threshold})`,
+      };
+    }
+  }
+
+  return { failsVeto: false };
 }
 
 export function evaluateJobOffers(
@@ -346,74 +542,150 @@ export function evaluateJobOffers(
   concepts: Concept[],
   groups: ConceptGroup[]
 ): EvaluationResult[] {
+  const activeGroups = groups.filter((g) => g.isActive !== false);
+  const activeConcepts = concepts.filter((c) => c.isActive !== false);
+
   const currentOffer = offers.find((o) => o.isCurrent) || offers[0];
 
-  // Pre-calculate baseline values for current position if available
   let currentTotalMonetary = 0;
   let currentCompositeScore = 0;
 
+  // Pre-extract concept raw values across all active offers for min-max normalization
+  const conceptValuesMap: Record<string, (number | boolean | undefined)[]> = {};
+  activeConcepts.forEach((c) => {
+    conceptValuesMap[c.id] = offers.map((o) => o.values[c.id]);
+  });
+
   const rawResults = offers.map((offer) => {
     let totalMonetary = 0;
-    let weightedScoreSum = 0;
-    let totalWeights = 0;
+    let compositeScoreAcc = 0;
+    const vetoReasons: string[] = [];
 
-    const groupResultsMap: Record<
+    const groupMap: Record<
       string,
-      { totalMonetary: number; weightedScoreSum: number; weightSum: number }
+      {
+        totalMonetary: number;
+        conceptResults: DetailedConceptResult[];
+      }
     > = {};
 
-    groups.forEach((g) => {
-      groupResultsMap[g.id] = { totalMonetary: 0, weightedScoreSum: 0, weightSum: 0 };
+    activeGroups.forEach((g) => {
+      groupMap[g.id] = { totalMonetary: 0, conceptResults: [] };
     });
 
-    concepts.forEach((concept) => {
-      const rawVal = offer.values[concept.id];
-      const monVal = calculateConceptMonetaryValue(concept, rawVal);
-      const score10 = calculateConceptNormalizedScore(concept, rawVal);
+    activeConcepts.forEach((concept) => {
+      const group = activeGroups.find((g) => g.id === concept.groupId);
+      const groupWeight = group?.weight || 0;
+      const weightWithinGroup = concept.weightWithinGroup || 0;
+      const globalWeight = (groupWeight * weightWithinGroup) / 100; // e.g., 30 * 60 / 100 = 18 (%)
 
+      const rawVal = offer.values[concept.id];
+      const directScore = offer.conceptScores?.[concept.id];
+      const monVal = calculateConceptMonetaryValue(concept, rawVal);
+      const score100 = calculateConceptNormalizedScore(
+        concept,
+        rawVal,
+        directScore,
+        conceptValuesMap[concept.id] || []
+      );
+
+      const contributionPoints = (score100 * globalWeight) / 100;
+      compositeScoreAcc += contributionPoints;
       totalMonetary += monVal;
 
-      const weight = concept.weight || 1;
-      weightedScoreSum += score10 * weight;
-      totalWeights += weight;
+      const vetoCheck = checkConceptVeto(concept, rawVal);
+      if (vetoCheck.failsVeto && vetoCheck.reason) {
+        vetoReasons.push(vetoCheck.reason);
+      }
 
-      if (groupResultsMap[concept.groupId]) {
-        groupResultsMap[concept.groupId].totalMonetary += monVal;
-        groupResultsMap[concept.groupId].weightedScoreSum += score10 * weight;
-        groupResultsMap[concept.groupId].weightSum += weight;
+      const detailedConcept: DetailedConceptResult = {
+        conceptId: concept.id,
+        conceptName: concept.name,
+        groupId: concept.groupId,
+        groupName: group?.name || "",
+        conceptType: concept.conceptType || "objective",
+        groupWeight,
+        weightWithinGroup,
+        globalWeight,
+        rawValue: rawVal,
+        score100,
+        contributionPoints: Number(contributionPoints.toFixed(2)),
+        annualMonetaryValue: monVal,
+        isVeto: !!concept.isVeto,
+        failsVeto: vetoCheck.failsVeto,
+        vetoReason: vetoCheck.reason,
+      };
+
+      if (groupMap[concept.groupId]) {
+        groupMap[concept.groupId].totalMonetary += monVal;
+        groupMap[concept.groupId].conceptResults.push(detailedConcept);
       }
     });
 
-    // Subtract car commute fuel expenses
+    // Subtract commute fuel expense
     const commuteExpense = calculateCommuteAnnualExpense(offer);
     totalMonetary -= commuteExpense;
-    if (groupResultsMap["g_flexibility"]) {
-      groupResultsMap["g_flexibility"].totalMonetary -= commuteExpense;
+    if (groupMap["g_flexibility"]) {
+      groupMap["g_flexibility"].totalMonetary -= commuteExpense;
     }
 
-    const compositeScore =
-      totalWeights > 0 ? Math.round((weightedScoreSum / (totalWeights * 10)) * 100) : 0;
+    const roundedCompositeScore = Math.round(compositeScoreAcc);
 
     if (offer.id === currentOffer?.id) {
       currentTotalMonetary = totalMonetary;
-      currentCompositeScore = compositeScore;
+      currentCompositeScore = roundedCompositeScore;
     }
 
-    const groupResults: ConceptGroupResult[] = groups.map((g) => {
-      const gData = groupResultsMap[g.id];
-      const gScore100 =
-        gData && gData.weightSum > 0
-          ? Math.round((gData.weightedScoreSum / (gData.weightSum * 10)) * 100)
-          : 0;
+    // Build Group Results
+    const groupResults: ConceptGroupResult[] = activeGroups.map((g) => {
+      const gData = groupMap[g.id] || { totalMonetary: 0, conceptResults: [] };
+      let gScoreSum = 0;
+      let gWeightSum = 0;
+
+      gData.conceptResults.forEach((cr) => {
+        gScoreSum += cr.score100 * cr.weightWithinGroup;
+        gWeightSum += cr.weightWithinGroup;
+      });
+
+      const gScore100 = gWeightSum > 0 ? Math.round(gScoreSum / gWeightSum) : 0;
+      const contributionPoints = Number(((gScore100 * g.weight) / 100).toFixed(2));
 
       return {
         groupId: g.id,
         groupName: g.name,
         color: g.color,
-        totalMonetaryValue: gData ? gData.totalMonetary : 0,
+        groupWeight: g.weight,
+        totalMonetaryValue: gData.totalMonetary,
         score100: gScore100,
+        contributionPoints,
+        conceptResults: gData.conceptResults,
       };
     });
+
+    // Extract Top Strengths (score >= 75) and Weaknesses (score < 60)
+    const allDetailed = Object.values(groupMap).flatMap((g) => g.conceptResults);
+    const sortedByContrib = [...allDetailed].sort(
+      (a, b) => b.contributionPoints - a.contributionPoints
+    );
+
+    const strengths = sortedByContrib
+      .filter((c) => c.score100 >= 70)
+      .slice(0, 3)
+      .map((c) => ({
+        conceptName: c.conceptName,
+        score100: c.score100,
+        contributionPoints: c.contributionPoints,
+      }));
+
+    const weaknesses = [...allDetailed]
+      .filter((c) => c.score100 < 60)
+      .sort((a, b) => a.score100 - b.score100)
+      .slice(0, 3)
+      .map((c) => ({
+        conceptName: c.conceptName,
+        score100: c.score100,
+        contributionPoints: c.contributionPoints,
+      }));
 
     return {
       offerId: offer.id,
@@ -422,16 +694,20 @@ export function evaluateJobOffers(
       isCurrent: !!offer.isCurrent,
       status: offer.status,
       totalMonetaryValue: totalMonetary,
-      compositeScore,
+      compositeScore: roundedCompositeScore,
       deltaMonetaryVsCurrent: 0,
       deltaPercentVsCurrent: 0,
       deltaScoreVsCurrent: 0,
+      failsVeto: vetoReasons.length > 0,
+      vetoReasons,
+      strengths,
+      weaknesses,
       groupResults,
       rank: 1,
     };
   });
 
-  // Calculate deltas and ranking
+  // Calculate Deltas against Current Position
   const resultsWithDeltas = rawResults.map((res) => {
     const deltaMonetary = res.totalMonetaryValue - currentTotalMonetary;
     const deltaPct =
@@ -448,8 +724,11 @@ export function evaluateJobOffers(
     };
   });
 
-  // Sort by composite score (or monetary if equal) to determine ranking
+  // Sort ranking: Non-vetoed offers with higher score first, vetoed offers ranked last
   const sorted = [...resultsWithDeltas].sort((a, b) => {
+    if (a.failsVeto !== b.failsVeto) {
+      return a.failsVeto ? 1 : -1;
+    }
     if (b.compositeScore !== a.compositeScore) {
       return b.compositeScore - a.compositeScore;
     }
@@ -460,4 +739,73 @@ export function evaluateJobOffers(
     ...res,
     rank: index + 1,
   }));
+}
+
+export function analyzeSensitivity(
+  evaluationResults: EvaluationResult[],
+  groups: ConceptGroup[]
+): SensitivityAnalysisResult {
+  const activeOffers = evaluationResults.filter((r) => !r.failsVeto);
+  const leader = activeOffers[0] || evaluationResults[0];
+
+  if (!leader || evaluationResults.length < 2) {
+    return {
+      leaderOfferId: leader?.offerId || "",
+      leaderTitle: leader?.offerTitle || "",
+      scoreGap: 0,
+      robustnessStatus: "ROBUSTO",
+      robustnessDescription: "No hay suficientes ofertas comparables para realizar un análisis de sensibilidad.",
+      insights: [],
+    };
+  }
+
+  const runnerUp = activeOffers[1] || evaluationResults[1];
+  const scoreGap = leader.compositeScore - runnerUp.compositeScore;
+
+  const insights: SensitivityInsight[] = [];
+
+  // Compare group contributions between Leader and Runner Up
+  leader.groupResults.forEach((leaderGroup) => {
+    const runnerGroup = runnerUp.groupResults.find((g) => g.groupId === leaderGroup.groupId);
+    if (!runnerGroup) return;
+
+    const groupDef = groups.find((g) => g.id === leaderGroup.groupId);
+    if (!groupDef) return;
+
+    const runnerScore = runnerGroup.score100;
+    const leaderScore = leaderGroup.score100;
+
+    // If runner-up scores higher in this group, calculate required weight shift
+    if (runnerScore > leaderScore) {
+      const scoreDiff = runnerScore - leaderScore; // e.g. 90 - 70 = 20 pts
+      // Extra points gained per 1% weight increase = scoreDiff / 100
+      const extraWeightNeeded = Math.ceil((scoreGap / scoreDiff) * 100);
+      const targetGroupWeight = groupDef.weight + extraWeightNeeded;
+
+      if (targetGroupWeight <= 70) {
+        insights.push({
+          groupId: groupDef.id,
+          groupName: groupDef.name,
+          currentWeight: groupDef.weight,
+          requiredWeight: targetGroupWeight,
+          impactDescription: `Si el peso de "${groupDef.name}" aumentase del ${groupDef.weight}% al ~${targetGroupWeight}%, ${runnerUp.offerTitle} superaría a ${leader.offerTitle}.`,
+        });
+      }
+    }
+  });
+
+  const isSensitive = scoreGap <= 5 || insights.length > 0;
+
+  return {
+    leaderOfferId: leader.offerId,
+    leaderTitle: leader.offerTitle,
+    runnerUpOfferId: runnerUp.offerId,
+    runnerUpTitle: runnerUp.offerTitle,
+    scoreGap,
+    robustnessStatus: isSensitive ? "SENSIBLE" : "ROBUSTO",
+    robustnessDescription: isSensitive
+      ? `La ventaja de ${leader.offerTitle} sobre ${runnerUp.offerTitle} es estrecha (${scoreGap} pts) o depende marcadamente de los pesos asignados.`
+      : `${leader.offerTitle} mantiene la primera posición de forma sólida ante variaciones moderadas de pesos (+${scoreGap} pts de diferencia).`,
+    insights,
+  };
 }
