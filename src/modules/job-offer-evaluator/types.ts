@@ -1,13 +1,9 @@
-export type CalculationType = "monetary_direct" | "weighted_score" | "monetary_calculated";
+export type ConceptCategory = "tangible" | "intangible" | "both";
 
 export type UnitType =
   | "EUR_YEAR"       // €/año
-  | "EUR_MONTH"      // €/mes
-  | "DAYS_YEAR"      // días/año
-  | "DAYS_WEEK"      // días/semana
-  | "SCORE_10"       // Puntuación 1-10
-  | "BOOLEAN"        // Sí / No
-  | "MINUTES_DAY";   // minutos/día (desplazamiento)
+  | "SCORE_10"       // Puntuación 0-10
+  | "CATEGORICAL";   // Legacy compatibility
 
 export interface ConceptGroup {
   id: string;
@@ -16,16 +12,23 @@ export interface ConceptGroup {
   color: string;
 }
 
+export interface ConceptOption {
+  id: string;
+  label: string;      // ej: "100% Remoto", "Comida gratis", "Llevar tupper", "3 días oficina"
+  score: number;      // Puntuación 0-10
+  value?: number;     // Valor económico opcional €/año
+}
+
 export interface Concept {
   id: string;
   groupId: string;
   name: string;
   description: string;
-  unit: UnitType;
-  type: CalculationType;
+  category: ConceptCategory; // tangible (dinero €/año), intangible (puntuación 0-10), or both
   weight: number; // 1 to 10 (Importance weight)
-  isPositive: boolean; // true if higher is better, false if lower is better
-  monetaryEquivalencePerUnit?: number; // annual monetary equivalency multiplier
+  unit?: UnitType; // Optional legacy field
+  isPositive?: boolean;
+  options?: ConceptOption[]; // Lista de opciones personalizables/diccionario
 }
 
 export type OfferStatus =
@@ -48,7 +51,7 @@ export interface JobOffer {
   isCurrent: boolean;
   status: OfferStatus;
   notes?: string;
-  values: Record<string, number | boolean>;
+  values: Record<string, number | boolean | string>;
   conceptNotes?: Record<string, string>; // Justification / notes per concept value
   commuteKmOneWay?: number;               // Distance in km (one-way)
   commuteFuelL100?: number;              // Car fuel consumption in L/100km
@@ -61,7 +64,7 @@ export interface ConceptGroupResult {
   groupId: string;
   groupName: string;
   color: string;
-  totalMonetaryValue: number;
+  totalTangibleValue: number;
   score100: number;
 }
 
@@ -71,9 +74,9 @@ export interface EvaluationResult {
   company: string;
   isCurrent: boolean;
   status: OfferStatus;
-  totalMonetaryValue: number;
-  compositeScore: number;
-  deltaMonetaryVsCurrent: number;
+  totalTangibleValue: number;  // Salario real (suma de tangibles reales en €/año)
+  compositeScore: number;      // Puntuación global del puesto (0-100 pts)
+  deltaTangibleVsCurrent: number;
   deltaPercentVsCurrent: number;
   deltaScoreVsCurrent: number;
   groupResults: ConceptGroupResult[];
