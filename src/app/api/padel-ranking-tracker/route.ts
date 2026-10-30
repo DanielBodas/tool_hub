@@ -111,7 +111,7 @@ export async function GET() {
     }
 
     // Proxy request to PadelAPI.org when credentials are provided
-    if (apiConfig.apiUrl && apiConfig.apiKey && malePlayers.length === 0) {
+    if (apiConfig.apiUrl && apiConfig.apiKey && malePlayers.length === 0 && femalePlayers.length === 0) {
       try {
         const headers: Record<string, string> = {
           "Content-Type": "application/json",
@@ -121,8 +121,8 @@ export async function GET() {
         const baseUrl = apiConfig.apiUrl.replace(/\/$/, "");
 
         const [rankingsRes, tournamentsRes] = await Promise.allSettled([
-          fetch(`${baseUrl}/rankings`, { headers, cache: "no-store" }),
-          fetch(`${baseUrl}/tournaments`, { headers, cache: "no-store" }),
+          fetch(`${baseUrl}/rankings`, { headers, cache: "no-store", signal: AbortSignal.timeout(8000) }),
+          fetch(`${baseUrl}/tournaments`, { headers, cache: "no-store", signal: AbortSignal.timeout(8000) }),
         ]);
 
         let rawRankingsData = null;
@@ -160,11 +160,13 @@ export async function GET() {
       }
     }
 
-    // Default Fallback: If no API data was retrieved or API credentials are not set, provide initial preset data out-of-the-box
-    if (malePlayers.length === 0 && femalePlayers.length === 0) {
-      malePlayers = INITIAL_MALE_PLAYERS;
-      femalePlayers = INITIAL_FEMALE_PLAYERS;
-      tournaments = INITIAL_TOURNAMENTS;
+    // No token or failed API: keep the module usable with empty data. Never label demo data as official.
+    if (!apiConfig.apiKey) {
+      lastDiagnostic = {
+        success: false,
+        httpStatus: 0,
+        message: "API pendiente de configuración. Puedes consultar la fuente oficial de Premier Padel y volver cuando tengas el token.",
+      };
     }
 
     return NextResponse.json({
@@ -183,7 +185,9 @@ export async function GET() {
       femalePlayers: [],
       tournaments: [],
       simulatedOutcomes: [],
-      apiConfig: DEFAULT_API_CONFIG,
+      apiConfig: { ...DEFAULT_API_CONFIG, apiKey: "" },
+      hasApiKey: Boolean(process.env.PADEL_API_KEY),
+      lastDiagnostic: { success: false, httpStatus: 500, message: "No se ha podido cargar la conexión. La herramienta sigue disponible." },
     });
   }
 }
