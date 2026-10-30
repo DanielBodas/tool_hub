@@ -458,7 +458,7 @@ export function PadelRankingTrackerModule() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-3 space-y-3 font-sans text-foreground">
+    <div className="padel-app w-full max-w-7xl mx-auto px-3 sm:px-6 pt-5 pb-28 sm:pb-8 space-y-6 font-sans text-foreground">
 
       {/* -------------------- HEADER STATUS TOAST -------------------- */}
       {statusMessage && (
@@ -484,12 +484,12 @@ export function PadelRankingTrackerModule() {
       )}
 
       {/* -------------------- TOP BAR: BRAND & GENDER SELECTOR -------------------- */}
-      <div className="bg-card/70 backdrop-blur-md border border-border/80 rounded-2xl p-3 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
 
         {/* Title */}
         <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-start">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center text-white shadow-xs">
+            <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-xs">
               <Trophy size={20} />
             </div>
             <div>
@@ -516,7 +516,7 @@ export function PadelRankingTrackerModule() {
               onClick={() => setSelectedGender("male")}
               className={`flex-1 sm:flex-initial px-3.5 py-1.5 rounded-lg text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                 selectedGender === "male"
-                  ? "bg-primary text-primary-foreground shadow-xs"
+                  ? "bg-slate-900 text-white shadow-xs"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
@@ -552,7 +552,7 @@ export function PadelRankingTrackerModule() {
       </div>
 
       {/* -------------------- STICKY CAPSULE NAVIGATION BAR -------------------- */}
-      <div className="hidden sm:block sticky top-12 z-20 bg-card/90 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 shadow-md">
+      <div className="hidden sm:block bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none whitespace-nowrap">
 
           <button
@@ -571,7 +571,7 @@ export function PadelRankingTrackerModule() {
             onClick={() => setActiveTab("race")}
             className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "race"
-                ? "bg-amber-600 text-white shadow-xs"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
@@ -583,7 +583,7 @@ export function PadelRankingTrackerModule() {
             onClick={() => setActiveTab("drops")}
             className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "drops"
-                ? "bg-rose-600 text-white shadow-xs"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
@@ -595,7 +595,7 @@ export function PadelRankingTrackerModule() {
             onClick={() => setActiveTab("simulator")}
             className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "simulator"
-                ? "bg-purple-600 text-white shadow-xs"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
@@ -607,7 +607,7 @@ export function PadelRankingTrackerModule() {
             onClick={() => setActiveTab("calendar")}
             className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "calendar"
-                ? "bg-sky-600 text-white shadow-xs"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
@@ -619,7 +619,7 @@ export function PadelRankingTrackerModule() {
             onClick={() => setActiveTab("config")}
             className={`py-1.5 px-2.5 rounded-xl text-xs font-extrabold transition-all shrink-0 flex items-center gap-1.5 ${
               activeTab === "config"
-                ? "bg-zinc-700 text-white shadow-xs"
+                ? "bg-slate-900 text-white shadow-xs"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             }`}
           >
@@ -630,7 +630,7 @@ export function PadelRankingTrackerModule() {
         </div>
       </div>
 
-      <nav aria-label="Secciones de ranking" className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 backdrop-blur-xl px-1 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.18)]">
+      <nav aria-label="Secciones de ranking" className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white px-2 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-4px_18px_rgba(15,23,42,0.08)]">
         <div className="grid grid-cols-5 gap-1 max-w-xl mx-auto">
           <button onClick={() => setActiveTab("ranking")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "ranking" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Trophy size={18}/><span className="text-[10px] font-semibold">Ranking</span></button>
           <button onClick={() => setActiveTab("race")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "race" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Flame size={18}/><span className="text-[10px] font-semibold">Race</span></button>
@@ -684,7 +684,7 @@ export function PadelRankingTrackerModule() {
       {activeTab === "ranking" && activePlayers.length > 0 && (
         <div className="space-y-3">
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-card/40 p-2 rounded-xl border border-border/60">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-white p-3 rounded-xl border border-slate-200">
             <div className="text-xs font-black text-foreground flex items-center gap-1.5">
               <Trophy size={14} className="text-amber-500" /> Ranking FIP
               <span className="text-[10px] text-muted-foreground font-semibold bg-muted px-2 py-0.5 rounded-full">
@@ -712,7 +712,7 @@ export function PadelRankingTrackerModule() {
               return (
                 <div
                   key={player.id}
-                  className={`bg-card rounded-2xl border transition-all overflow-hidden ${
+                  className={`bg-white rounded-xl border border-slate-200 transition-colors overflow-hidden ${
                     rankNumber <= 3
                       ? "border-amber-500/40 shadow-xs"
                       : "border-border/80 hover:border-primary/40"
@@ -754,7 +754,7 @@ export function PadelRankingTrackerModule() {
 
                     <div className="flex items-center gap-2 shrink-0">
                       <div className="text-right">
-                        <div className="text-xs font-black text-primary font-mono">
+                        <div className="text-xs font-black text-slate-900 font-mono">
                           {player.officialPoints.toLocaleString()} pts
                         </div>
                         <span className="text-[9px] text-muted-foreground uppercase font-extrabold block">
@@ -1119,7 +1119,7 @@ export function PadelRankingTrackerModule() {
             </div>
           )}
 
-          <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-3">
+          <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 space-y-4">
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-xs font-black text-foreground">
                 <Globe size={18} className="text-sky-400" /> Conexión de datos
@@ -1237,7 +1237,7 @@ export function PadelRankingTrackerModule() {
           </div>
 
           {/* DEMO / FALLBACK DATA CONTROL CARD */}
-          <details className="bg-card p-4 rounded-2xl border border-border/80 space-y-2">
+          <details className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 space-y-3">
             <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Herramientas de prueba (solo desarrollo)</summary>
             <div className="space-y-2 pt-2">
             <span className="text-xs font-black text-foreground flex items-center gap-1.5">
