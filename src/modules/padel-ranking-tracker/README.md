@@ -65,6 +65,12 @@ Módulo para la consulta, análisis, defensa de puntos y simulación del ranking
 
 ---
 
+## 🌐 Fuentes de información
+
+- **Premier Padel (web oficial):** referencia para consultar calendario, torneos y resultados publicados por el circuito. La aplicación ofrece un acceso directo; no se debe presentar una extracción automática del sitio hasta que esté implementada y validada.
+- **PadelAPI.org:** fuente de datos estructurados para rankings, jugadores y torneos. Su conexión requiere un token Bearer, pero es opcional.
+- **Sin token o ante un error de API:** la herramienta carga igualmente, muestra el estado de conexión y deja vacías las vistas que necesitan datos. No se sustituyen datos oficiales por cifras ficticias.
+
 ## 📡 Conexión a PadelAPI.org
 
 La aplicación se conecta a PadelAPI.org enviando la cabecera HTTP de autorización. El token debe mantenerse en el servidor (variable de entorno o almacenamiento protegido), nunca devolverse al navegador:
@@ -83,7 +89,7 @@ Authorization: Bearer TU_API_TOKEN
 
 ## ⚙️ Variables de Entorno (`.env`)
 
-Configura tus credenciales desde la pestaña **⚙️ Ajustes & API** o en tu `.env`:
+Cuando dispongas del token, configúralo desde la pestaña **⚙️ Ajustes & API** o mediante `.env`. No es necesario configurarlo para abrir y navegar por la herramienta:
 
 ```env
 # URL base de PadelAPI.org
