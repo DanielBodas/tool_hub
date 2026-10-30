@@ -62,6 +62,10 @@ body {
   color-scheme: light;
 }
 .padel-app .text-muted-foreground { color: #64748b !important; }
+.padel-app .text-foreground { color: #172033 !important; }
+.padel-app .text-primary { color: #1d4ed8 !important; }
+.padel-app .bg-primary { background-color: #1e3a8a !important; }
+.padel-app .text-primary-foreground { color: #fff !important; }
 .padel-app .bg-card,
 .padel-app .bg-card\/40,
 .padel-app .bg-card\/70,
