@@ -7,6 +7,9 @@ import { loadAllToolEnvs } from "@/lib/env";
 import { isUserAllowedForTool } from "@/lib/toolAccess";
 import {
   DEFAULT_API_CONFIG,
+  INITIAL_MALE_PLAYERS,
+  INITIAL_FEMALE_PLAYERS,
+  INITIAL_TOURNAMENTS,
 } from "@/modules/padel-ranking-tracker/initialData";
 
 loadAllToolEnvs();
