@@ -817,10 +817,10 @@ export function PadelRankingTrackerModule() {
             <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-amber-500 block">
-                Clasificación Anual calculada por la aplicación
+                FIP Race 2026 · Top 22 de la temporada
               </span>
               <span className="text-[11px] text-muted-foreground font-medium">
-                Métrica independiente que acumula los puntos ganados exclusivamente en la temporada actual. Premier Padel no publica una RACE oficial con fórmula idéntica a otros deportes.
+                Clasificación oficial de temporada: suma los 22 mejores resultados de 2026 en Premier Padel y CUPRA FIP Tour. Se muestra el dato de Race recibido de la fuente; no es el ranking FIP móvil de 52 semanas.
               </span>
             </div>
           </div>
@@ -1152,7 +1152,7 @@ export function PadelRankingTrackerModule() {
                   type="password"
                   value={apiConfig.apiKey}
                   onChange={(e) => setApiConfig({ ...apiConfig, apiKey: e.target.value })}
-                  placeholder="••••••••••••••••"
+                  placeholder="Introduce un token nuevo (vacío mantiene el guardado)"
                   className="w-full bg-muted/50 border border-border/80 rounded-xl p-2.5 font-mono text-xs text-foreground focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
               </div>
