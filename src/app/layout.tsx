@@ -6,8 +6,6 @@ import { SecurityProvider } from "@/components/SecurityProvider";
 import { AppHeader } from "@/components/AppHeader";
 import { AppFooter } from "@/components/AppFooter";
 import { cookies } from "next/headers";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -43,7 +41,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession(authOptions);
   const cookieStore = await cookies();
   const initialUnlockedTools: string[] = [];
 
@@ -61,7 +58,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col bg-background text-foreground transition-colors duration-300`}
       >
         <AuthProvider>
-          <SecurityProvider initialUnlockedTools={initialUnlockedTools} hasSession={!!session}>
+          <SecurityProvider initialUnlockedTools={initialUnlockedTools}>
             <AppHeader />
             <main className="flex-grow flex flex-col">{children}</main>
             <AppFooter />
