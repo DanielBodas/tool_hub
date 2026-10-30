@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import {
   ConceptGroup,
   Concept,
@@ -640,11 +641,11 @@ export function JobOfferEvaluatorModule() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-xs font-black uppercase text-muted-foreground tracking-widest">
-          Cargando evaluador...
-        </div>
-      </div>
+      <LoadingScreen
+        title="Cargando evaluador de empleo"
+        description="Recuperando ofertas, criterios y comparativas..."
+        compact
+      />
     );
   }
 
