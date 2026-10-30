@@ -23,7 +23,7 @@ export function ToolBaseLayout({
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground transition-colors duration-150">
       {/* Mobile-optimized 36px (h-9) Top Bar */}
-      <header className="h-9 border-b border-border/50 bg-card/90 backdrop-blur-xs sticky top-0 z-50 px-2 sm:px-4 flex items-center justify-between gap-2 select-none">
+      <header className="h-12 shrink-0 border-b border-slate-200 bg-white sticky top-0 z-50 px-3 sm:px-6 shadow-sm flex items-center justify-between gap-2 select-none">
         {/* Left: Exit to Dashboard */}
         <div className="flex items-center shrink-0">
           <Link
@@ -39,7 +39,7 @@ export function ToolBaseLayout({
         {/* Center: Tool Name (Truncates safely on small screens) */}
         <div className="flex items-center gap-1.5 shrink min-w-0 overflow-hidden text-center px-1">
           <BrandLogo className="w-3.5 h-3.5 rounded-xs shrink-0 shadow-xs" />
-          <span className="text-[11px] font-extrabold tracking-tight text-foreground uppercase truncate">
+          <span className="text-xs font-semibold tracking-wide text-slate-800 truncate">
             {toolName}
           </span>
         </div>
