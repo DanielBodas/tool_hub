@@ -4,11 +4,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-static";
 
 export function GET() {
-  return new Response(Buffer.from(iconBase64, "base64"), {
+  const image = new Uint8Array(Buffer.from(iconBase64, "base64"));
+  return new Response(image, {
     headers: {
       "Content-Type": "image/png",
       "Cache-Control": "public, max-age=31536000, immutable",
-      "Content-Length": String(Buffer.from(iconBase64, "base64").byteLength),
     },
   });
 }
