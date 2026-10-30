@@ -255,18 +255,36 @@ export function PadelRankingTrackerModule() {
     };
 
     const evaluated = rawActivePlayers.map((player) => {
+      const history = player.pointsHistory || [];
       const { officialPoints, contributingResults } = computeOfficialPoints(
-        player.pointsHistory || [],
+        history,
         seasonConfig
       );
 
-      const pointsDefendedUpcoming = (player.pointsHistory || [])
+      // The official FIP Race is the best 22 results earned in the current season.
+      // Prefer calculating it from dated result history; use the API's Race total
+      // only when detailed season results are not available.
+      const seasonResults = history.filter((entry) => {
+        const year = Number(String(entry.dateWon || "").slice(0, 4));
+        return year === seasonConfig.seasonYear && entry.status !== "vencido";
+      });
+      const calculatedRacePoints = seasonResults
+        .slice()
+        .sort((a, b) => b.points - a.points)
+        .slice(0, seasonConfig.topBestResultsCount || 22)
+        .reduce((sum, entry) => sum + entry.points, 0);
+
+      const pointsDefendedUpcoming = history
         .filter((h) => h.status === "proximo_vencer")
         .reduce((sum, h) => sum + h.points, 0);
 
       return {
         ...player,
         officialPoints: player.officialPoints || officialPoints,
+        racePoints: seasonResults.length > 0 ? calculatedRacePoints : (player.racePoints || 0),
+        tournamentsPlayed: seasonResults.length > 0
+          ? new Set(seasonResults.map((entry) => entry.tournamentId)).size
+          : player.tournamentsPlayed,
         contributingResults,
         pointsDefendedUpcoming,
       };
