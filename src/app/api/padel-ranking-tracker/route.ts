@@ -204,7 +204,8 @@ export async function POST(request: Request) {
     // ACTION 1: Test API Connection Diagnostic
     if (body.type === "test_connection") {
       const apiUrl = (body.apiUrl || process.env.PADEL_API_URL || "https://padelapi.org/api").replace(/\/$/, "");
-      const apiKey = (body.apiKey || process.env.PADEL_API_KEY || "").trim();
+      const savedConfig = await db.collection("config").findOne({});
+      const apiKey = (body.apiKey || process.env.PADEL_API_KEY || savedConfig?.apiKey || "").trim();
 
       if (!apiKey) {
         return NextResponse.json({
@@ -282,8 +283,10 @@ export async function POST(request: Request) {
 
     // ACTION 2: Save API Config
     if (body.type === "save_config" && body.apiConfig) {
+      const existingConfig = await db.collection("config").findOne({});
       await db.collection("config").deleteMany({});
       const cleanConfig = { ...body.apiConfig };
+      if (!cleanConfig.apiKey && existingConfig?.apiKey) cleanConfig.apiKey = existingConfig.apiKey;
       delete cleanConfig._id;
       await db.collection("config").insertOne(cleanConfig);
       return NextResponse.json({ success: true });
