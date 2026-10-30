@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import {
   RefreshCw,
   Settings,
@@ -2053,10 +2054,11 @@ export function BabyLeavePlannerModule() {
 
       {/* Synchronizing Loading overlay */}
       {!isLoaded && (
-        <div id="loading" className="fixed inset-0 bg-white/90 dark:bg-slate-900/90 flex flex-col items-center justify-center z-[9999]">
-          <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-600 rounded-full animate-spin"></div>
-          <p className="mt-4 font-semibold text-slate-600 dark:text-slate-300">Sincronizando datos...</p>
-        </div>
+        <LoadingScreen
+          title="Sincronizando planificación"
+          description="Recuperando permisos, eventos y festivos..."
+          overlay
+        />
       )}
 
       {/* Dual Sidebars with handles */}
