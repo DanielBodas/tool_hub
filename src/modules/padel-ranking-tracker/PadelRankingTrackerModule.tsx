@@ -494,10 +494,10 @@ export function PadelRankingTrackerModule() {
             </div>
             <div>
               <h1 className="text-sm font-black tracking-tight text-foreground flex items-center gap-1.5">
-                Padel Ranking & RACE Tracker
+                Ranking de pádel
               </h1>
               <p className="text-[10px] text-muted-foreground font-semibold">
-                FIP • Regla {apiConfig.seasonConfig?.topBestResultsCount || 22} mejores resultados ({apiConfig.seasonConfig?.seasonYear || 2026})
+                Ranking profesional · FIP
               </p>
             </div>
           </div>
@@ -520,7 +520,7 @@ export function PadelRankingTrackerModule() {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
-              <span>👨</span> MASCULINO
+              <span>👨</span> Masculino
             </button>
             <button
               onClick={() => setSelectedGender("female")}
@@ -530,7 +530,7 @@ export function PadelRankingTrackerModule() {
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
               }`}
             >
-              <span>👩</span> FEMENINO
+              <span>👩</span> Femenino
             </button>
           </div>
 
@@ -576,7 +576,7 @@ export function PadelRankingTrackerModule() {
             }`}
           >
             <Flame size={13} />
-            <span>Anual (RACE)</span>
+            <span>Race</span>
           </button>
 
           <button
@@ -588,7 +588,7 @@ export function PadelRankingTrackerModule() {
             }`}
           >
             <Shield size={13} />
-            <span>Defensa Puntos</span>
+            <span>Defensa</span>
           </button>
 
           <button
@@ -600,7 +600,7 @@ export function PadelRankingTrackerModule() {
             }`}
           >
             <Sparkles size={13} />
-            <span>Proyección</span>
+            <span>Simular</span>
           </button>
 
           <button
@@ -624,20 +624,19 @@ export function PadelRankingTrackerModule() {
             }`}
           >
             <Settings size={13} />
-            <span>Ajustes & API</span>
+            <span>Ajustes</span>
           </button>
 
         </div>
       </div>
 
       <nav aria-label="Secciones de ranking" className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 backdrop-blur-xl px-1 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.18)]">
-        <div className="grid grid-cols-6 gap-0.5 max-w-xl mx-auto">
-          <button onClick={() => setActiveTab("ranking")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "ranking" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Trophy size={18}/><span className="text-[9px] font-extrabold">FIP</span></button>
-          <button onClick={() => setActiveTab("race")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "race" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Flame size={18}/><span className="text-[9px] font-extrabold">RACE</span></button>
-          <button onClick={() => setActiveTab("drops")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "drops" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Shield size={18}/><span className="text-[9px] font-extrabold">Defensa</span></button>
-          <button onClick={() => setActiveTab("simulator")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "simulator" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Sparkles size={18}/><span className="text-[9px] font-extrabold">Simular</span></button>
-          <button onClick={() => setActiveTab("calendar")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "calendar" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Calendar size={18}/><span className="text-[9px] font-extrabold">Fechas</span></button>
-          <button onClick={() => setActiveTab("config")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "config" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Settings size={18}/><span className="text-[9px] font-extrabold">Ajustes</span></button>
+        <div className="grid grid-cols-5 gap-1 max-w-xl mx-auto">
+          <button onClick={() => setActiveTab("ranking")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "ranking" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Trophy size={18}/><span className="text-[10px] font-semibold">Ranking</span></button>
+          <button onClick={() => setActiveTab("race")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "race" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Flame size={18}/><span className="text-[10px] font-semibold">Race</span></button>
+          <button onClick={() => setActiveTab("drops")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "drops" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Shield size={18}/><span className="text-[10px] font-semibold">Defensa</span></button>
+          <button onClick={() => setActiveTab("simulator")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "simulator" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Sparkles size={18}/><span className="text-[10px] font-semibold">Simular</span></button>
+          <button onClick={() => setActiveTab("calendar")} className={"min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl " + (activeTab === "calendar" ? "text-primary bg-primary/10" : "text-muted-foreground")}><Calendar size={18}/><span className="text-[10px] font-semibold">Fechas</span></button>
         </div>
       </nav>
 
@@ -687,7 +686,7 @@ export function PadelRankingTrackerModule() {
 
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 bg-card/40 p-2 rounded-xl border border-border/60">
             <div className="text-xs font-black text-foreground flex items-center gap-1.5">
-              <Trophy size={14} className="text-amber-500" /> Ranking Oficial FIP (52 Semanas)
+              <Trophy size={14} className="text-amber-500" /> Ranking FIP
               <span className="text-[10px] text-muted-foreground font-semibold bg-muted px-2 py-0.5 rounded-full">
                 {apiConfig.seasonConfig?.rulesVersion || "Normativa 2026 (22 Mejores)"}
               </span>
@@ -837,7 +836,7 @@ export function PadelRankingTrackerModule() {
             <Info size={16} className="text-amber-500 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-amber-500 block">
-                FIP Race 2026 · Top 22 de la temporada
+                Race · Temporada {apiConfig.seasonConfig?.seasonYear || 2026}
               </span>
               <span className="text-[11px] text-muted-foreground font-medium">
                 Clasificación oficial de temporada: suma los 22 mejores resultados de 2026 en Premier Padel y CUPRA FIP Tour. Se muestra el dato de Race recibido de la fuente; no es el ranking FIP móvil de 52 semanas.
@@ -1050,7 +1049,7 @@ export function PadelRankingTrackerModule() {
       {activeTab === "calendar" && (
         <div className="space-y-3">
           <div className="text-xs font-black text-foreground flex items-center gap-1.5">
-            <Calendar size={14} className="text-sky-400" /> Calendario de Vencimientos y Defensa
+            <Calendar size={14} className="text-sky-400" /> Próximos puntos que vencen
           </div>
 
           <div className="space-y-2">
@@ -1123,7 +1122,7 @@ export function PadelRankingTrackerModule() {
           <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-3">
             <div className="flex items-center justify-between gap-2">
               <span className="flex items-center gap-2 text-xs font-black text-foreground">
-                <Globe size={18} className="text-sky-400" /> Configuración de PadelAPI.org
+                <Globe size={18} className="text-sky-400" /> Conexión de datos
               </span>
 
               {/* Status Badge */}
@@ -1150,10 +1149,12 @@ export function PadelRankingTrackerModule() {
               PadelAPI es una fuente de datos estructurados y su conexión es opcional. El token se conserva en servidor y no se devuelve al navegador. La web oficial de Premier Padel seguirá siendo la referencia para calendario y resultados.
             </p>
 
-            <div className="space-y-2.5 text-xs">
+            <details className="space-y-2.5 text-xs">
+              <summary className="cursor-pointer rounded-xl bg-muted/50 px-3 py-2 font-semibold text-foreground">Configuración avanzada</summary>
+              <div className="space-y-2.5 pt-2">
               <div>
                 <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
-                  URL Endpoint PadelAPI:
+                  Dirección de la API (avanzado):
                 </label>
                 <input
                   type="text"
@@ -1166,7 +1167,7 @@ export function PadelRankingTrackerModule() {
 
               <div>
                 <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
-                  API Key / Token Bearer (opcional):
+                  Clave API (opcional):
                 </label>
                 <input
                   type="password"
@@ -1221,21 +1222,24 @@ export function PadelRankingTrackerModule() {
                   disabled={isTestingApi}
                   className="py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
                 >
-                  <RefreshCw size={14} className={isTestingApi ? "animate-spin" : ""} /> Probar Conexión de API
+                  <RefreshCw size={14} className={isTestingApi ? "animate-spin" : ""} /> Comprobar conexión
                 </button>
 
                 <button
                   onClick={() => saveApiConfig(apiConfig, simulatedOutcomes)}
                   className="py-2.5 bg-primary hover:bg-primary-hover text-primary-foreground font-black text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
                 >
-                  <Globe size={14} /> Guardar Credenciales BD
+                  <Globe size={14} /> Guardar cambios
                 </button>
               </div>
-            </div>
+              </div>
+            </details>
           </div>
 
           {/* DEMO / FALLBACK DATA CONTROL CARD */}
-          <div className="bg-card p-4 rounded-2xl border border-border/80 space-y-2">
+          <details className="bg-card p-4 rounded-2xl border border-border/80 space-y-2">
+            <summary className="cursor-pointer text-xs font-semibold text-muted-foreground">Herramientas de prueba (solo desarrollo)</summary>
+            <div className="space-y-2 pt-2">
             <span className="text-xs font-black text-foreground flex items-center gap-1.5">
               <Zap size={14} className="text-amber-500" /> Cargar / Limpiar Datos de Prueba
             </span>
@@ -1258,7 +1262,8 @@ export function PadelRankingTrackerModule() {
                 <Trash2 size={12} /> Limpiar Datos
               </button>
             </div>
-          </div>
+            </div>
+          </details>
 
         </div>
       )}
