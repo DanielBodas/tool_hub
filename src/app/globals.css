@@ -54,3 +54,38 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
 }
+
+
+/* Padel tracker: restrained product UI */
+.padel-app {
+  color: #172033;
+  color-scheme: light;
+}
+.padel-app .text-muted-foreground { color: #64748b !important; }
+.padel-app .bg-card,
+.padel-app .bg-card\/40,
+.padel-app .bg-card\/70,
+.padel-app .bg-card\/90 { background-color: #fff !important; }
+.padel-app .border-border,
+.padel-app .border-border\/50,
+.padel-app .border-border\/60,
+.padel-app .border-border\/80 { border-color: #e2e8f0 !important; }
+.padel-app input,
+.padel-app select {
+  min-height: 42px;
+  border-radius: 10px;
+  border-color: #cbd5e1;
+  background: #fff;
+  color: #172033;
+}
+.padel-app button { transition: background-color .15s ease, border-color .15s ease, color .15s ease; }
+.padel-app button:focus-visible,
+.padel-app input:focus-visible,
+.padel-app select:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+@media (max-width: 639px) {
+  .padel-app { padding-top: 16px; }
+  .padel-app nav[aria-label="Secciones de ranking"] { position: fixed !important; }
+}
