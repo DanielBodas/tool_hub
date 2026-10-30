@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     securePin = process.env[envVarName] as string;
 
     if (!securePin) {
-      console.error(`Missing PIN for tool: ${toolId}. Please set ${envVarName} in the .env file.`);
+      console.error("Missing PIN for tool: " + toolId + ". Please set " + envVarName + " in the environment.");
       return NextResponse.json({ success: false, error: "Tool PIN not configured." }, { status: 500 });
     }
     cookieName = `auth_tool_${toolId}`;
