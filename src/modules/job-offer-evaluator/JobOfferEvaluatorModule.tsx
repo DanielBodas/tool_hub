@@ -165,6 +165,7 @@ export function JobOfferEvaluatorModule() {
     updatedConcepts: Concept[],
     updatedGroups: ConceptGroup[]
   ) => {
+    setStatusMessage("Guardando...");
     setOffers(updatedOffers);
     setConcepts(updatedConcepts);
     setGroups(updatedGroups);
@@ -664,7 +665,7 @@ export function JobOfferEvaluatorModule() {
 
         <div className="flex items-center gap-2">
           {statusMessage && (
-            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${statusMessage === "Guardando..." ? "text-primary bg-primary/10 border-primary/20" : statusMessage === "Guardado" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-amber-600 bg-amber-500/10 border-amber-500/20"}`}>
               {statusMessage}
             </span>
           )}
