@@ -22,18 +22,27 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: "#2563eb",
+  themeColor: "#090d16",
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
   title: "ToolHub Platform",
   description: "Plataforma modular para herramientas de desarrollo rápido",
   manifest: "/manifest.json",
+  icons: {
+    apple: [{ url: "/toolhub-icon", sizes: "512x512", type: "image/png" }],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "ToolHub",
+    startupImage: [{
+      url: "/ios-launch-image",
+      media: "(device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)",
+    }],
   },
+  other: { "apple-mobile-web-app-capable": "yes" },
 };
 
 export default async function RootLayout({
