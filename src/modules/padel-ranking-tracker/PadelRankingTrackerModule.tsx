@@ -440,7 +440,7 @@ export function PadelRankingTrackerModule() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 py-3 space-y-3 font-sans text-foreground">
+    <div className="w-full max-w-7xl mx-auto px-2.5 sm:px-4 pt-3 pb-[calc(env(safe-area-inset-bottom)+5.5rem)] sm:pb-3 space-y-3 font-sans text-foreground">
 
       {/* -------------------- HEADER STATUS TOAST -------------------- */}
       {statusMessage && (
@@ -534,7 +534,7 @@ export function PadelRankingTrackerModule() {
       </div>
 
       {/* -------------------- STICKY CAPSULE NAVIGATION BAR -------------------- */}
-      <div className="sticky top-12 z-20 bg-card/90 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 shadow-md">
+      <div className="hidden sm:block sticky top-12 z-20 bg-card/90 backdrop-blur-md p-1.5 rounded-2xl border border-border/80 shadow-md">
         <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none whitespace-nowrap">
 
           <button
@@ -611,6 +611,17 @@ export function PadelRankingTrackerModule() {
 
         </div>
       </div>
+
+      <nav aria-label="Secciones de ranking" className="sm:hidden fixed inset-x-0 bottom-0 z-40 border-t border-border/80 bg-card/95 backdrop-blur-xl px-1 pt-2 pb-[calc(env(safe-area-inset-bottom)+0.5rem)] shadow-[0_-8px_24px_rgba(0,0,0,0.18)]">
+        <div className="grid grid-cols-6 gap-0.5 max-w-xl mx-auto">
+          <button onClick={() => setActiveTab("ranking")} className="min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-primary bg-primary/10"><Trophy size={18}/><span className="text-[9px] font-extrabold">FIP</span></button>
+          <button onClick={() => setActiveTab("race")} className="min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-muted-foreground"><Flame size={18}/><span className="text-[9px] font-extrabold">RACE</span></button>
+          <button onClick={() => setActiveTab("drops")} className="min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-muted-foreground"><Shield size={18}/><span className="text-[9px] font-extrabold">Defensa</span></button>
+          <button onClick={() => setActiveTab("simulator")} className="min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-muted-foreground"><Sparkles size={18}/><span className="text-[9px] font-extrabold">Simular</span></button>
+          <button onClick={() => setActiveTab("calendar")} className="min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-muted-foreground"><Calendar size={18}/><span className="text-[9px] font-extrabold">Fechas</span></button>
+          <button onClick={() => setActiveTab("config")} className="min-w-0 min-h-12 flex flex-col items-center justify-center gap-1 rounded-xl text-muted-foreground"><Settings size={18}/><span className="text-[9px] font-extrabold">Ajustes</span></button>
+        </div>
+      </nav>
 
       {/* ========================================================================= */}
       {/* EMPTY STATE IF NO PLAYERS FROM PADELAPI.ORG */}
