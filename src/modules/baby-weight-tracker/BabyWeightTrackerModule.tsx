@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import {
   Scale,
   Calendar,
@@ -1320,10 +1321,11 @@ export function BabyWeightTrackerModule() {
             </div>
 
             {loading ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <RefreshCw className="animate-spin text-primary mb-2" size={28} />
-                <span className="text-xs font-bold">Cargando gráfico...</span>
-              </div>
+              <LoadingScreen
+                title="Cargando evolución"
+                description="Preparando los registros y el gráfico de peso..."
+                compact
+              />
             ) : filteredRecords.length === 0 ? (
               <div className="text-center py-12 px-4 space-y-2">
                 <Scale size={24} className="mx-auto text-muted-foreground/50" />

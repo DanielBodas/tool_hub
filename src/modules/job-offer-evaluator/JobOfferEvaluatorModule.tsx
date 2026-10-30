@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import {
   ConceptGroup,
   Concept,
@@ -164,6 +165,7 @@ export function JobOfferEvaluatorModule() {
     updatedConcepts: Concept[],
     updatedGroups: ConceptGroup[]
   ) => {
+    setStatusMessage("Guardando...");
     setOffers(updatedOffers);
     setConcepts(updatedConcepts);
     setGroups(updatedGroups);
@@ -640,11 +642,11 @@ export function JobOfferEvaluatorModule() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="text-xs font-black uppercase text-muted-foreground tracking-widest">
-          Cargando evaluador...
-        </div>
-      </div>
+      <LoadingScreen
+        title="Cargando evaluador de empleo"
+        description="Recuperando ofertas, criterios y comparativas..."
+        compact
+      />
     );
   }
 
@@ -663,7 +665,7 @@ export function JobOfferEvaluatorModule() {
 
         <div className="flex items-center gap-2">
           {statusMessage && (
-            <span className="text-[10px] font-bold text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20">
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-md border ${statusMessage === "Guardando..." ? "text-primary bg-primary/10 border-primary/20" : statusMessage === "Guardado" ? "text-emerald-500 bg-emerald-500/10 border-emerald-500/20" : "text-amber-600 bg-amber-500/10 border-amber-500/20"}`}>
               {statusMessage}
             </span>
           )}

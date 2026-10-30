@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 interface SecurityContextType {
   unlockedTools: string[];
@@ -29,6 +29,8 @@ export function SecurityProvider({
   hasSession?: boolean
 }) {
   const [unlockedTools, setUnlockedTools] = useState<string[]>(initialUnlockedTools);
+  const { status } = useSession();
+  const isAuthenticated = hasSession || status === "authenticated";
 
   useEffect(() => {
     const status = localStorage.getItem("unlocked_tools");
@@ -51,10 +53,10 @@ export function SecurityProvider({
   }, [initialUnlockedTools]);
 
   const isToolUnlocked = useCallback((toolId?: string) => {
-    if (hasSession) return true;
+    if (isAuthenticated) return true;
     const id = toolId || "dashboard";
     return unlockedTools.includes(id);
-  }, [hasSession, unlockedTools]);
+  }, [isAuthenticated, unlockedTools]);
 
   const unlock = useCallback(async (
     pin: string,
@@ -107,21 +109,21 @@ export function SecurityProvider({
     }
 
     // Sign out from NextAuth if session exists
-    if (hasSession) {
+    if (isAuthenticated) {
       await signOut({ redirect: false });
     }
 
     // Redirect to login
     window.location.href = "/login";
-  }, [hasSession]);
+  }, [isAuthenticated]);
 
   const contextValue = useMemo(() => ({
     unlockedTools,
     unlock,
     lock,
     isToolUnlocked,
-    hasSession
-  }), [unlockedTools, unlock, lock, isToolUnlocked, hasSession]);
+    hasSession: isAuthenticated
+  }), [unlockedTools, unlock, lock, isToolUnlocked, isAuthenticated]);
 
   return (
     <SecurityContext.Provider value={contextValue}>
