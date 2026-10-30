@@ -652,10 +652,10 @@ export function PadelRankingTrackerModule() {
 
           <div className="space-y-1">
             <h3 className="text-sm font-black text-foreground">
-              Sin datos de PadelAPI.org
+              Fuentes pendientes de conectar
             </h3>
             <p className="text-xs text-muted-foreground font-medium max-w-md mx-auto">
-              Para consultar el ranking FIP oficial, la clasificación anual calculada y simular proyecciones, introduce tu token Bearer de **https://padelapi.org/api**. Solo se guardarán tu endpoint y token.
+              La herramienta no se bloquea si todavía no tienes la API Key. Usa la web oficial de Premier Padel como referencia para calendario y resultados; cuando añadas el token de PadelAPI podremos cargar rankings y datos estructurados para los cálculos. Hasta entonces no mostraremos cifras ficticias como oficiales.
             </p>
           </div>
 
@@ -664,15 +664,17 @@ export function PadelRankingTrackerModule() {
               onClick={() => setActiveTab("config")}
               className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white font-black text-xs rounded-xl shadow-xs transition-all inline-flex items-center gap-1.5"
             >
-              <Settings size={14} /> Configurar URL y Token
+              <Settings size={14} /> Configurar API (opcional)
             </button>
 
-            <button
-              onClick={handleLoadDemoData}
+            <a
+              href="https://premierpadel.com/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-4 py-2 bg-sky-600/15 hover:bg-sky-600/25 border border-sky-500/30 text-sky-400 font-extrabold text-xs rounded-xl transition-all inline-flex items-center gap-1.5"
             >
-              <Zap size={14} /> Cargar Datos de Demostración (Offline)
-            </button>
+              <Globe size={14} /> Web oficial Premier Padel
+            </a>
           </div>
         </div>
       )}
@@ -1145,13 +1147,13 @@ export function PadelRankingTrackerModule() {
             </div>
 
             <p className="text-xs text-muted-foreground font-medium">
-              Introduce tus credenciales Bearer para PadelAPI.org. Solamente el **URL Endpoint** y **Token Bearer** se almacenan en MongoDB.
+              PadelAPI es una fuente de datos estructurados y su conexión es opcional. El token se conserva en servidor y no se devuelve al navegador. La web oficial de Premier Padel seguirá siendo la referencia para calendario y resultados.
             </p>
 
             <div className="space-y-2.5 text-xs">
               <div>
                 <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
-                  URL Endpoint API Pádel:
+                  URL Endpoint PadelAPI:
                 </label>
                 <input
                   type="text"
@@ -1164,7 +1166,7 @@ export function PadelRankingTrackerModule() {
 
               <div>
                 <label className="text-[10px] font-extrabold text-muted-foreground uppercase block mb-1">
-                  API Key / Token Bearer de Acceso:
+                  API Key / Token Bearer (opcional):
                 </label>
                 <input
                   type="password"
@@ -1238,7 +1240,7 @@ export function PadelRankingTrackerModule() {
               <Zap size={14} className="text-amber-500" /> Cargar / Limpiar Datos de Prueba
             </span>
             <p className="text-[11px] text-muted-foreground font-medium">
-              Si tu API key aún está pendiente de activación o deseas probar offline el circuito Premier Padel con datos verificados, puedes cargar o limpiar datos de demostración en un clic.
+              Esta sección solo sirve para pruebas internas. Los datos de demostración nunca deben interpretarse como ranking oficial.
             </p>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
