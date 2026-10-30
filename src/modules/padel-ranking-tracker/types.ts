@@ -7,7 +7,8 @@ export type TournamentCategory =
   | "Tour Finals"
   | "FIP Platinum"
   | "FIP Gold"
-  | "FIP Star";
+  | "FIP Silver"
+  | "FIP Bronze";
 
 export type TournamentStatus = "completed" | "upcoming" | "ongoing";
 
