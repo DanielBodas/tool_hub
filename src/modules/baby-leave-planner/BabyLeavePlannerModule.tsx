@@ -177,6 +177,7 @@ function migrateData(loadedData: LegacyData | null | undefined): GlobalData {
 
 export function BabyLeavePlannerModule() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [globalData, setGlobalData] = useState<GlobalData>({
     events: [],
     balances: [],
@@ -284,16 +285,24 @@ export function BabyLeavePlannerModule() {
       });
   }, []);
 
-  // Save data automatically on globalData change
+  // Save data automatically on globalData change, with visible feedback.
   useEffect(() => {
     if (!isLoaded) return;
 
-    const timeout = setTimeout(() => {
-      fetch("/api/baby-leave-planner", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(globalData),
-      });
+    setSaveStatus("saving");
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch("/api/baby-leave-planner", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(globalData),
+        });
+        if (!response.ok) throw new Error("No se pudo sincronizar la planificación");
+        setSaveStatus("saved");
+      } catch (error) {
+        console.error("Error saving leave planner data:", error);
+        setSaveStatus("error");
+      }
     }, 800);
 
     return () => clearTimeout(timeout);
@@ -2051,6 +2060,22 @@ export function BabyLeavePlannerModule() {
           }
         }
       `}</style>
+
+      {isLoaded && saveStatus !== "idle" && (
+        <div
+          className={`fixed bottom-4 right-4 z-[100] rounded-full border px-3 py-2 text-[11px] font-bold shadow-lg backdrop-blur-sm ${
+            saveStatus === "error"
+              ? "border-rose-500/30 bg-rose-500/10 text-rose-600 dark:text-rose-300"
+              : saveStatus === "saved"
+                ? "border-emerald-500/30 bg-card/95 text-emerald-600 dark:text-emerald-400"
+                : "border-primary/30 bg-card/95 text-primary"
+          }`}
+          role="status"
+          aria-live="polite"
+        >
+          {saveStatus === "saving" ? "Guardando cambios..." : saveStatus === "saved" ? "Cambios guardados" : "No se pudo guardar"}
+        </div>
+      )}
 
       {/* Synchronizing Loading overlay */}
       {!isLoaded && (
