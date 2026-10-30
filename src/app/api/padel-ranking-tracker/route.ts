@@ -172,7 +172,8 @@ export async function GET() {
       femalePlayers,
       tournaments,
       simulatedOutcomes: cleanSimulated,
-      apiConfig,
+      apiConfig: { ...apiConfig, apiKey: "" },
+      hasApiKey: Boolean(apiConfig.apiKey),
       lastDiagnostic,
     });
   } catch (e) {
