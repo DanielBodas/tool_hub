@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from "react";
+import { LoadingScreen } from "@/components/LoadingScreen";
 import {
   Wallet,
   TrendingUp,
@@ -704,10 +705,11 @@ export function FinanceTrackerModule() {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[300px] space-y-3">
-        <RefreshCw className="w-8 h-8 text-primary animate-spin" />
-        <p className="text-xs text-muted-foreground font-medium">Cargando Gestor Financiero...</p>
-      </div>
+      <LoadingScreen
+        title="Cargando Gestor Financiero"
+        description="Recuperando tus datos y preparando los cálculos..."
+        compact
+      />
     );
   }
 
