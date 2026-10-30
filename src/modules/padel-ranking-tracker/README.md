@@ -19,8 +19,9 @@ Módulo para la consulta, análisis, defensa de puntos y simulación del ranking
 ---
 
 ### 2. Clasificación Anual (RACE)
-- Representa el rendimiento acumulado exclusivamente durante la **temporada en curso** (desde el inicio del año competitivo).
-- **Aviso Importante**: Aparece etiquetada como **«Clasificación Anual calculada por la aplicación»** debido a que Premier Padel no publica una RACE oficial independiente con una fórmula unificada propia.
+- Es la **FIP Race oficial de la temporada 2026**: suma los 22 mejores resultados obtenidos en los torneos de Premier Padel y CUPRA FIP Tour disputados durante 2026.
+- No debe confundirse con el ranking FIP de 52 semanas: la Race mide exclusivamente la temporada actual y determina la clasificación para las Finals.
+- La aplicación debe mostrar el dato de Race de la fuente oficial/API cuando esté disponible; si se reconstruye desde resultados, debe identificarse como cálculo derivado y validarse contra la clasificación oficial.
 - Mantiene:
   - Puntos conseguidos en el año actual.
   - Posición anual y número de torneos disputados.
@@ -52,7 +53,7 @@ Módulo para la consulta, análisis, defensa de puntos y simulación del ranking
   - Finalista o Campeón.
 - Al seleccionar una ronda, el sistema:
   1. Deduce los puntos del torneo anterior sustituido.
-  2. Suma los puntos oficiales según la categoría del torneo (Major, P1, P2, Tour Finals).
+  2. Suma los puntos oficiales según la categoría del torneo (Major, P1, P2, Tour Finals, FIP Platinum, Gold, Silver y Bronze).
   3. **Re-calcula el conjunto de los 22 mejores resultados** para determinar la nueva puntuación oficial.
   4. Muestra la posición proyectada estimada con la etiqueta explícita **«Estimación / Proyección Hipotética»**.
 
@@ -66,7 +67,7 @@ Módulo para la consulta, análisis, defensa de puntos y simulación del ranking
 
 ## 📡 Conexión a PadelAPI.org
 
-La aplicación se conecta a PadelAPI.org enviando la cabecera HTTP de autorización:
+La aplicación se conecta a PadelAPI.org enviando la cabecera HTTP de autorización. El token debe mantenerse en el servidor (variable de entorno o almacenamiento protegido), nunca devolverse al navegador:
 
 ```http
 GET https://padelapi.org/api/seasons
