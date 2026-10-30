@@ -7,9 +7,6 @@ import { loadAllToolEnvs } from "@/lib/env";
 import { isUserAllowedForTool } from "@/lib/toolAccess";
 import {
   DEFAULT_API_CONFIG,
-  INITIAL_MALE_PLAYERS,
-  INITIAL_FEMALE_PLAYERS,
-  INITIAL_TOURNAMENTS,
 } from "@/modules/padel-ranking-tracker/initialData";
 
 loadAllToolEnvs();
@@ -127,10 +124,9 @@ export async function GET() {
 
         let rawRankingsData = null;
         let rawTournamentsData = null;
-        let httpStatus = 200;
+        let httpStatus = rankingsRes.status === "fulfilled" ? rankingsRes.value.status : 502;
 
         if (rankingsRes.status === "fulfilled") {
-          httpStatus = rankingsRes.value.status;
           if (rankingsRes.value.ok) {
             rawRankingsData = await rankingsRes.value.json();
           }
@@ -146,9 +142,9 @@ export async function GET() {
         tournaments = normalized.tournaments;
 
         lastDiagnostic = {
-          success: httpStatus >= 200 && httpStatus < 300,
+          success: rankingsRes.status === "fulfilled" && rankingsRes.value.ok,
           httpStatus,
-          message: httpStatus === 200 ? "Conexión exitosa con PadelAPI.org" : `Error HTTP ${httpStatus}`,
+          message: rankingsRes.status === "fulfilled" && rankingsRes.value.ok ? "Conexión exitosa con PadelAPI.org" : `No se pudo consultar el ranking (HTTP ${httpStatus})`,
         };
       } catch (err: any) {
         console.warn("PadelAPI.org fetch error:", err);
